@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
-	_ "main.go/docs"  //não funfa
+
+	"main.go/db"
+	_ "main.go/docs" //não funfa
 
 	httpSwagger "github.com/swaggo/http-swagger"
 )
@@ -36,6 +38,14 @@ func hello(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+	db, err := db.SetupDb()
+
+	if err != nil {
+		log.Fatalf("Error to connect database: %v", err)
+	}
+
+	db.Close()
+
 	http.HandleFunc("/hello", hello)
 	http.HandleFunc("/swagger/", httpSwagger.WrapHandler)
 
