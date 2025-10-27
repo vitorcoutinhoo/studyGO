@@ -39,6 +39,7 @@ func makeOracleCofiguration(dbUser, dbPassword, dbHost, dbPort, dbName string) (
 	return fmt.Sprintf("%s/%s@%s:%s/%s", dbUser, dbPassword, dbHost, dbPort, dbName), "godror"
 }
 
+// Função para criar string de conexão para um banco de dados Postgres e retorna no nome do drive que será usado
 func makePostgresCofiguration(dbUser, dbPassword, dbHost, dbPort, dbName string) (string, string) {
 	return fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable", dbHost, dbPort, dbUser, dbPassword, dbName), "postgres"
 }
