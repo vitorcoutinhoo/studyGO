@@ -4,8 +4,11 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
-	_ "main.go/docs"  //não funfa
 
+	"main.go/controllers"
+	_ "main.go/docs" //não funfa
+
+	"github.com/gin-gonic/gin"
 	httpSwagger "github.com/swaggo/http-swagger"
 )
 
@@ -38,6 +41,21 @@ func hello(w http.ResponseWriter, r *http.Request) {
 func main() {
 	http.HandleFunc("/hello", hello)
 	http.HandleFunc("/swagger/", httpSwagger.WrapHandler)
+
+	// Código novo
+	r := gin.Default()
+
+	r.POST("/users", controllers.UserCreate)
+	r.GET("/users", controllers.UserGetAll)
+	r.GET("/users/:id", controllers.UserGetById)
+	r.PUT("/users/:id", controllers.UserUpdate)
+	r.DELETE("/users/:id", controllers.UserDelete)
+
+	r.POST("/colaboradores", controllers.ColaboradorCreate)
+	r.GET("/colaboradores", controllers.ColaboradoresGetAll)
+
+	r.Run()
+	// Fim do código novo
 
 	log.Println("Servidor rodando em http://localhost:8080")
 	log.Println("Acesse: http://localhost:8080/hello")
