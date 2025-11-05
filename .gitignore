@@ -1,0 +1,16 @@
+# Binários compilados
+/go_backend
+*.exe
+*.out
+
+# Cache e dependências locais
+/vendor/
+*.log
+
+# Docker volumes e arquivos temporários
+/db-data/
+data/
+tmp/
+
+# Configs locais (se criar um .env)
+.env

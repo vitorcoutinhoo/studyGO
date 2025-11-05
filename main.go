@@ -1,46 +1,34 @@
 package main
 
 import (
-	"encoding/json"
-	"log"
-	"net/http"
-	_ "main.go/docs"  //não funfa
+	"main.go/controllers"
+	"main.go/database"
+	"main.go/models"
 
-	httpSwagger "github.com/swaggo/http-swagger"
+	_ "main.go/docs"
+
+	"github.com/gin-gonic/gin"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
-// Response representa a resposta da API
-type Response struct {
-	Message string `json:"message" example:"Olá! API funcionando perfeitamente"`
-}
-
-// @title API Simples
-// @version 1.0
-// @description API de exemplo com um endpoint
+// @title API em Go com Gin e Gorm
+// @description API documentada com Swagger
 // @host localhost:8080
-// @BasePath /
-
-// @Summary Endpoint de saudação
-// @Description Retorna uma mensagem de boas-vindas
-// @Tags hello
-// @Produce json
-// @Success 200 {object} Response
-// @Router /hello [get]
-func hello(w http.ResponseWriter, r *http.Request) {
-	response := Response{
-		Message: "Olá! API funcionando perfeitamente",
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
-}
-
 func main() {
-	http.HandleFunc("/hello", hello)
-	http.HandleFunc("/swagger/", httpSwagger.WrapHandler)
+	database.Connect()
+	database.DB.AutoMigrate(&models.User{})
 
-	log.Println("Servidor rodando em http://localhost:8080")
-	log.Println("Acesse: http://localhost:8080/hello")
-	log.Println("Swagger UI: http://localhost:8080/swagger/index.html")
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	r := gin.Default()
+
+	// Users routes
+	r.POST("/users", controllers.UserCreate)
+	r.GET("/users", controllers.UserGetAll)
+	r.GET("/users/:id", controllers.UserGetById)
+	r.PUT("/users/:id", controllers.UserUpdate)
+	r.DELETE("/users/:id", controllers.UserDelete)
+
+	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+
+	r.Run(":8080")
 }
