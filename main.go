@@ -24,9 +24,9 @@ func main() {
 	// Users routes
 	r.POST("/users", controllers.UserCreate)
 	r.GET("/users", controllers.UserGetAll)
-	r.GET("/user/:id", controllers.UserGetById)
-	r.PUT("/user/:id", controllers.UserUpdate)
-	r.DELETE("/user/:id", controllers.UserDelete)
+	r.GET("/users/:id", controllers.UserGetById)
+	r.PUT("/users/:id", controllers.UserUpdate)
+	r.DELETE("/users/:id", controllers.UserDelete)
 
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
