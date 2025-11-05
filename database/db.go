@@ -1,15 +1,16 @@
 package database
 
 import (
-	"database/sql"
 	"fmt"
 	"log"
 	"os"
 
 	_ "github.com/lib/pq"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
 )
 
-var DB *sql.DB
+var DB *gorm.DB
 
 func Connect() {
 	host := os.Getenv("DB_HOST")
@@ -24,12 +25,17 @@ func Connect() {
 	)
 
 	var err error
-	DB, err = sql.Open("postgres", dsn)
+	DB, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
 		log.Fatal("Erro ao abrir conexão com o banco:", err)
 	}
 
-	if err = DB.Ping(); err != nil {
+	sqlDB, err := DB.DB()
+	if err != nil {
+		log.Fatal("Erro ao obter objeto sql.DB da conexão gorm:", err)
+	}
+
+	if err = sqlDB.Ping(); err != nil {
 		log.Fatal("Erro ao conectar ao banco:", err)
 	}
 

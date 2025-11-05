@@ -1,8 +1,9 @@
 package main
 
 import (
+	"main.go/controllers"
 	"main.go/database"
-	"main.go/handlers"
+	"main.go/models"
 
 	_ "main.go/docs"
 
@@ -11,17 +12,22 @@ import (
 	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
-// @title API em Go com Gin e Swagger
-// @version 1.0
-// @description Exemplo básico de API documentada com Swagger
+// @title API em Go com Gin e Gorm
+// @description API documentada com Swagger
 // @host localhost:8080
-// @BasePath /
 func main() {
 	database.Connect()
+	database.DB.AutoMigrate(&models.User{})
 
 	r := gin.Default()
 
-	r.GET("/users", handlers.GetUser)
+	// Users routes
+	r.POST("/users", controllers.UserCreate)
+	r.GET("/users", controllers.UserGetAll)
+	r.GET("/user/:id", controllers.UserGetById)
+	r.PUT("/user/:id", controllers.UserUpdate)
+	r.DELETE("/user/:id", controllers.UserDelete)
+
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	r.Run(":8080")
