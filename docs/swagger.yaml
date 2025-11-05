@@ -1,29 +1,24 @@
 basePath: /
-definitions:
-  main.Response:
-    properties:
-      message:
-        example: Olá! API funcionando perfeitamente
-        type: string
-    type: object
 host: localhost:8080
 info:
   contact: {}
-  description: API de exemplo com um endpoint
-  title: API Simples
+  description: Exemplo básico de API documentada com Swagger
+  title: API em Go com Gin e Swagger
   version: "1.0"
 paths:
-  /hello:
+  /users:
     get:
-      description: Retorna uma mensagem de boas-vindas
+      description: Retorna um usuário fictício
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/main.Response'
-      summary: Endpoint de saudação
+            additionalProperties:
+              type: string
+            type: object
+      summary: Exemplo de rota de usuário
       tags:
-      - hello
+      - users
 swagger: "2.0"

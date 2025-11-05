@@ -1,42 +1,34 @@
 {
     "swagger": "2.0",
     "info": {
-        "description": "API de exemplo com um endpoint",
-        "title": "API Simples",
+        "description": "Exemplo básico de API documentada com Swagger",
+        "title": "API em Go com Gin e Swagger",
         "contact": {},
         "version": "1.0"
     },
     "host": "localhost:8080",
     "basePath": "/",
     "paths": {
-        "/hello": {
+        "/users": {
             "get": {
-                "description": "Retorna uma mensagem de boas-vindas",
+                "description": "Retorna um usuário fictício",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "hello"
+                    "users"
                 ],
-                "summary": "Endpoint de saudação",
+                "summary": "Exemplo de rota de usuário",
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/main.Response"
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
                         }
                     }
-                }
-            }
-        }
-    },
-    "definitions": {
-        "main.Response": {
-            "type": "object",
-            "properties": {
-                "message": {
-                    "type": "string",
-                    "example": "Olá! API funcionando perfeitamente"
                 }
             }
         }

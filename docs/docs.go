@@ -15,34 +15,26 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/hello": {
+        "/users": {
             "get": {
-                "description": "Retorna uma mensagem de boas-vindas",
+                "description": "Retorna um usuário fictício",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "hello"
+                    "users"
                 ],
-                "summary": "Endpoint de saudação",
+                "summary": "Exemplo de rota de usuário",
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/main.Response"
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
                         }
                     }
-                }
-            }
-        }
-    },
-    "definitions": {
-        "main.Response": {
-            "type": "object",
-            "properties": {
-                "message": {
-                    "type": "string",
-                    "example": "Olá! API funcionando perfeitamente"
                 }
             }
         }
@@ -51,16 +43,14 @@ const docTemplate = `{
 
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
-	Version:          "1.0",
-	Host:             "localhost:8080",
-	BasePath:         "/",
-	Schemes:          []string{},
-	Title:            "API Simples",
-	Description:      "API de exemplo com um endpoint",
-	InfoInstanceName: "swagger",
-	SwaggerTemplate:  docTemplate,
-	LeftDelim:        "{{",
-	RightDelim:       "}}",
+    Version:          "1.0",
+    Host:             "localhost:8080",
+    BasePath:         "/",
+    Schemes:          []string{},
+    Title:            "API em Go com Gin e Swagger",
+    Description:      "Exemplo básico de API documentada com Swagger",
+    InfoInstanceName: "swagger",
+    SwaggerTemplate:  docTemplate,
 }
 
 func init() {
