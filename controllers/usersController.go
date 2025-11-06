@@ -3,34 +3,23 @@ package controllers
 import (
 	"net/http"
 
-	"main.go/initializers"
-	"main.go/models"
+	"main.go/dto"
+	"main.go/service"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 )
 
 // Cria um novo usuário
 func UserCreate(c *gin.Context) {
-	var user struct {
-		Email     string
-		SenhaHash string
-	}
+	var user dto.UserCreateDTO
 
 	c.Bind(&user)
 
-	userCreated := models.User{
-		ID:        uuid.New(),
-		Email:     user.Email,
-		SenhaHash: user.SenhaHash,
-		Role:      "USER",
-	}
+	userCreated, err := service.CreateUser(user)
 
-	result := initializers.DB.Create(&userCreated)
-
-	if result.Error != nil {
+	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": result.Error.Error(),
+			"error": err.Error(),
 		})
 
 		return
@@ -43,15 +32,21 @@ func UserCreate(c *gin.Context) {
 
 // Pega todos os usuários
 func UserGetAll(c *gin.Context) {
-	var posts []models.User
-	initializers.DB.Find(&posts)
+	users, err := service.GetAllUsers()
+
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"users": posts,
+		"users": users,
 	})
 }
 
-// Pega um usuário pelo ID
+/*// Pega um usuário pelo ID
 func UserGetById(c *gin.Context) {
 	idParam := c.Param("id")
 
@@ -65,7 +60,7 @@ func UserGetById(c *gin.Context) {
 	}
 
 	var user models.User
-	result := initializers.DB.First(&user, id)
+	result := db.DB.First(&user, id)
 
 	if result.Error != nil {
 		c.JSON(http.StatusNotFound, gin.H{
@@ -93,7 +88,7 @@ func UserUpdate(c *gin.Context) {
 	}
 
 	var user models.User
-	result := initializers.DB.First(&user, id)
+	result := db.DB.First(&user, id)
 
 	if result.Error != nil {
 		c.JSON(http.StatusNotFound, gin.H{
@@ -110,7 +105,7 @@ func UserUpdate(c *gin.Context) {
 
 	c.Bind(&body)
 
-	initializers.DB.Model(&user).Updates(models.User{
+	db.DB.Model(&user).Updates(models.User{
 		Email:     body.Email,
 		SenhaHash: body.SenhaHash,
 	})
@@ -135,7 +130,7 @@ func UserDelete(c *gin.Context) {
 	}
 
 	var user models.User
-	result := initializers.DB.First(&user, id)
+	result := db.DB.First(&user, id)
 
 	if result.Error != nil {
 		c.JSON(http.StatusNotFound, gin.H{
@@ -145,9 +140,9 @@ func UserDelete(c *gin.Context) {
 		return
 	}
 
-	initializers.DB.Delete(&user)
+	db.DB.Delete(&user)
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Post deleted successfully",
 	})
-}
+}*/

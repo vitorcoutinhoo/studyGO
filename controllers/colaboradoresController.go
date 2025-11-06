@@ -4,10 +4,10 @@ import (
 	"net/http"
 	"time"
 
-	"main.go/initializers"
-
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+
+	"main.go/db"
 	"main.go/models"
 )
 
@@ -38,7 +38,7 @@ func ColaboradorCreate(c *gin.Context) {
 		DataAdmissao: colaborador.DataAdmissao,
 	}
 
-	result := initializers.DB.Create(&colaboradorCreated)
+	result := db.DB.Create(&colaboradorCreated)
 
 	if result.Error != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -56,7 +56,7 @@ func ColaboradorCreate(c *gin.Context) {
 // Pega todos os usuários
 func ColaboradoresGetAll(c *gin.Context) {
 	var colaboradores []models.User
-	initializers.DB.Find(&colaboradores)
+	db.DB.Find(&colaboradores)
 
 	c.JSON(http.StatusOK, gin.H{
 		"colaboradores": colaboradores,

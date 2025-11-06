@@ -20,22 +20,3 @@ type Colaboradores struct {
 	CreatedAt        time.Time `gorm:"autoCreateTime" json:"created_at"`
 	UpdatedAt        time.Time `gorm:"autoCreateTime" json:"updated_at"`
 }
-
-/*------------------------------------------------------------
--- TABELA: COLABORADORES
-------------------------------------------------------------
-CREATE TABLE colaboradores (
-    id RAW(16) DEFAULT SYS_GUID() NOT NULL,
-    nome VARCHAR2(255) NOT NULL,
-    email VARCHAR2(255) NOT NULL UNIQUE,
-    telefone VARCHAR2(50),
-    cargo VARCHAR2(100),
-    departamento VARCHAR2(100),
-    foto_url CLOB,
-    ativo CHAR(1) DEFAULT 'Y',
-    data_admissao DATE,
-    data_desligamento DATE,
-    created_at DATE DEFAULT SYSDATE,
-    updated_at DATE DEFAULT SYSDATE,
-    CONSTRAINT colaboradores_pkey PRIMARY KEY (id)
-);*/

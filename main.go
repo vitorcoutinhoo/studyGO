@@ -2,10 +2,13 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 
+	"main.go/configuration"
 	"main.go/controllers"
+	"main.go/db"
 	_ "main.go/docs" //não funfa
 
 	"github.com/gin-gonic/gin"
@@ -42,19 +45,22 @@ func main() {
 	http.HandleFunc("/hello", hello)
 	http.HandleFunc("/swagger/", httpSwagger.WrapHandler)
 
+	db.ConnectToDB()
+
 	// Código novo
 	r := gin.Default()
+	fmt.Println(configuration.Config)
 
 	r.POST("/users", controllers.UserCreate)
 	r.GET("/users", controllers.UserGetAll)
-	r.GET("/users/:id", controllers.UserGetById)
+	/*r.GET("/users/:id", controllers.UserGetById)
 	r.PUT("/users/:id", controllers.UserUpdate)
 	r.DELETE("/users/:id", controllers.UserDelete)
 
 	r.POST("/colaboradores", controllers.ColaboradorCreate)
-	r.GET("/colaboradores", controllers.ColaboradoresGetAll)
+	r.GET("/colaboradores", controllers.ColaboradoresGetAll)*/
 
-	r.Run()
+	r.Run(configuration.Config.ServerHost + configuration.Config.ServerPort)
 	// Fim do código novo
 
 	log.Println("Servidor rodando em http://localhost:8080")

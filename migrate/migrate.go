@@ -1,16 +1,15 @@
 package main
 
 import (
-	"main.go/initializers"
+	"main.go/db"
 	"main.go/models"
 )
 
 func init() {
-	initializers.LoadEnvVariables()
-	initializers.ConnectToDB()
+	db.ConnectToDB()
 }
 
 func main() {
-	initializers.DB.AutoMigrate(&models.User{})
-	initializers.DB.AutoMigrate(&models.Colaboradores{})
+	db.DB.AutoMigrate(&models.User{})
+	db.DB.AutoMigrate(&models.Colaboradores{})
 }
