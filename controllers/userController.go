@@ -6,15 +6,10 @@ import (
 
 	"main.go/database"
 	"main.go/models"
+	"main.go/models/dto"
 
 	"github.com/gin-gonic/gin"
 )
-
-// struct parametro para os endpoinds de post
-type UserRequest struct {
-	Email     string `json:"email"`
-	SenhaHash string `json:"senhaHash"`
-}
 
 // UserCreate godoc
 // @Summary Cria um novo usuário
@@ -27,7 +22,7 @@ type UserRequest struct {
 // @Failure 400 {object} map[string]string
 // @Router /users [post]
 func UserCreate(c *gin.Context) {
-	var req UserRequest
+	var req dto.UserRequest
 	c.Bind(&req)
 
 	userCreated := models.User{
@@ -118,7 +113,7 @@ func UserUpdate(c *gin.Context) {
 		return
 	}
 
-	var req UserRequest
+	var req dto.UserRequest
 	c.Bind(&req)
 
 	database.DB.Model(&user).Updates(models.User{

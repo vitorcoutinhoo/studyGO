@@ -28,7 +28,7 @@ func main() {
 	r.PUT("/users/:id", controllers.UserUpdate)
 	r.DELETE("/users/:id", controllers.UserDelete)
 
-	r.GET("/swagger", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	r.Run(":8080")
 }
