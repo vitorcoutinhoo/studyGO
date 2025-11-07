@@ -22,22 +22,12 @@ func LoadEnvConfig() Configuration {
 	godotenv.Load()
 
 	return Configuration{
-		DBUser:     getEnv("DB_USER", "postgres"),
-		DBPassword: getEnv("DB_PASSWORD", "postgres"),
-		DBName:     getEnv("DB_NAME", "PLANTAO"),
-		DBHost:     getEnv("DB_HOST", "localhost"),
-		DBPort:     getEnv("DB_PORT", "5432"),
-		ServerHost: getEnv("SERVER_HOST", "http://localhost"),
-		ServerPort: getEnv("SERVER_PORT", ":8080"),
+		DBUser:     os.Getenv("DB_USER"),
+		DBPassword: os.Getenv("DB_PASSWORD"),
+		DBName:     os.Getenv("DB_NAME"),
+		DBHost:     os.Getenv("DB_HOST"),
+		DBPort:     os.Getenv("DB_PORT"),
+		ServerHost: os.Getenv("SERVER_HOST"),
+		ServerPort: os.Getenv("SERVER_PORT"),
 	}
-}
-
-func getEnv(key string, defaultValue string) string {
-	value := os.Getenv(key)
-
-	if value != "" {
-		return value
-	}
-
-	return defaultValue
 }
