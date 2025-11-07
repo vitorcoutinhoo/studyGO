@@ -1,15 +1,12 @@
 package main
 
 import (
-	"main.go/configuration"
 	"main.go/controllers"
 	"main.go/migrate"
 
 	_ "main.go/docs"
 
 	"github.com/gin-gonic/gin"
-	swaggerFiles "github.com/swaggo/files"
-	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
 // @title API em Go com Gin e Gorm
@@ -20,13 +17,13 @@ func main() {
 	r := gin.Default()
 
 	// Users routes
-	r.POST("/users", controllers.UserCreate)
+	//r.POST("/users", controllers.UserCreate)
 	r.GET("/users", controllers.UserGetAll)
 	//r.GET("/users/:id", controllers.UserGetById)
 	//r.PUT("/users/:id", controllers.UserUpdate)
 	//r.DELETE("/users/:id", controllers.UserDelete)
 
-	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	//r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
-	r.Run(configuration.Config.ServerPort + configuration.Config.ServerHost)
+	r.Run(":8080")
 }
