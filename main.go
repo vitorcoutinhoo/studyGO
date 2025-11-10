@@ -2,23 +2,18 @@ package main
 
 import (
 	"main.go/controllers"
-	"main.go/database"
-	"main.go/models"
+	"main.go/migrate"
 
 	_ "main.go/docs"
 
 	"github.com/gin-gonic/gin"
-	swaggerFiles "github.com/swaggo/files"
-	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
 // @title API em Go com Gin e Gorm
 // @description API documentada com Swagger
 // @host localhost:8080
 func main() {
-	database.Connect()
-	database.DB.AutoMigrate(&models.User{})
-
+	migrate.Init()
 	r := gin.Default()
 
 	// Users routes
@@ -28,7 +23,14 @@ func main() {
 	r.PUT("/users/:id", controllers.UserUpdate)
 	r.DELETE("/users/:id", controllers.UserDelete)
 
-	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	// Colaboradores routes
+	r.POST("/colaboradores", controllers.ColaboradorCreate)
+	r.GET("/colaboradores", controllers.ColaboradoresGetAll)
+	r.GET("/colaboradores/:id", controllers.ColaboradorGetById)
+	r.PUT("/colaboradores/:id", controllers.ColaboradorUpdate)
+	r.DELETE("/colaboradores/:id", controllers.ColaboradorDelete)
+
+	//r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	r.Run(":8080")
 }
