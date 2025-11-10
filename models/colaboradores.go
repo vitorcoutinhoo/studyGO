@@ -18,5 +18,5 @@ type Colaboradores struct {
 	DataAdmissao     *time.Time `gorm:"type:date" json:"data_admissao"`
 	DataDesligamento *time.Time `gorm:"type:date" json:"data_desligamento"`
 	CreatedAt        time.Time  `gorm:"autoCreateTime" json:"created_at"`
-	UpdatedAt        time.Time  `gorm:"autoCreateTime" json:"updated_at"`
+	UpdatedAt        time.Time  `gorm:"autoUpdateTime" json:"updated_at"`
 }

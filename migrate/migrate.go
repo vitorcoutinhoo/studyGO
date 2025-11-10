@@ -12,4 +12,5 @@ func Init() {
 	db.DB.AutoMigrate(&models.ConfigValoresDias{})
 	db.DB.AutoMigrate(&models.ModeloComunicacao{})
 	db.DB.AutoMigrate(&models.Feriados{})
+	db.DB.AutoMigrate(&models.Plantoes{})
 }
