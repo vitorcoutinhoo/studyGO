@@ -11,7 +11,7 @@ import (
 
 // Cria um novo usuário
 func UserCreate(c *gin.Context) {
-	var user dto.UserCreateDTO
+	var user dto.UserRequestDTO
 
 	c.Bind(&user)
 
@@ -46,25 +46,15 @@ func UserGetAll(c *gin.Context) {
 	})
 }
 
-/*// Pega um usuário pelo ID
+// Pega um usuário pelo ID
 func UserGetById(c *gin.Context) {
 	idParam := c.Param("id")
 
-	id, err := uuid.Parse(idParam)
+	user, err := service.GetUserById(idParam)
 
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid ID",
-		})
-		return
-	}
-
-	var user models.User
-	result := db.DB.First(&user, id)
-
-	if result.Error != nil {
 		c.JSON(http.StatusNotFound, gin.H{
-			"error": "Post not found",
+			"error": err.Error(),
 		})
 		return
 	}
@@ -77,41 +67,21 @@ func UserGetById(c *gin.Context) {
 // Atualiza um usuário pelo ID
 func UserUpdate(c *gin.Context) {
 	idParam := c.Param("id")
-
-	id, err := uuid.Parse(idParam)
-
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Ivalid ID",
-		})
-		return
-	}
-
-	var user models.User
-	result := db.DB.First(&user, id)
-
-	if result.Error != nil {
-		c.JSON(http.StatusNotFound, gin.H{
-			"error": "Post not found",
-		})
-
-		return
-	}
-
-	var body struct {
-		Email     string
-		SenhaHash string
-	}
+	var body dto.UserRequestDTO
 
 	c.Bind(&body)
 
-	db.DB.Model(&user).Updates(models.User{
-		Email:     body.Email,
-		SenhaHash: body.SenhaHash,
-	})
+	userUpdated, err := service.UpdateUser(idParam, body)
+
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"user": user,
+		"user": userUpdated,
 	})
 }
 
@@ -119,30 +89,16 @@ func UserUpdate(c *gin.Context) {
 func UserDelete(c *gin.Context) {
 	idParam := c.Param("id")
 
-	id, err := uuid.Parse(idParam)
+	err := service.DeletUserById(idParam)
 
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid ID",
+			"error": err.Error(),
 		})
-
 		return
 	}
-
-	var user models.User
-	result := db.DB.First(&user, id)
-
-	if result.Error != nil {
-		c.JSON(http.StatusNotFound, gin.H{
-			"error": "Post not found",
-		})
-
-		return
-	}
-
-	db.DB.Delete(&user)
 
 	c.JSON(http.StatusOK, gin.H{
-		"message": "Post deleted successfully",
+		"message": "User deleted successfully",
 	})
-}*/
+}

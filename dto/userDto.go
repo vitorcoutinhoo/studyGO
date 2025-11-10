@@ -1,6 +1,6 @@
 package dto
 
-type UserCreateDTO struct {
+type UserRequestDTO struct {
 	Email     string
 	SenhaHash string
 }

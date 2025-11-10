@@ -2,49 +2,25 @@ package controllers
 
 import (
 	"net/http"
-	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 
-	"main.go/db"
-	"main.go/models"
+	"main.go/dto"
+	"main.go/service"
 )
 
 // Cria um novo colaboradores
 func ColaboradorCreate(c *gin.Context) {
-	var colaborador struct {
-		Nome         string
-		Email        string
-		Telefone     *string
-		Cargo        *string
-		Departamento *string
-		FotoURL      string
-		Ativo        string
-		DataAdmissao time.Time
-	}
+	var colaborador dto.ColabotadoresRequestDTO
 
 	c.Bind(&colaborador)
 
-	colaboradorCreated := models.Colaboradores{
-		ID:           uuid.New(),
-		Nome:         colaborador.Nome,
-		Email:        colaborador.Email,
-		Telefone:     colaborador.Telefone,
-		Cargo:        colaborador.Cargo,
-		Departamento: colaborador.Departamento,
-		FotoURL:      colaborador.FotoURL,
-		Ativo:        colaborador.Ativo,
-		DataAdmissao: colaborador.DataAdmissao,
-	}
+	colaboradorCreated, err := service.CreateColaboradores(colaborador)
 
-	result := db.DB.Create(&colaboradorCreated)
-
-	if result.Error != nil {
+	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": result.Error.Error(),
+			"error": err.Error(),
 		})
-
 		return
 	}
 
@@ -55,10 +31,72 @@ func ColaboradorCreate(c *gin.Context) {
 
 // Pega todos os usuários
 func ColaboradoresGetAll(c *gin.Context) {
-	var colaboradores []models.User
-	db.DB.Find(&colaboradores)
+	colaboradores, err := service.GetAllColaboradores()
+
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"colaboradores": colaboradores,
+	})
+}
+
+// Pega um usuário pelo ID
+func ColaboradorGetById(c *gin.Context) {
+	idParam := c.Param("id")
+
+	colaborador, err := service.GetColaboradorById(idParam)
+
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"colaborador": colaborador,
+	})
+}
+
+// Atualiza um usuário pelo ID
+func ColaboradorUpdate(c *gin.Context) {
+	idParam := c.Param("id")
+	var body dto.ColabotadoresRequestDTO
+
+	c.Bind(&body)
+
+	colaboradorUpdated, err := service.UpdateColaborador(idParam, body)
+
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"colaborador": colaboradorUpdated,
+	})
+}
+
+// Deleta um usuário pelo ID
+func ColaboradorDelete(c *gin.Context) {
+	idParam := c.Param("id")
+	err := service.DeleteColaboradorById(idParam)
+
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Colaborador deleted successfully",
 	})
 }

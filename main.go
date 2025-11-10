@@ -17,11 +17,18 @@ func main() {
 	r := gin.Default()
 
 	// Users routes
-	//r.POST("/users", controllers.UserCreate)
+	r.POST("/users", controllers.UserCreate)
 	r.GET("/users", controllers.UserGetAll)
-	//r.GET("/users/:id", controllers.UserGetById)
-	//r.PUT("/users/:id", controllers.UserUpdate)
-	//r.DELETE("/users/:id", controllers.UserDelete)
+	r.GET("/users/:id", controllers.UserGetById)
+	r.PUT("/users/:id", controllers.UserUpdate)
+	r.DELETE("/users/:id", controllers.UserDelete)
+
+	// Colaboradores routes
+	r.POST("/colaboradores", controllers.ColaboradorCreate)
+	r.GET("/colaboradores", controllers.ColaboradoresGetAll)
+	r.GET("/colaboradores/:id", controllers.ColaboradorGetById)
+	r.PUT("/colaboradores/:id", controllers.ColaboradorUpdate)
+	r.DELETE("/colaboradores/:id", controllers.ColaboradorDelete)
 
 	//r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
