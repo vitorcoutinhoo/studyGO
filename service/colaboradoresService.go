@@ -1,6 +1,8 @@
 package service
 
 import (
+	"fmt"
+
 	"github.com/google/uuid"
 	"main.go/db"
 	"main.go/dto"
@@ -22,7 +24,7 @@ func CreateColaboradores(colaboradorDto dto.ColabotadoresRequestDTO) (dto.Colabo
 	result := db.DB.Create(&colaborador)
 
 	if result.Error != nil {
-		return dto.ColabotadoresResponseDTO{}, result.Error
+		return dto.ColabotadoresResponseDTO{}, fmt.Errorf("Erro ao criar colaborador: %v", result.Error)
 	}
 
 	return dto.ColabotadoresResponseDTO{
@@ -43,7 +45,7 @@ func GetAllColaboradores() ([]dto.ColabotadoresResponseDTO, error) {
 	result := db.DB.Model(&models.Colaboradores{}).Find(&colaboradoresDto)
 
 	if result.Error != nil {
-		return nil, result.Error
+		return nil, fmt.Errorf("Error ao consultar colaboradores: %v", result.Error)
 	}
 
 	return colaboradoresDto, nil
@@ -53,14 +55,14 @@ func GetColaboradorById(id string) (*dto.ColabotadoresResponseDTO, error) {
 	idConverted, err := uuid.Parse(id)
 
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Erro ao converter id do colaborador: %v", err)
 	}
 
 	var colaboradorDto dto.ColabotadoresResponseDTO
 	result := db.DB.Model(&models.Colaboradores{}).First(&colaboradorDto, idConverted)
 
 	if result.Error != nil {
-		return nil, result.Error
+		return nil, fmt.Errorf("Erro ao consultar colaborador com id[%v]: %v", idConverted, result.Error)
 	}
 
 	return &colaboradorDto, nil
@@ -70,14 +72,14 @@ func UpdateColaborador(id string, colaboradorDto dto.ColabotadoresRequestDTO) (*
 	idConverted, err := uuid.Parse(id)
 
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Erro ao converter id do colaborador: %v", err)
 	}
 
 	var colaborador models.Colaboradores
 	result := db.DB.First(&colaborador, idConverted)
 
 	if result.Error != nil {
-		return nil, result.Error
+		return nil, fmt.Errorf("Colaborador com id[%v] não encontrado: %v", idConverted, result.Error)
 	}
 
 	colaborador.Nome = colaboradorDto.Nome
@@ -108,14 +110,14 @@ func DeleteColaboradorById(id string) error {
 	idConverted, err := uuid.Parse(id)
 
 	if err != nil {
-		return err
+		return fmt.Errorf("Erro ao converter id do colaborador: %v", err)
 	}
 
 	var colaborador models.Colaboradores
 	result := db.DB.First(&colaborador, idConverted)
 
 	if result.Error != nil {
-		return result.Error
+		return fmt.Errorf("Colaborador com id[%v] não encontrado: %v", idConverted, result.Error)
 	}
 
 	db.DB.Delete(&colaborador)

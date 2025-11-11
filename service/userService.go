@@ -20,7 +20,7 @@ func CreateUser(userDto dto.UserRequestDTO) (dto.UserResponseDTO, error) {
 	result := db.DB.Create(&user)
 
 	if result.Error != nil {
-		return dto.UserResponseDTO{}, fmt.Errorf("Failed to create user: %v", result.Error)
+		return dto.UserResponseDTO{}, fmt.Errorf("Erro ao criar usuário: %v", result.Error)
 	}
 
 	return dto.UserResponseDTO{
@@ -35,7 +35,7 @@ func GetAllUsers() ([]dto.UserResponseDTO, error) {
 	result := db.DB.Model(&models.User{}).Find(&userResponseDTO)
 
 	if result.Error != nil {
-		return nil, fmt.Errorf("Failed to get users: %v", result.Error)
+		return nil, fmt.Errorf("Erro ao consultar usuários: %v", result.Error)
 	}
 
 	return userResponseDTO, nil
@@ -45,14 +45,14 @@ func GetUserById(id string) (*dto.UserResponseDTO, error) {
 	idConverted, err := uuid.Parse(id)
 
 	if err != nil {
-		return nil, fmt.Errorf("Invalid ID: %v", err)
+		return nil, fmt.Errorf("Erro ao converter id do usuário: %v", err)
 	}
 
 	var userResponseDTO dto.UserResponseDTO
 	result := db.DB.Model(&models.User{}).First(&userResponseDTO, idConverted)
 
 	if result.Error != nil {
-		return nil, fmt.Errorf("Failed to get user: %v", result.Error)
+		return nil, fmt.Errorf("Erro ao consultar usuário com id[%v]: %v", idConverted, result.Error)
 	}
 
 	return &userResponseDTO, nil
@@ -62,14 +62,14 @@ func UpdateUser(id string, userDto dto.UserRequestDTO) (*dto.UserResponseDTO, er
 	idConverted, err := uuid.Parse(id)
 
 	if err != nil {
-		return nil, fmt.Errorf("Invalid ID: %v", err)
+		return nil, fmt.Errorf("Erro ao converter id do usuário: %v", err)
 	}
 
 	var user models.User
 	result := db.DB.First(&user, idConverted)
 
 	if result.Error != nil {
-		return nil, fmt.Errorf("User not found: %v", result.Error)
+		return nil, fmt.Errorf("Usuário com id[%v] não encontrado: %v", idConverted, result.Error)
 	}
 
 	user.Email = userDto.Email
@@ -87,14 +87,14 @@ func DeletUserById(id string) error {
 	idConverted, err := uuid.Parse(id)
 
 	if err != nil {
-		return fmt.Errorf("Invalid ID: %v", err)
+		return fmt.Errorf("Erro ao converter id do usuário: %v", err)
 	}
 
 	var user models.User
 	result := db.DB.First(&user, idConverted)
 
 	if result.Error != nil {
-		return fmt.Errorf("User not found: %v", result.Error)
+		return fmt.Errorf("Usuário com id[%v] não encontrado: %v", idConverted, result.Error)
 	}
 
 	db.DB.Delete(&user)
