@@ -7,27 +7,28 @@ import (
 )
 
 type ColaboradorRequest struct {
-	Nome         string
-	Email        string
-	Telefone     string
-	Cargo        string
-	Departamento string
-	FotoURL      string
-	DataAdmissao time.Time
+	Nome         string    `json:"nome"`
+	Email        string    `json:"email"`
+	Telefone     string    `json:"telefone"`
+	Cargo        string    `json:"cargo"`
+	Departamento string    `json:"departamento"`
+	FotoURL      string    `json:"foto_url"`
+	DataAdmissao time.Time `json:"data_admissao"`
 }
 
 type ColaboradorResponse struct {
-	ID               uuid.UUID
-	Nome             string
-	Email            string
-	Telefone         string
-	Cargo            string
-	Departamento     string
-	FotoURL          string
-	DataAdmissao     time.Time
-	DataDesligamento time.Time
-	CreatedAt        time.Time
-	UpdatedAt        time.Time
+	ID               uuid.UUID `json:"id"`
+	Nome             string    `json:"nome"`
+	Email            string    `json:"email"`
+	Telefone         string    `json:"telefone"`
+	Cargo            string    `json:"cargo"`
+	Departamento     string    `json:"departamento"`
+	FotoURL          string    `json:"foto_url"`
+	Ativo            string    `json:"ativo"`
+	DataAdmissao     time.Time `json:"data_admissao"`
+	DataDesligamento time.Time `json:"data_desligamento"`
+	CreatedAt        time.Time `json:"created_at"`
+	UpdatedAt        time.Time `json:"updated_at"`
 }
 
 type ColaboradorRepository interface {
