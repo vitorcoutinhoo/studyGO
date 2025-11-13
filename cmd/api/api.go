@@ -1,32 +1,33 @@
 package api
 
 import (
-	"acommerce-api/controllers/user"
 	"database/sql"
-	"log"
+	"fmt"
 
 	"github.com/gin-gonic/gin"
+	"main.go/configuration"
+	"main.go/controllers"
+	"main.go/service"
 )
 
-type APIServer struct {
-	address string
-	db      *sql.DB
+type ServerAPI struct {
+	db *sql.DB
 }
 
-func NewApiServer(address string, db *sql.DB) *APIServer {
-	return &APIServer{
-		address: address,
-		db:      db,
+func NewServerAPI(db *sql.DB) *ServerAPI {
+	return &ServerAPI{
+		db: db,
 	}
 }
 
-func (s *APIServer) Start() error {
+func (s *ServerAPI) RunServer() error {
 	r := gin.Default()
 
-	userHandler := user.NewHandler()
-	userHandler.RegisterRoutes(r)
+	userService := service.NewUserService(s.db)
+	userController := controllers.NewUserController(userService)
+	userController.RegisterRoutes(r)
 
-	log.Println("Server runing in ", configurations.Config.ServerHost, s.address)
+	fmt.Println(configuration.Config)
 
-	return r.Run(s.address)
+	return r.Run(configuration.Config.ServerPort)
 }

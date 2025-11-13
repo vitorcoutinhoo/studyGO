@@ -1,0 +1,29 @@
+basePath: /
+definitions:
+  main.Response:
+    properties:
+      message:
+        example: Olá! API funcionando perfeitamente
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: API de exemplo com um endpoint
+  title: API Simples
+  version: "1.0"
+paths:
+  /hello:
+    get:
+      description: Retorna uma mensagem de boas-vindas
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/main.Response'
+      summary: Endpoint de saudação
+      tags:
+      - hello
+swagger: "2.0"
