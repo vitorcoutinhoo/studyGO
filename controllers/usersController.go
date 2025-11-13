@@ -51,7 +51,7 @@ func (c *UserController) userGet(g *gin.Context) {
 
 	g.Bind(&user)
 
-	userCreated, err := c.repository.GetUsers()
+	users, err := c.repository.GetUsers()
 
 	if err != nil {
 		g.JSON(http.StatusBadRequest, gin.H{
@@ -62,7 +62,7 @@ func (c *UserController) userGet(g *gin.Context) {
 	}
 
 	g.JSON(http.StatusOK, gin.H{
-		"users": userCreated,
+		"users": users,
 	})
 }
 
@@ -95,7 +95,7 @@ func (c *UserController) userUpdate(g *gin.Context) {
 
 	if errId != nil {
 		g.JSON(http.StatusBadRequest, gin.H{
-			"error": "Sexo" + errId.Error(),
+			"error": errId.Error(),
 		})
 		return
 	}
@@ -107,7 +107,7 @@ func (c *UserController) userUpdate(g *gin.Context) {
 
 	if err != nil {
 		g.JSON(http.StatusBadRequest, gin.H{
-			"error": "Sexo2" + err.Error(),
+			"error": err.Error(),
 		})
 		return
 	}

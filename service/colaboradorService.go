@@ -23,9 +23,9 @@ func NewColaboradorService(db *sql.DB) *ColaboradorService {
 func (c *ColaboradorService) CreateColaborador(colaborador types.ColaboradorRequest) (*types.ColaboradorResponse, error) {
 	sqlStatement := `
         INSERT INTO colaboradores (
-            nome, email, telefone, cargo, departamento, foto_url, data_admissao
+            nome, email, telefone, cargo, departamento, foto_url, data_admissao, data_desligamento
         ) 
-        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
         RETURNING 
             id, nome, email, telefone, cargo, departamento, foto_url, 
             ativo, data_admissao, data_desligamento, created_at, updated_at
@@ -42,6 +42,7 @@ func (c *ColaboradorService) CreateColaborador(colaborador types.ColaboradorRequ
 		colaborador.Departamento,
 		colaborador.FotoURL,
 		colaborador.DataAdmissao,
+		colaborador.DataDesligamento,
 	).Scan(
 		&cResponse.ID,
 		&cResponse.Nome,
@@ -159,10 +160,73 @@ func (c *ColaboradorService) GetColaboradoresById(id uuid.UUID) (*types.Colabora
 
 // UpdateColaborador implements types.ColaboradorRepository.
 func (c *ColaboradorService) UpdateColaborador(id uuid.UUID, colaborador types.ColaboradorRequest) error {
-	panic("unimplemented")
+	sqlStatement := `
+        UPDATE colaboradores
+        SET 
+            nome = $1, 
+            email = $2, 
+            telefone = $3, 
+            cargo = $4, 
+            departamento = $5, 
+            foto_url = $6, 
+            data_admissao = $7,
+			data_desligamento =$8,
+            updated_at = NOW()
+        WHERE id = $9
+        RETURNING id
+    `
+
+	var returnedID uuid.UUID
+
+	err := c.db.QueryRow(
+		sqlStatement,
+		colaborador.Nome,
+		colaborador.Email,
+		colaborador.Telefone,
+		colaborador.Cargo,
+		colaborador.Departamento,
+		colaborador.FotoURL,
+		colaborador.DataAdmissao,
+		colaborador.DataDesligamento,
+		id,
+	).Scan(&returnedID)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return fmt.Errorf("colaborador com ID '%s' não encontrado para atualizar", id)
+		}
+
+		if pqErr, ok := err.(*pq.Error); ok {
+			if pqErr.Code == "23505" {
+				return fmt.Errorf("o email '%s' já está em uso por outro usuário", colaborador.Email)
+			}
+		}
+
+		return err
+	}
+
+	return nil
 }
 
 // DeleteColaboradorById implements types.ColaboradorRepository.
 func (c *ColaboradorService) DeleteColaboradorById(id uuid.UUID) error {
-	panic("unimplemented")
+	sqlStatement := `
+        DELETE FROM colaboradores
+        WHERE id = $1
+        RETURNING id
+    `
+
+	var deletedID uuid.UUID
+
+	err := c.db.QueryRow(sqlStatement, id).Scan(&deletedID)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return fmt.Errorf("colaborador com ID '%s' não encontrado para deletar", id)
+		}
+
+		return err
+	}
+
+	return nil
 }
