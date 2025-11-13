@@ -25,5 +25,5 @@ type UserRepository interface {
 	GetUsers() ([]*UserResponse, error)
 	GetUserById(id uuid.UUID) (*UserResponse, error)
 	UpdateUser(id uuid.UUID, user UserRequest) error
-	DeletUserById(id uuid.UUID) error
+	DeleteUserById(id uuid.UUID) error
 }

@@ -2,7 +2,6 @@ package api
 
 import (
 	"database/sql"
-	"fmt"
 
 	"github.com/gin-gonic/gin"
 	"main.go/configuration"
@@ -23,11 +22,15 @@ func NewServerAPI(db *sql.DB) *ServerAPI {
 func (s *ServerAPI) RunServer() error {
 	r := gin.Default()
 
+	// Dependencias dos usuário
 	userService := service.NewUserService(s.db)
 	userController := controllers.NewUserController(userService)
 	userController.RegisterRoutes(r)
 
-	fmt.Println(configuration.Config)
+	// Dependencias do colaborador
+	colaboradorService := service.NewColaboradorService(s.db)
+	colaboradorController := controllers.NewColaboradorController(colaboradorService)
+	colaboradorController.RegisterRoutes(r)
 
 	return r.Run(configuration.Config.ServerPort)
 }

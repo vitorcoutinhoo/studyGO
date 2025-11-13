@@ -9,18 +9,18 @@ import (
 	"main.go/types"
 )
 
-type Service struct {
+type UserService struct {
 	db *sql.DB
 }
 
-func NewUserService(db *sql.DB) *Service {
-	return &Service{
+func NewUserService(db *sql.DB) *UserService {
+	return &UserService{
 		db: db,
 	}
 }
 
 // CreateUser implements types.UserRepository.
-func (s *Service) CreateUser(user types.UserRequest) (*types.UserResponse, error) {
+func (s *UserService) CreateUser(user types.UserRequest) (*types.UserResponse, error) {
 	var exists bool
 
 	checkSQL := "SELECT true FROM usuarios_login WHERE email = $1 LIMIT 1"
@@ -59,7 +59,7 @@ func (s *Service) CreateUser(user types.UserRequest) (*types.UserResponse, error
 }
 
 // GetUsers implements types.UserRepository.
-func (s *Service) GetUsers() ([]*types.UserResponse, error) {
+func (s *UserService) GetUsers() ([]*types.UserResponse, error) {
 	sqlStatement := `
         SELECT id, email, role, ativo, created_at, updated_at 
         FROM usuarios_login
@@ -103,7 +103,7 @@ func (s *Service) GetUsers() ([]*types.UserResponse, error) {
 }
 
 // GetUserById implements types.UserRepository.
-func (s *Service) GetUserById(id uuid.UUID) (*types.UserResponse, error) {
+func (s *UserService) GetUserById(id uuid.UUID) (*types.UserResponse, error) {
 	sqlStatement := `
         SELECT id, email, role, ativo, created_at, updated_at 
         FROM usuarios_login
@@ -133,7 +133,7 @@ func (s *Service) GetUserById(id uuid.UUID) (*types.UserResponse, error) {
 }
 
 // UpdateUser implements types.UserRepository.
-func (s *Service) UpdateUser(id uuid.UUID, user types.UserRequest) error {
+func (s *UserService) UpdateUser(id uuid.UUID, user types.UserRequest) error {
 	sqlStatement := `
         UPDATE usuarios_login 
         SET email = $1, senha_hash = $2, updated_at = NOW()
@@ -163,7 +163,7 @@ func (s *Service) UpdateUser(id uuid.UUID, user types.UserRequest) error {
 }
 
 // DeletUserById implements types.UserRepository.
-func (s *Service) DeletUserById(id uuid.UUID) error {
+func (s *UserService) DeleteUserById(id uuid.UUID) error {
 	sqlStatement := `
         DELETE FROM usuarios_login
         WHERE id = $1

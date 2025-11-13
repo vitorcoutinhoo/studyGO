@@ -8,17 +8,17 @@ import (
 	"main.go/types"
 )
 
-type Controller struct {
+type UserController struct {
 	repository types.UserRepository
 }
 
-func NewUserController(repository types.UserRepository) *Controller {
-	return &Controller{
+func NewUserController(repository types.UserRepository) *UserController {
+	return &UserController{
 		repository: repository,
 	}
 }
 
-func (c *Controller) RegisterRoutes(r *gin.Engine) {
+func (c *UserController) RegisterRoutes(r *gin.Engine) {
 	r.POST("/users", c.userRegister)
 	r.GET("/users", c.userGet)
 	r.GET("/users/:id", c.userGetById)
@@ -26,7 +26,7 @@ func (c *Controller) RegisterRoutes(r *gin.Engine) {
 	r.DELETE("/users/:id", c.userDelete)
 }
 
-func (c *Controller) userRegister(g *gin.Context) {
+func (c *UserController) userRegister(g *gin.Context) {
 	var user types.UserRequest
 
 	g.Bind(&user)
@@ -46,7 +46,7 @@ func (c *Controller) userRegister(g *gin.Context) {
 	})
 }
 
-func (c *Controller) userGet(g *gin.Context) {
+func (c *UserController) userGet(g *gin.Context) {
 	var user types.UserRequest
 
 	g.Bind(&user)
@@ -66,7 +66,7 @@ func (c *Controller) userGet(g *gin.Context) {
 	})
 }
 
-func (c *Controller) userGetById(g *gin.Context) {
+func (c *UserController) userGetById(g *gin.Context) {
 	idConverted, errId := uuid.Parse(g.Param("id"))
 
 	if errId != nil {
@@ -90,7 +90,7 @@ func (c *Controller) userGetById(g *gin.Context) {
 	})
 }
 
-func (c *Controller) userUpdate(g *gin.Context) {
+func (c *UserController) userUpdate(g *gin.Context) {
 	idConverted, errId := uuid.Parse(g.Param("id"))
 
 	if errId != nil {
@@ -117,7 +117,7 @@ func (c *Controller) userUpdate(g *gin.Context) {
 	})
 }
 
-func (c *Controller) userDelete(g *gin.Context) {
+func (c *UserController) userDelete(g *gin.Context) {
 	idConverted, errId := uuid.Parse(g.Param("id"))
 
 	if errId != nil {
@@ -127,7 +127,7 @@ func (c *Controller) userDelete(g *gin.Context) {
 		return
 	}
 
-	err := c.repository.DeletUserById(idConverted)
+	err := c.repository.DeleteUserById(idConverted)
 
 	if err != nil {
 		g.JSON(http.StatusBadRequest, gin.H{
