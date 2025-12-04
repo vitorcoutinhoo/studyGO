@@ -12,16 +12,17 @@ type UserRequest struct {
 }
 
 type UserResponse struct {
-	ID        uuid.UUID `json:"id"`
-	Email     string    `json:"email"`
-	Role      string    `json:"role"`
-	Ativo     string    `json:"ativo"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	ID            uuid.UUID `json:"id"`
+	IDColaborador uuid.UUID `json:"id_colaborador"`
+	Email         string    `json:"email"`
+	Role          string    `json:"role"`
+	Ativo         string    `json:"ativo"`
+	CreatedAt     time.Time `json:"created_at"`
+	UpdatedAt     time.Time `json:"updated_at"`
 }
 
 type UserRepository interface {
-	CreateUser(user UserRequest) (*UserResponse, error)
+	CreateUser(colaboradorId uuid.UUID, user UserRequest) (*UserResponse, error)
 	GetUsers() ([]*UserResponse, error)
 	GetUserById(id uuid.UUID) (*UserResponse, error)
 	UpdateUser(id uuid.UUID, user UserRequest) error

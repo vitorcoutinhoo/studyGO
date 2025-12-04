@@ -20,30 +20,30 @@ func NewUserService(db *sql.DB) *UserService {
 }
 
 // CreateUser implements types.UserRepository.
-func (s *UserService) CreateUser(user types.UserRequest) (*types.UserResponse, error) {
-	var exists bool
-
-	checkSQL := "SELECT true FROM usuarios_login WHERE email = $1 LIMIT 1"
-
-	err := s.db.QueryRow(checkSQL, user.Email).Scan(&exists)
-
-	if err != nil && err != sql.ErrNoRows {
-		return nil, err
-	}
-
-	if exists {
-		return nil, fmt.Errorf("usuário com email[%v] já existe", user.Email)
-	}
-
+func (s *UserService) CreateUser(colaboradorId uuid.UUID, user types.UserRequest) (*types.UserResponse, error) {
 	sqlStatement := `
-        INSERT INTO usuarios_login (email, senha_hash) 
-        VALUES ($1, $2)
-        RETURNING id, email, role, ativo, created_at, updated_at
+        INSERT INTO usuarios_login (id_colaborador, email, senha_hash) 
+        VALUES ($1, $2, $3)
+        RETURNING 
+            id, id_colaborador, email, role, ativo, created_at, updated_at
     `
+
 	u := new(types.UserResponse)
 
-	err = s.db.QueryRow(sqlStatement, user.Email, user.SenhaHash).Scan(
+	passwordHash, errPassword := BcryptHashPassword(user.SenhaHash)
+
+	if errPassword != nil {
+		return nil, errPassword
+	}
+
+	err := s.db.QueryRow(
+		sqlStatement,
+		colaboradorId,
+		user.Email,
+		passwordHash,
+	).Scan(
 		&u.ID,
+		&u.IDColaborador,
 		&u.Email,
 		&u.Role,
 		&u.Ativo,
@@ -52,6 +52,20 @@ func (s *UserService) CreateUser(user types.UserRequest) (*types.UserResponse, e
 	)
 
 	if err != nil {
+		if pqErr, ok := err.(*pq.Error); ok {
+			switch pqErr.Code {
+			case "23505":
+				switch pqErr.Constraint {
+				case "usuarios_login_id_colaborador_key":
+					return nil, fmt.Errorf("o colaborador (ID: %s) já possui um cadastro de usuário", colaboradorId)
+				case "usuarios_login_email_key":
+					return nil, fmt.Errorf("o email '%s' já está em uso", user.Email)
+				}
+			case "23503":
+				return nil, fmt.Errorf("colaborador com ID '%s' não encontrado. Não é possível criar o login", colaboradorId)
+			}
+		}
+
 		return nil, err
 	}
 
@@ -61,7 +75,7 @@ func (s *UserService) CreateUser(user types.UserRequest) (*types.UserResponse, e
 // GetUsers implements types.UserRepository.
 func (s *UserService) GetUsers() ([]*types.UserResponse, error) {
 	sqlStatement := `
-        SELECT id, email, role, ativo, created_at, updated_at 
+        SELECT id, id_colaborador, email, role, ativo, created_at, updated_at 
         FROM usuarios_login
         ORDER BY created_at DESC
     `
@@ -81,6 +95,7 @@ func (s *UserService) GetUsers() ([]*types.UserResponse, error) {
 
 		err := rows.Scan(
 			&u.ID,
+			&u.IDColaborador,
 			&u.Email,
 			&u.Role,
 			&u.Ativo,
@@ -105,7 +120,7 @@ func (s *UserService) GetUsers() ([]*types.UserResponse, error) {
 // GetUserById implements types.UserRepository.
 func (s *UserService) GetUserById(id uuid.UUID) (*types.UserResponse, error) {
 	sqlStatement := `
-        SELECT id, email, role, ativo, created_at, updated_at 
+        SELECT id, id_colaborador, email, role, ativo, created_at, updated_at 
         FROM usuarios_login
         WHERE id = $1
     `
@@ -114,6 +129,7 @@ func (s *UserService) GetUserById(id uuid.UUID) (*types.UserResponse, error) {
 
 	err := s.db.QueryRow(sqlStatement, id).Scan(
 		&u.ID,
+		&u.IDColaborador,
 		&u.Email,
 		&u.Role,
 		&u.Ativo,

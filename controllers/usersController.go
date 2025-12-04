@@ -19,7 +19,7 @@ func NewUserController(repository types.UserRepository) *UserController {
 }
 
 func (c *UserController) RegisterRoutes(r *gin.Engine) {
-	r.POST("/users", c.userRegister)
+	r.POST("/users/:id", c.userRegister)
 	r.GET("/users", c.userGet)
 	r.GET("/users/:id", c.userGetById)
 	r.PUT("/users/:id", c.userUpdate)
@@ -27,11 +27,20 @@ func (c *UserController) RegisterRoutes(r *gin.Engine) {
 }
 
 func (c *UserController) userRegister(g *gin.Context) {
+	idConverted, errId := uuid.Parse(g.Param("id"))
+
+	if errId != nil {
+		g.JSON(http.StatusBadRequest, gin.H{
+			"error": errId.Error(),
+		})
+		return
+	}
+
 	var user types.UserRequest
 
 	g.Bind(&user)
 
-	userSaved, err := c.repository.CreateUser(user)
+	userSaved, err := c.repository.CreateUser(idConverted, user)
 
 	if err != nil {
 		g.JSON(http.StatusBadRequest, gin.H{
