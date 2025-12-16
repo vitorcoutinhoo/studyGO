@@ -32,5 +32,7 @@ func (s *ServerAPI) RunServer() error {
 	colaboradorController := controllers.NewColaboradorController(colaboradorService)
 	colaboradorController.RegisterRoutes(r)
 
+	// Dependencias config_valores_dia
+
 	return r.Run(configuration.Config.ServerPort)
 }
