@@ -1,0 +1,29 @@
+package plantao
+
+import (
+	"github.com/google/uuid"
+)
+
+type PlantaoId uuid.UUID
+
+type Plantao struct {
+	Id            PlantaoId
+	ColaboradorId uuid.UUID
+	Periodo       *Periodo
+	Status        StatusPlantao
+}
+
+func NewPlantao(colaboradorId uuid.UUID, periodo Periodo) (*Plantao, error) {
+	newPeriodo, err := NewPeriodo(periodo.Inicio, periodo.Fim)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &Plantao{
+		Id:            PlantaoId(uuid.New()),
+		ColaboradorId: colaboradorId,
+		Periodo:       newPeriodo,
+		Status:        StatusPlantaoAgendado,
+	}, nil
+}
