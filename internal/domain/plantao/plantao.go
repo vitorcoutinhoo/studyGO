@@ -27,3 +27,16 @@ func NewPlantao(colaboradorId uuid.UUID, periodo Periodo) (*Plantao, error) {
 		Status:        StatusPlantaoAgendado,
 	}, nil
 }
+
+func ValorTotalPlantao(dias []Dia) (*Valor, error) {
+	diasValor := Dias(dias).ValorDiaSemana()
+
+	var total int64
+	for _, diaValor := range diasValor {
+		total += diaValor.Valor.Quantidade
+	}
+
+	return &Valor{
+		Quantidade: total,
+	}, nil
+}
