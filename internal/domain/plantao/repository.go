@@ -7,10 +7,10 @@ type PlantaoRepository interface {
 	Update(ctx context.Context, plantao *Plantao) error
 	Delete(ctx context.Context, plantaoId string) error
 	FindById(ctx context.Context, plantaoId string) (*Plantao, error)
-	Find(ctx context.Context, filter *Filter) ([]Plantao, error)
+	Find(ctx context.Context, filter *Filtro) ([]Plantao, error)
 }
 
-type Filter struct {
+type Filtro struct {
 	ColaboradorID string
 	Periodo       *Periodo
 	Status        *StatusPlantao

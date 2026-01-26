@@ -12,7 +12,7 @@ func NewPlantaoService(repository PlantaoRepository) *PlantaoService {
 	}
 }
 func (s *PlantaoService) CreatePlantao(ctx context.Context, colaboradorId string, periodo *Periodo) (*Plantao, error) {
-	existingPlantoes, _ := s.reposiotory.Find(ctx, &Filter{
+	existingPlantoes, _ := s.reposiotory.Find(ctx, &Filtro{
 		ColaboradorID: colaboradorId,
 		Periodo:       periodo,
 	})
@@ -72,7 +72,7 @@ func (s *PlantaoService) GetPlantaoById(ctx context.Context, plantaoId string) (
 	return plantao, nil
 }
 
-func (s *PlantaoService) GetPlantoes(ctx context.Context, filter *Filter) ([]Plantao, error) {
+func (s *PlantaoService) GetPlantoes(ctx context.Context, filter *Filtro) ([]Plantao, error) {
 	plantoes, err := s.reposiotory.Find(ctx, filter)
 	if err != nil {
 		return nil, err
@@ -82,7 +82,7 @@ func (s *PlantaoService) GetPlantoes(ctx context.Context, filter *Filter) ([]Pla
 }
 
 func (s *PlantaoService) GetPlantoesByColaboradorId(ctx context.Context, colaboradorId string) ([]Plantao, error) {
-	plantoes, err := s.reposiotory.Find(ctx, &Filter{
+	plantoes, err := s.reposiotory.Find(ctx, &Filtro{
 		ColaboradorID: colaboradorId,
 	})
 
@@ -94,7 +94,7 @@ func (s *PlantaoService) GetPlantoesByColaboradorId(ctx context.Context, colabor
 }
 
 func (s *PlantaoService) GetPlantoesByPeriodo(ctx context.Context, periodo *Periodo) ([]Plantao, error) {
-	plantoes, err := s.reposiotory.Find(ctx, &Filter{
+	plantoes, err := s.reposiotory.Find(ctx, &Filtro{
 		Periodo: periodo,
 	})
 
@@ -106,7 +106,7 @@ func (s *PlantaoService) GetPlantoesByPeriodo(ctx context.Context, periodo *Peri
 }
 
 func (s *PlantaoService) GetPlantoesByStatus(ctx context.Context, status StatusPlantao) ([]Plantao, error) {
-	plantoes, err := s.reposiotory.Find(ctx, &Filter{
+	plantoes, err := s.reposiotory.Find(ctx, &Filtro{
 		Status: &status,
 	})
 
