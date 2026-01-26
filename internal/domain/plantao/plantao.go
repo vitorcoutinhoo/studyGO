@@ -4,16 +4,14 @@ import (
 	"github.com/google/uuid"
 )
 
-type PlantaoId uuid.UUID
-
 type Plantao struct {
-	Id            PlantaoId
-	ColaboradorId uuid.UUID
+	Id            string
+	ColaboradorId string
 	Periodo       *Periodo
 	Status        StatusPlantao
 }
 
-func NewPlantao(colaboradorId uuid.UUID, periodo Periodo) (*Plantao, error) {
+func NewPlantao(colaboradorId string, periodo Periodo) (*Plantao, error) {
 	newPeriodo, err := NewPeriodo(periodo.Inicio, periodo.Fim)
 
 	if err != nil {
@@ -21,7 +19,7 @@ func NewPlantao(colaboradorId uuid.UUID, periodo Periodo) (*Plantao, error) {
 	}
 
 	return &Plantao{
-		Id:            PlantaoId(uuid.New()),
+		Id:            uuid.NewString(),
 		ColaboradorId: colaboradorId,
 		Periodo:       newPeriodo,
 		Status:        StatusPlantaoAgendado,
@@ -39,4 +37,10 @@ func ValorTotalPlantao(dias []Dia) (*Valor, error) {
 	return &Valor{
 		Quantidade: total,
 	}, nil
+}
+
+func (p *Plantao) UpdateStatus(newStatus StatusPlantao) {
+	if p.Status.canStatusPlantaoTransitionTo(newStatus) {
+		p.Status = newStatus
+	}
 }
