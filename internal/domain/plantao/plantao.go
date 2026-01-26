@@ -1,7 +1,14 @@
 package plantao
 
 import (
+	"errors"
+
 	"github.com/google/uuid"
+)
+
+var (
+	ErrorExistingPlantao  = errors.New("Plantao already exists!")
+	ErrorPlantaoNotFinded = errors.New("Plantao not found!")
 )
 
 type Plantao struct {
@@ -11,7 +18,7 @@ type Plantao struct {
 	Status        StatusPlantao
 }
 
-func NewPlantao(colaboradorId string, periodo Periodo) (*Plantao, error) {
+func NewPlantao(colaboradorId string, periodo *Periodo) (*Plantao, error) {
 	newPeriodo, err := NewPeriodo(periodo.Inicio, periodo.Fim)
 
 	if err != nil {
@@ -39,8 +46,11 @@ func ValorTotalPlantao(dias []Dia) (*Valor, error) {
 	}, nil
 }
 
-func (p *Plantao) UpdateStatus(newStatus StatusPlantao) {
+func (p *Plantao) UpdateStatus(newStatus StatusPlantao) error {
 	if p.Status.canStatusPlantaoTransitionTo(newStatus) {
 		p.Status = newStatus
+		return nil
 	}
+
+	return ErrorInvalidTransitionStatus
 }
