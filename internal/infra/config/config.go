@@ -22,7 +22,7 @@ func LoadConfig() (*Config, error) {
 			Host: "localhost",
 		},
 		Database: DatabaseConfig{
-			URL: "postgres://postgres:password@localhost:5432/repfiles?sslmode=disable",
+			URL: "postgres://postgres:password@localhost:5432/plantao?sslmode=disable",
 		},
 	}, nil
 }
