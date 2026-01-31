@@ -81,7 +81,8 @@ func (r *PlantaoRepository) FindById(ctx context.Context, plantaoId string) (*pl
 	`
 	var p plantao.Plantao
 	row := r.pool.QueryRow(ctx, query, plantaoId)
-
+	p.Periodo = &plantao.Periodo{}
+	
 	err := row.Scan(
 		&p.Id,
 		&p.ColaboradorId,
@@ -97,51 +98,61 @@ func (r *PlantaoRepository) FindById(ctx context.Context, plantaoId string) (*pl
 	return &p, nil
 }
 
-func (r *PlantaoRepository) Find(ctx context.Context, filtro *plantao.Filtro) ([]plantao.Plantao, error) {
+func (r *PlantaoRepository) Find(
+	ctx context.Context,
+	filtro *plantao.Filtro,
+) ([]plantao.Plantao, error) {
+
 	query := `
-		SELECT id, colaborador_id, inicio, fim, status
+		SELECT id, colaborador_id, inicio, fim
 		FROM plantoes
-		WHERE ($1 is null or colaborador_id = $1)
-		AND ($2 is null or (inicio >= $2 and fim <= $3))
-		AND ($4 is null or status = $4)
-		LIMIT $5 OFFSET $6
+		WHERE 1=1
 	`
 
-	row, err := r.pool.Query(ctx, query,
-		filtro.ColaboradorID,
-		filtro.Periodo.Inicio,
-		filtro.Periodo.Fim,
-		filtro.Status,
-		filtro.Limit,
-		filtro.Offset,
-	)
+	args := []any{}
+	arg := 1
 
-	if err != nil {
-		return nil, fmt.Errorf("failed to find plantao: %w", err)
+	// Filtro por colaborador
+	if filtro != nil && filtro.ColaboradorID != "" {
+		query += fmt.Sprintf(" AND colaborador_id = $%d", arg)
+		args = append(args, filtro.ColaboradorID)
+		arg++
 	}
 
-	defer row.Close()
-	var plantoes []plantao.Plantao
+	// Filtro por período (ESSENCIAL validar Periodo != nil)
+	if filtro != nil && filtro.Periodo != nil {
+		query += fmt.Sprintf(
+			" AND data_inicio >= $%d AND data_fim <= $%d",
+			arg,
+			arg+1,
+		)
+		args = append(args,
+			filtro.Periodo.Inicio,
+			filtro.Periodo.Fim,
+		)
+		arg += 2
+	}
 
-	for row.Next() {
+	rows, err := r.pool.Query(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var plantoes []plantao.Plantao
+	for rows.Next() {
 		var p plantao.Plantao
-		err := row.Scan(
+		p.Periodo = &plantao.Periodo{}
+
+		if err := rows.Scan(
 			&p.Id,
 			&p.ColaboradorId,
 			&p.Periodo.Inicio,
 			&p.Periodo.Fim,
-			&p.Status,
-		)
-
-		if err != nil {
-			return nil, fmt.Errorf("failed to scan plantao: %w", err)
+		); err != nil {
+			return nil, err
 		}
-
 		plantoes = append(plantoes, p)
-	}
-
-	if err := row.Err(); err != nil {
-		return nil, fmt.Errorf("row iteration error: %w", err)
 	}
 
 	return plantoes, nil

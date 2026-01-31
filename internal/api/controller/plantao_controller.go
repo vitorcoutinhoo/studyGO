@@ -107,7 +107,7 @@ func (p *PlantaoController) GetPlantaoById(ctx *gin.Context) {
 }
 
 func (p *PlantaoController) GetPlantoes(ctx *gin.Context) {
-	plantoes, err := p.service.GetPlantoes(ctx.Request.Context(), nil)
+	plantoes, err := p.service.GetPlantoes(ctx.Request.Context(), &plantao.Filtro{})
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
