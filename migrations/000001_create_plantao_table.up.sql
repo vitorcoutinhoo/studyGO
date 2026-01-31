@@ -1,8 +1,8 @@
 CREATE TABLE plantoes (
     id UUID NOT NULL DEFAULT gen_random_uuid(),
-    id_colaborador UUID NOT NULL,
-    data_inicio TIMESTAMP NOT NULL,
-    data_fim TIMESTAMP NOT NULL,
-    status VARCHAR(50),
+    colaborador_id UUID NOT NULL,
+    inicio TIMESTAMP NOT NULL,
+    fim TIMESTAMP NOT NULL,
+    status integer not null,
     CONSTRAINT plantoes_pkey PRIMARY KEY(id)
 );
