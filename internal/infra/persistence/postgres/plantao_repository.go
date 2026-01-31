@@ -97,7 +97,7 @@ func (r *PlantaoRepository) FindById(ctx context.Context, plantaoId string) (*pl
 	return &p, nil
 }
 
-func (r *PlantaoRepository) Find(ctx context.Context, filtro *plantao.Filtro) ([]*plantao.Plantao, error) {
+func (r *PlantaoRepository) Find(ctx context.Context, filtro *plantao.Filtro) ([]plantao.Plantao, error) {
 	query := `
 		SELECT id, colaborador_id, inicio, fim, status
 		FROM plantoes
@@ -121,7 +121,7 @@ func (r *PlantaoRepository) Find(ctx context.Context, filtro *plantao.Filtro) ([
 	}
 
 	defer row.Close()
-	var plantoes []*plantao.Plantao
+	var plantoes []plantao.Plantao
 
 	for row.Next() {
 		var p plantao.Plantao
@@ -137,7 +137,7 @@ func (r *PlantaoRepository) Find(ctx context.Context, filtro *plantao.Filtro) ([
 			return nil, fmt.Errorf("failed to scan plantao: %w", err)
 		}
 
-		plantoes = append(plantoes, &p)
+		plantoes = append(plantoes, p)
 	}
 
 	if err := row.Err(); err != nil {

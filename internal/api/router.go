@@ -29,7 +29,7 @@ func setupPlantaoRoutes(
 
 			plantaoRoutes.GET("/colaborador/:colaborador_id", plantaoController.GetPlantoesByColaboradorId)
 			plantaoRoutes.GET("/status/:status", plantaoController.GetPlantoesByStatus)
-			plantaoRoutes.GET("/:start_date/:end_date", plantaoController.GetPlantoesByPeriodo)
+			plantaoRoutes.GET("/periodo/:start_date/:end_date", plantaoController.GetPlantoesByPeriodo)
 
 			plantaoRoutes.PATCH("/:id/status", plantaoController.UpdateStatusPlantao)
 		}

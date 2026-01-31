@@ -19,9 +19,14 @@ func NewPlantaoController(service *plantao.PlantaoService) *PlantaoController {
 	}
 }
 
+type PeriodoRequest struct {
+	Inicio string `json:"inicio" binding:"required"`
+	Fim    string `json:"fim" binding:"required"`
+}
+
 type CreatePlantaoRequest struct {
-	Periodo       plantao.Periodo `json:"periodo" binding:"required"`
-	ColaboradorId string          `json:"colaborador_id" binding:"required"`
+	Periodo       PeriodoRequest `json:"periodo" binding:"required"`
+	ColaboradorId string         `json:"colaborador_id" binding:"required"`
 }
 
 type UpdateStatusPlantaoRequest struct {
@@ -37,18 +42,40 @@ type CreatePlantaoResponse struct {
 
 func (p *PlantaoController) CreatePlantao(ctx *gin.Context) {
 	var req CreatePlantaoRequest
+
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	plantao, err := p.service.CreatePlantao(ctx.Request.Context(), req.ColaboradorId, &req.Periodo)
+	inicio, err := time.Parse("2006-01-02", req.Periodo.Inicio)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "data de início inválida"})
+		return
+	}
+
+	fim, err := time.Parse("2006-01-02", req.Periodo.Fim)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "data de fim inválida"})
+		return
+	}
+
+	periodo := &plantao.Periodo{
+		Inicio: inicio,
+		Fim:    fim,
+	}
+
+	plantaoCriado, err := p.service.CreatePlantao(
+		ctx.Request.Context(),
+		req.ColaboradorId,
+		periodo,
+	)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	ctx.JSON(http.StatusCreated, toPlantaoResponse(plantao))
+	ctx.JSON(http.StatusCreated, toPlantaoResponse(plantaoCriado))
 }
 
 func (p *PlantaoController) UpdateStatusPlantao(ctx *gin.Context) {
