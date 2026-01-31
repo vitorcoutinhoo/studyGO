@@ -42,7 +42,7 @@ func (d Dias) ValorDiaSemana() []DiaValor {
 			valorDia = 120.00
 		}
 
-		if dia.ehFeriado {
+		if dia.EhFeriado {
 			valorDia *= 2.0
 		}
 

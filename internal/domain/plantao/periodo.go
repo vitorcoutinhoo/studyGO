@@ -30,7 +30,7 @@ type Periodo struct {
 type Dia struct {
 	Data      time.Time
 	DiaSemana DiaDaSemana
-	ehFeriado bool
+	EhFeriado bool
 }
 
 func NewPeriodo(inicio, fim time.Time) (*Periodo, error) {
@@ -56,7 +56,7 @@ func (p *Periodo) Dias(feriado map[time.Time]bool) []Dia {
 		dia := Dia{
 			Data:      data,
 			DiaSemana: DiaDaSemana(data.Weekday()),
-			ehFeriado: feriado[data],
+			EhFeriado: feriado[data],
 		}
 
 		dias = append(dias, dia)
