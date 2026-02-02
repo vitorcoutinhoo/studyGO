@@ -2,7 +2,9 @@ package api
 
 import (
 	"plantao/internal/api/controller"
+	"time"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
 
@@ -10,6 +12,15 @@ func NewRouter(
 	plantaoController *controller.PlantaoController,
 ) *gin.Engine {
 	router := gin.Default()
+
+	router.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"*"},
+		AllowMethods:     []string{"GET", "POST", "PATCH", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
+		AllowCredentials: false,
+		MaxAge:           12 * time.Hour,
+	}))
+
 	setupPlantaoRoutes(router, plantaoController)
 	return router
 }

@@ -30,7 +30,7 @@ type CreatePlantaoRequest struct {
 }
 
 type UpdateStatusPlantaoRequest struct {
-	NewStatus plantao.StatusPlantao `json:"new_status" binding:"required"`
+	NewStatus string `json:"new_status" binding:"required"`
 }
 
 type CreatePlantaoResponse struct {
@@ -85,8 +85,14 @@ func (p *PlantaoController) UpdateStatusPlantao(ctx *gin.Context) {
 		return
 	}
 
+	status, err := strconv.Atoi(req.NewStatus)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid status format"})
+		return
+	}
+
 	plantaoId := ctx.Param("id")
-	_, err := p.service.UpdatePlantaoStatus(ctx.Request.Context(), plantaoId, req.NewStatus)
+	_, err = p.service.UpdatePlantaoStatus(ctx.Request.Context(), plantaoId, plantao.StatusPlantao(status))
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
