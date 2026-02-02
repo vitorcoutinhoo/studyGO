@@ -33,19 +33,6 @@ func NewPlantao(colaboradorId string, periodo *Periodo) (*Plantao, error) {
 	}, nil
 }
 
-func ValorTotalPlantao(dias []Dia) (*Valor, error) {
-	diasValor := Dias(dias).ValorDiaSemana()
-
-	var total int64
-	for _, diaValor := range diasValor {
-		total += diaValor.Valor.Quantidade
-	}
-
-	return &Valor{
-		Quantidade: total,
-	}, nil
-}
-
 func (p *Plantao) UpdateStatus(newStatus StatusPlantao) error {
 	if p.Status.canStatusPlantaoTransitionTo(newStatus) {
 		p.Status = newStatus
