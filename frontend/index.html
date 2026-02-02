@@ -1,71 +1,125 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
-
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            padding: 20px;
-        }
-        form {
-            max-width: 400px;
-        }
-        label {
-            display: block;
-            margin-top: 15px;
-        }
-        input, button {
-            width: 100%;
-            padding: 8px;
-            margin-top: 5px;
-        }
-        button {
-            margin-top: 20px;
-            cursor: pointer;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="style.css">
+  <title>Plantões - Front Simples</title>
 </head>
 <body>
-    <form action="http://localhost:8080/api/v1/plantoes/" method="post">
-        
-        <label for="id_colaborador">ID do Colaborador (UUID)</label>
-        <input 
-            type="text" 
-            id="id_colaborador" 
-            name="id_colaborador" 
-            placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-            required
-        >
+    <section class="header"><h2>GERENCIADOR DE PLANTÕES</h2></section>
+    <section class="content">
+        <form class="form" id=".">
 
-        <label for="data_inicio">Data de Início</label>
-        <input 
-            type="datetime-local" 
-            id="data_inicio" 
-            name="data_inicio" 
-            required
-        >
+        <input type="text" id="plantaoId" placeholder="ID do plantão">
 
-        <label for="data_fim">Data de Fim</label>
-        <input 
-            type="datetime-local" 
-            id="data_fim" 
-            name="data_fim" 
-            required
-        >
+        <input type="text" id="colaboradorId" placeholder="ID do colaborador">
 
-        <label for="status">Status</label>
-        <select id="status" name="status" required>
-            <option value="">Selecione...</option>
-            <option value="ATIVO">Ativo</option>
-            <option value="INATIVO">Inativo</option>
-            <option value="CANCELADO">Cancelado</option>
-            <option value="FINALIZADO">Finalizado</option>
+        <input type="date" id="inicio">
+        <input type="date" id="fim">
+
+        <select id="novoStatus">
+            <option value="">Status</option>
+            <option value="0">Acgendado</option>
+            <option value="1">Em Andamento</option>
+            <option value="2">Concluido</option>
+            <option value="3">Cancelado</option>
+            <option value="4">Pago</option>
         </select>
 
-        <button type="submit">Salvar</button>
-    </form>
+        <div class="buttons">
+            <button type="button" onclick="criarPlantao()">Criar</button>
+            <button type="button" onclick="deletarPlantao()">Deletar</button>
+            <button type="button" onclick="listarPlantoes()">Listar</button>
+            <button type="button" onclick="atualizarStatus()">Atualizar Status</button>
+            <button type="button" onclick="buscarPorId()">Por Id</button>
+            <button type="button" onclick="buscarPorColaborador()">Por Colaborador</button>
+            <button type="button" onclick="buscarPorPeriodo()">Por Período</button>
+            <button type="button" onclick="buscarPorStatus()">Por Status</button>
+        </div>
+
+        </form>
+
+        <section class="response">
+            <pre id="output"></pre>
+        </section>
+        </section>
+
+<script>
+    const API = "http://localhost:8080/api/v1/plantoes";
+
+    function mostrarResposta(data) {
+    document.getElementById("output").textContent =
+        JSON.stringify(data, null, 2);
+    }
+
+    async function criarPlantao() {
+        const res = await fetch(API, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+            colaborador_id: document.getElementById("colaboradorId").value,
+            periodo: {
+                inicio: document.getElementById("inicio").value,
+                fim: document.getElementById("fim").value
+            }
+            })
+        });
+        mostrarResposta(await res.json());
+    }
+
+    async function listarPlantoes() {
+        const res = await fetch(API);
+        mostrarResposta(await res.json());
+    }
+
+    async function buscarPorId() {
+        const id = document.getElementById("plantaoId").value;
+        const res = await fetch(`${API}/${id}`);
+        mostrarResposta(await res.json());
+    }
+
+    async function buscarPorColaborador() {
+        const id = document.getElementById("colaboradorId").value;
+        const res = await fetch(`${API}/colaborador/${id}`);
+        mostrarResposta(await res.json());
+    }
+
+    async function buscarPorPeriodo() {
+        const inicio = document.getElementById("inicio").value;
+        const fim = document.getElementById("fim").value;
+
+        const res = await fetch(`${API}/periodo/${inicio}/${fim}`);
+        mostrarResposta(await res.json());
+    }
+
+    async function buscarPorStatus() {
+        const status = document.getElementById("novoStatus").value;
+
+        const res = await fetch(`${API}/status/${status}`);
+        mostrarResposta(await res.json())
+    }
+
+    async function atualizarStatus() {
+        const id = document.getElementById("plantaoId").value;
+        const status = document.getElementById("novoStatus").value;
+
+        const res = await fetch(`${API}/${id}/status`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ new_status: status })
+        });
+        mostrarResposta(await res.json());
+    }
+
+    async function deletarPlantao() {
+        const id = document.getElementById("plantaoId").value;
+        const res = await fetch(`${API}/${id}`, { method: "DELETE" });
+        mostrarResposta(await res.text());
+    }
+    function limparCampos() {
+        document.getElementById(".").reset();
+    }
+</script>
+
 </body>
 </html>
