@@ -139,18 +139,25 @@ func (p *PlantaoController) GetPlantoesByColaboradorId(ctx *gin.Context) {
 }
 
 func (p *PlantaoController) GetPlantoesByPeriodo(ctx *gin.Context) {
-	iniciostr := ctx.Query("inicio")
-	fimStr := ctx.Query("fim")
+	inicioStr := ctx.Param("start_date")
+	fimStr := ctx.Param("end_date")
 
-	inicio, err := time.Parse(time.RFC3339, iniciostr)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid inicio format"})
+	if inicioStr == "" || fimStr == "" {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"error": "start_date and end_date are required (YYYY-MM-DD)",
+		})
 		return
 	}
 
-	fim, err := time.Parse(time.RFC3339, fimStr)
+	inicio, err := time.Parse("2006-01-02", inicioStr)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid fim format"})
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid start_date format"})
+		return
+	}
+
+	fim, err := time.Parse("2006-01-02", fimStr)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid end_date format"})
 		return
 	}
 
@@ -175,7 +182,7 @@ func (p *PlantaoController) GetPlantoesByPeriodo(ctx *gin.Context) {
 }
 
 func (p *PlantaoController) GetPlantoesByStatus(ctx *gin.Context) {
-	statusStr := ctx.Query("status")
+	statusStr := ctx.Param("status")
 
 	statusNum, err := strconv.Atoi(statusStr)
 	if err != nil {

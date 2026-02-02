@@ -40,8 +40,8 @@ func (r *PlantaoRepository) Store(ctx context.Context, plantao *plantao.Plantao)
 func (r *PlantaoRepository) Update(ctx context.Context, plantao *plantao.Plantao) error {
 	query := `
 		UPDATE plantoes
-		SET colaborador_id = $1, inicio = $2, fim = $3, status = $4
-		WHERE id = $5
+		SET colaborador_id = $2, inicio = $3, fim = $4, status = $5
+		WHERE id = $1
 	`
 
 	_, err := r.pool.Exec(ctx, query,
@@ -82,7 +82,7 @@ func (r *PlantaoRepository) FindById(ctx context.Context, plantaoId string) (*pl
 	var p plantao.Plantao
 	row := r.pool.QueryRow(ctx, query, plantaoId)
 	p.Periodo = &plantao.Periodo{}
-	
+
 	err := row.Scan(
 		&p.Id,
 		&p.ColaboradorId,
@@ -104,7 +104,7 @@ func (r *PlantaoRepository) Find(
 ) ([]plantao.Plantao, error) {
 
 	query := `
-		SELECT id, colaborador_id, inicio, fim
+		SELECT id, colaborador_id, inicio, fim, status
 		FROM plantoes
 		WHERE 1=1
 	`
@@ -119,10 +119,10 @@ func (r *PlantaoRepository) Find(
 		arg++
 	}
 
-	// Filtro por período (ESSENCIAL validar Periodo != nil)
+	// Filtro por período
 	if filtro != nil && filtro.Periodo != nil {
 		query += fmt.Sprintf(
-			" AND data_inicio >= $%d AND data_fim <= $%d",
+			" AND inicio >= $%d AND fim <= $%d",
 			arg,
 			arg+1,
 		)
@@ -130,7 +130,27 @@ func (r *PlantaoRepository) Find(
 			filtro.Periodo.Inicio,
 			filtro.Periodo.Fim,
 		)
-		arg += 2
+		arg++
+	}
+
+	// Filtro por status
+	if filtro != nil && filtro.Status != nil {
+		query += fmt.Sprintf(" AND status = $%d", arg)
+		args = append(args, filtro.Status)
+		arg++
+	}
+
+	// Paginação
+	if filtro != nil && filtro.Limit != nil {
+		query += fmt.Sprintf(" LIMIT $%d", arg)
+		args = append(args, *filtro.Limit)
+		arg++
+	}
+
+	if filtro != nil && filtro.Offset != nil {
+		query += fmt.Sprintf(" OFFSET $%d", arg)
+		args = append(args, *filtro.Offset)
+		arg++
 	}
 
 	rows, err := r.pool.Query(ctx, query, args...)
@@ -149,6 +169,7 @@ func (r *PlantaoRepository) Find(
 			&p.ColaboradorId,
 			&p.Periodo.Inicio,
 			&p.Periodo.Fim,
+			&p.Status,
 		); err != nil {
 			return nil, err
 		}
