@@ -2,10 +2,12 @@ package postgres
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"plantao/internal/domain/colaborador"
 	"strings"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -141,6 +143,10 @@ func (r *ColaboradorRepository) FindById(ctx context.Context, colaboradorId stri
 	)
 
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, colaborador.ErrorColaboradorNotFound
+		}
+
 		return nil, fmt.Errorf("erro ao buscar colaborador por ID: %w", err)
 	}
 
@@ -176,6 +182,10 @@ func (r *ColaboradorRepository) FindByEmail(ctx context.Context, email string) (
 	)
 
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, colaborador.ErrorColaboradorNotFound
+		}
+
 		return nil, fmt.Errorf("erro ao buscar colaborador por email: %w", err)
 	}
 
