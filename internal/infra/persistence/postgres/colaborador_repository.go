@@ -73,7 +73,6 @@ func (r *ColaboradorRepository) Update(ctx context.Context, colaborador *colabor
 			data_desligamento = $9,
 			updated_at = CURRENT_TIMESTAMP
 		WHERE id = $10
-		RETURNING updated_at
 	`
 	ativo := statusColaboradorToDB(colaborador.Status)
 
