@@ -11,13 +11,15 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+// ColaboradorRepository implementa a interface colaborador.ColaboradorRepository usando PostgreSQL.
 type ColaboradorRepository struct {
 	pool *pgxpool.Pool
 }
 
+// NewColaboradorRepository cria uma nova instância de ColaboradorRepository.
 func NewColaboradorRepository(pool *pgxpool.Pool) *ColaboradorRepository {
 	return &ColaboradorRepository{pool: pool}
-}
+} // Fim NewColaboradorRepository
 
 // Salva um novo colaborador no banco de dados.
 func (r *ColaboradorRepository) Store(ctx context.Context, colaborador *colaborador.Colaborador) error {
