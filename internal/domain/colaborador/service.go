@@ -2,7 +2,7 @@ package colaborador
 
 import (
 	"context"
-	"plantao/internal/api/controller"
+	"plantao/internal/api/dto"
 	"plantao/utils"
 	"strings"
 )
@@ -20,7 +20,7 @@ func NewColaboradorService(repository ColaboradorRepository) *ColaboradorService
 } // Fim NewColaboradorService
 
 // Cria um novo colaborador com validações e armazenamento
-func (s *ColaboradorService) CreateColaborador(ctx context.Context, colaboradorDTO *controller.CreateColaboradorRequest) (*Colaborador, error) {
+func (s *ColaboradorService) CreateColaborador(ctx context.Context, colaboradorDTO *dto.CreateColaboradorRequest) (*Colaborador, error) {
 	colaborador, err := createColaboradorDtoToDomain(colaboradorDTO)
 
 	if err != nil {
@@ -54,7 +54,7 @@ func (s *ColaboradorService) CreateColaborador(ctx context.Context, colaboradorD
 } // Fim CreateColaborador
 
 // Atualiza um colaborador existente com novas informações
-func (s *ColaboradorService) UpdateColaborador(ctx context.Context, colaboradorDTO *controller.UpdateColaboradorRequest) (*Colaborador, error) {
+func (s *ColaboradorService) UpdateColaborador(ctx context.Context, colaboradorDTO *dto.UpdateColaboradorRequest) (*Colaborador, error) {
 	colaborador, err := s.repository.FindById(ctx, colaboradorDTO.Id)
 
 	if err != nil {
@@ -119,19 +119,20 @@ func (s *ColaboradorService) GetColaboradorById(ctx context.Context, colaborador
 	return colaborador, nil
 } // Fim GetColaboradorById
 
-// Recupera todos os colaboradores
-func (s *ColaboradorService) GetAllColaboradores(ctx context.Context) ([]Colaborador, error) {
-	colaboradores, err := s.repository.Find(ctx)
+// Recupera colaboradores com base em filtros opcionais
+// Permite filtrar por nome, email, telefone, cargo, departamento e data de admissão
+func (s *ColaboradorService) GetColaboradorByFilter(ctx context.Context, filter ColaboradorFilter) ([]Colaborador, error) {
+	colaboradores, err := s.repository.FindByFilter(ctx, filter)
 
 	if err != nil {
 		return nil, err
 	}
 
 	return colaboradores, nil
-} // Fim GetAllColaboradores
+} // Fim GetVolaboradorByFilter
 
 // Converte a requisição de criação de colaborador para o domínio
-func createColaboradorDtoToDomain(r *controller.CreateColaboradorRequest) (*Colaborador, error) {
+func createColaboradorDtoToDomain(r *dto.CreateColaboradorRequest) (*Colaborador, error) {
 	dataAdmissao, err := utils.ParseBrToUsDate(r.DataAdmissao)
 
 	if err != nil {
@@ -157,7 +158,7 @@ func createColaboradorDtoToDomain(r *controller.CreateColaboradorRequest) (*Cola
 } // Fim toDomain
 
 // Converte a requisição de atualização de colaborador para o domínio
-func updateColaboradorDtoToDomain(r *controller.UpdateColaboradorRequest) (*Colaborador, error) {
+/*func updateColaboradorDtoToDomain(r *controller.UpdateColaboradorRequest) (*Colaborador, error) {
 	dataAdmissao, err := utils.ParseBrToUsDate(r.DataAdmissao)
 
 	if err != nil {
@@ -187,7 +188,7 @@ func updateColaboradorDtoToDomain(r *controller.UpdateColaboradorRequest) (*Cola
 		DataAdmissao:     dataAdmissao,
 		DataDesligamento: dataDesligamento,
 	}, nil
-} // Fim toDomainUpdate
+}*/ // Fim toDomainUpdate
 
 // Converte o status do colaborador a partir do DTO
 func StatusColaboradorFromDTO(value string) (StatusColaborador, error) {
