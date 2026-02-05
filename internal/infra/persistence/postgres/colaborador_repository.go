@@ -196,10 +196,7 @@ func (r *ColaboradorRepository) FindByEmail(ctx context.Context, email string) (
 
 // Busca colaboradores no banco de dados com base em filtros opcionais.
 // Permite filtrar por nome, email, telefone, cargo, departamento e data de admissão.
-func (r *ColaboradorRepository) FindByFilter(
-	ctx context.Context,
-	filter colaborador.ColaboradorFilter,
-) ([]colaborador.Colaborador, error) {
+func (r *ColaboradorRepository) FindByFilter(ctx context.Context, filter colaborador.ColaboradorFilter) ([]colaborador.Colaborador, error) {
 
 	query := `
 		SELECT id, nome, email, telefone, cargo, departamento, foto_url, ativo, data_admissao, data_desligamento
