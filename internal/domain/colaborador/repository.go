@@ -9,7 +9,7 @@ import (
 type ColaboradorRepository interface {
 	Store(ctx context.Context, colaborador *Colaborador) error
 	Update(ctx context.Context, colaborador *Colaborador) error
-	Delete(ctx context.Context, colaboradorId string) error
+	Disable(ctx context.Context, colaboradorId string) error
 	FindById(ctx context.Context, colaboradorId string) (*Colaborador, error)
 	FindByEmail(ctx context.Context, email string) (*Colaborador, error)
 	FindByFilter(ctx context.Context, filter ColaboradorFilter) ([]Colaborador, error)

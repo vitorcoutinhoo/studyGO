@@ -95,18 +95,18 @@ func (s *ColaboradorService) UpdateColaborador(ctx context.Context, colaboradorD
 	return colaborador, nil
 } // Fim UpdateColaborador
 
-// Deleta um colaborador pelo ID
-func (s *ColaboradorService) DeleteColaborador(ctx context.Context, colaboradorId string) error {
+// Desativa um colaborador pelo ID
+func (s *ColaboradorService) DisableColaborador(ctx context.Context, colaboradorId string) error {
 	if !s.repository.ExistsId(ctx, colaboradorId) {
 		return ErrorColaboradorNotFound
 	}
 
-	if err := s.repository.Delete(ctx, colaboradorId); err != nil {
+	if err := s.repository.Disable(ctx, colaboradorId); err != nil {
 		return err
 	}
 
 	return nil
-} // Fim DeleteColaborador
+} // Fim DisableColaborador
 
 // Recupera um colaborador pelo ID
 func (s *ColaboradorService) GetColaboradorById(ctx context.Context, colaboradorId string) (*Colaborador, error) {

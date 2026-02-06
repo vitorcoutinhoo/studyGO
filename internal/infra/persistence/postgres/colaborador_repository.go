@@ -102,21 +102,30 @@ func (r *ColaboradorRepository) Update(ctx context.Context, colaborador *colabor
 	return nil
 } // Fim Update
 
-// Remove um colaborador do banco de dados com base no ID fornecido.
-func (r *ColaboradorRepository) Delete(ctx context.Context, colaboradorId string) error {
+// Desativa um colaborador no banco de dados, marcando-o como inativo.
+func (r *ColaboradorRepository) Disable(ctx context.Context, colaboradorId string) error {
 	query := `
-		DELETE FROM colaboradores
+		UPDATE colaboradores
+		SET
+			ativo = 'N',
+			data_desligamento = CURRENT_DATE,
+			updated_at = CURRENT_TIMESTAMP
 		WHERE id = $1
+		  AND ativo = 'Y'
 	`
 
-	_, err := r.pool.Exec(ctx, query, colaboradorId)
+	result, err := r.pool.Exec(ctx, query, colaboradorId)
 
 	if err != nil {
 		return fmt.Errorf("erro ao deletar colaborador: %w", err)
 	}
 
+	if result.RowsAffected() == 0 {
+		return colaborador.ErrorColaboradorNotFound
+	}
+
 	return nil
-} // Fim Delete
+} // Fim Disable
 
 // Busca um colaborador no banco de dados usando seu ID.
 func (r *ColaboradorRepository) FindById(ctx context.Context, colaboradorId string) (*colaborador.Colaborador, error) {
