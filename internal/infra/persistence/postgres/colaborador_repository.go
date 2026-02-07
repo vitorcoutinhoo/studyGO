@@ -7,6 +7,7 @@ import (
 	"plantao/internal/domain/colaborador"
 	"strings"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -103,7 +104,7 @@ func (r *ColaboradorRepository) Update(ctx context.Context, colaborador *colabor
 } // Fim Update
 
 // Desativa um colaborador no banco de dados, marcando-o como inativo.
-func (r *ColaboradorRepository) Disable(ctx context.Context, colaboradorId string) error {
+func (r *ColaboradorRepository) Disable(ctx context.Context, colaboradorId uuid.UUID) error {
 	query := `
 		UPDATE colaboradores
 		SET
@@ -128,7 +129,7 @@ func (r *ColaboradorRepository) Disable(ctx context.Context, colaboradorId strin
 } // Fim Disable
 
 // Busca um colaborador no banco de dados usando seu ID.
-func (r *ColaboradorRepository) FindById(ctx context.Context, colaboradorId string) (*colaborador.Colaborador, error) {
+func (r *ColaboradorRepository) FindById(ctx context.Context, colaboradorId uuid.UUID) (*colaborador.Colaborador, error) {
 	query := `
 		SELECT id, nome, email, telefone, cargo, departamento, foto_url, ativo, data_admissao, data_desligamento
 		FROM colaboradores
@@ -315,7 +316,7 @@ func (r *ColaboradorRepository) ExistsEmail(ctx context.Context, email string) b
 } // Fim ExistsEmail
 
 // Verifica se o ID de um colaborador existe no banco de dados.
-func (r *ColaboradorRepository) ExistsId(ctx context.Context, colaboradorId string) bool {
+func (r *ColaboradorRepository) ExistsId(ctx context.Context, colaboradorId uuid.UUID) bool {
 	query := `
 		SELECT COUNT(1)
 		FROM colaboradores
@@ -334,7 +335,7 @@ func (r *ColaboradorRepository) ExistsId(ctx context.Context, colaboradorId stri
 } // Fim ExistsId
 
 // Verifica se um email já existe no banco de dados, excluindo um colaborador específico pelo ID.
-func (r *ColaboradorRepository) ExistsEmailExcludingId(ctx context.Context, email, colaboradorId string) bool {
+func (r *ColaboradorRepository) ExistsEmailExcludingId(ctx context.Context, email string, colaboradorId uuid.UUID) bool {
 	query := `
 		SELECT COUNT(1)
 		FROM colaboradores

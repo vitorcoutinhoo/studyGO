@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"plantao/internal/api"
+	"plantao/internal/domain/colaborador"
 	"plantao/internal/domain/plantao"
 	"plantao/internal/infra/config"
 	"plantao/internal/infra/persistence/postgres"
@@ -15,6 +16,7 @@ func main() {
 		config.Module,
 		postgres.Module,
 		plantao.Module,
+		colaborador.Module,
 		api.Module,
 
 		fx.Invoke(func(lc fx.Lifecycle, server *api.Server) {

@@ -11,6 +11,7 @@ var Module = fx.Module(
 	"api",
 	fx.Provide(
 		controller.NewPlantaoController,
+		controller.NewColaboradorController,
 		fx.Annotate(
 			NewRouter,
 			fx.As(new(http.Handler)),

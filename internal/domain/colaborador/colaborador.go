@@ -5,6 +5,8 @@ import (
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type StatusColaborador int
@@ -16,7 +18,7 @@ const (
 
 // Estrutura do domínio Colaborador
 type Colaborador struct {
-	Id               string
+	Id               uuid.UUID
 	Nome             string
 	Email            string
 	Telefone         string
@@ -124,7 +126,7 @@ func isStatusValid(status StatusColaborador) bool {
 
 // Valida o telefone do colaborador
 func isTelefoneValid(telefone string) bool {
-	var phoneRegexBR = regexp.MustCompile(`^(\+55\s?)?(\(?\d{2}\)?\s?)?(9\d{4}[-\s]?\d{4})$`)
+	var phoneRegexBR = regexp.MustCompile(`^(\+55\s*)?(\(?\d{2}\)?)?\s*9?\s*\d{4}\s*-?\s*\d{4}$`)
 
-	return len(telefone) <= 15 && phoneRegexBR.MatchString(telefone)
+	return phoneRegexBR.MatchString(telefone)
 } // Fim isTelefoneValid

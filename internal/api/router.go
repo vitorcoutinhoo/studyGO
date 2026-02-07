@@ -10,6 +10,7 @@ import (
 
 func NewRouter(
 	plantaoController *controller.PlantaoController,
+	colaboradorController *controller.ColaboradorController,
 ) *gin.Engine {
 	router := gin.Default()
 
@@ -22,6 +23,7 @@ func NewRouter(
 	}))
 
 	setupPlantaoRoutes(router, plantaoController)
+	setupColaboradorRoutes(router, colaboradorController)
 	return router
 }
 
@@ -43,6 +45,23 @@ func setupPlantaoRoutes(
 			plantaoRoutes.GET("/periodo/:start_date/:end_date", plantaoController.GetPlantoesByPeriodo)
 
 			plantaoRoutes.PATCH("/:id/status", plantaoController.UpdateStatusPlantao)
+		}
+	}
+}
+
+func setupColaboradorRoutes(
+	router *gin.Engine,
+	colaboradorController *controller.ColaboradorController,
+) {
+	v1 := router.Group("/api/v1")
+	{
+		colaboradorRoutes := v1.Group("/colaboradores")
+		{
+			colaboradorRoutes.POST("", colaboradorController.CreateColaborador)
+			colaboradorRoutes.PUT("/:id", colaboradorController.UpdateColaborador)
+			colaboradorRoutes.DELETE("/:id", colaboradorController.DisableColaborador)
+			colaboradorRoutes.GET("/:id", colaboradorController.GetColaboradorById)
+			colaboradorRoutes.GET("", colaboradorController.GetColaboradoresByFilter)
 		}
 	}
 }
