@@ -51,14 +51,14 @@ func (c *ColaboradorController) UpdateColaborador(ctx *gin.Context) {
 
 	id := ctx.Param("id")
 
-	colaborador, err := c.service.UpdateColaborador(ctx, &req, id)
+	err := c.service.UpdateColaborador(ctx, &req, id)
 
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	ctx.JSON(http.StatusOK, colaborador)
+	ctx.Status(http.StatusOK)
 } // Fim UpdateColaborador
 
 // GetColaboradorById lida com a obtenção de um colaborador por ID.

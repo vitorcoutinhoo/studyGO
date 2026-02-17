@@ -9,7 +9,7 @@ import (
 
 // Interface do repositório de colaboradores, definindo os métodos necessários para manipulação dos dados.
 type ColaboradorRepository interface {
-	Store(ctx context.Context, colaborador *Colaborador) error
+	Store(ctx context.Context, colaborador *Colaborador) (*Colaborador, error)
 	Update(ctx context.Context, colaborador *Colaborador) error
 	Disable(ctx context.Context, colaboradorId uuid.UUID) error
 	FindById(ctx context.Context, colaboradorId uuid.UUID) (*Colaborador, error)

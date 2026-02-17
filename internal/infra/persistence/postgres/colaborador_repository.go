@@ -23,7 +23,8 @@ func NewColaboradorRepository(pool *pgxpool.Pool) *ColaboradorRepository {
 } // Fim NewColaboradorRepository
 
 // Salva um novo colaborador no banco de dados.
-func (r *ColaboradorRepository) Store(ctx context.Context, colaborador *colaborador.Colaborador) error {
+func (r *ColaboradorRepository) Store(ctx context.Context, c *colaborador.Colaborador) (*colaborador.Colaborador, error) {
+
 	query := `
 		INSERT INTO colaboradores (
 			nome,
@@ -33,33 +34,72 @@ func (r *ColaboradorRepository) Store(ctx context.Context, colaborador *colabora
 			departamento,
 			foto_url,
 			ativo,
+			ativo_plantao,
 			data_admissao,
 			data_desligamento
 		) VALUES (
-			$1, $2, $3, $4, $5, $6, $7, $8, $9
+			$1, $2, $3, $4, $5, $6, $7, $8, $9, $10
 		)
+		RETURNING
+			id,
+			nome,
+			email,
+			telefone,
+			cargo,
+			departamento,
+			foto_url,
+			ativo,
+			ativo_plantao,
+			data_admissao,
+			data_desligamento,
+			created_at,
+			updated_at
 	`
-	ativo := statusColaboradorToDB(colaborador.Status)
 
-	_, err := r.pool.Exec(
+	ativo := statusColaboradorToDB(c.Status)
+	ativoPlantao := statusColaboradorToDB(c.AtivoPlantao)
+
+	var saved colaborador.Colaborador
+	var satusAtivo string
+	var statusPlantao string
+
+	err := r.pool.QueryRow(
 		ctx,
 		query,
-		colaborador.Nome,
-		colaborador.Email,
-		colaborador.Telefone,
-		colaborador.Cargo,
-		colaborador.Setor,
-		colaborador.Foto,
+		c.Nome,
+		c.Email,
+		c.Telefone,
+		c.Cargo,
+		c.Setor,
+		c.Foto,
 		ativo,
-		colaborador.DataAdmissao,
-		colaborador.DataDesligamento,
+		ativoPlantao,
+		c.DataAdmissao,
+		c.DataDesligamento,
+	).Scan(
+		&saved.Id,
+		&saved.Nome,
+		&saved.Email,
+		&saved.Telefone,
+		&saved.Cargo,
+		&saved.Setor,
+		&saved.Foto,
+		&satusAtivo,
+		&statusPlantao,
+		&saved.DataAdmissao,
+		&saved.DataDesligamento,
+		&saved.CreatedAt,
+		&saved.UpdatedAt,
 	)
 
+	saved.Status = statusColaboradorFromDB(satusAtivo)
+	saved.AtivoPlantao = statusColaboradorFromDB(statusPlantao)
+
 	if err != nil {
-		return fmt.Errorf("erro ao salvar colaborador: %w", err)
+		return nil, fmt.Errorf("erro ao salvar colaborador: %w", err)
 	}
 
-	return nil
+	return &saved, nil
 } // Fim Store
 
 // Atualiza os dados de um colaborador existente no banco de dados.
@@ -74,12 +114,14 @@ func (r *ColaboradorRepository) Update(ctx context.Context, colaborador *colabor
 			departamento = $5,
 			foto_url = $6,
 			ativo = $7,
-			data_admissao = $8,
-			data_desligamento = $9,
+			ativo_plantao = $8, 
+			data_admissao = $9,
+			data_desligamento = $10,
 			updated_at = CURRENT_TIMESTAMP
-		WHERE id = $10
+		WHERE id = $11
 	`
 	ativo := statusColaboradorToDB(colaborador.Status)
+	ativoPlantao := statusColaboradorToDB(colaborador.AtivoPlantao)
 
 	_, err := r.pool.Exec(
 		ctx,
@@ -91,6 +133,7 @@ func (r *ColaboradorRepository) Update(ctx context.Context, colaborador *colabor
 		colaborador.Setor,
 		colaborador.Foto,
 		ativo,
+		ativoPlantao,
 		colaborador.DataAdmissao,
 		colaborador.DataDesligamento,
 		colaborador.Id,
@@ -104,6 +147,7 @@ func (r *ColaboradorRepository) Update(ctx context.Context, colaborador *colabor
 } // Fim Update
 
 // Desativa um colaborador no banco de dados, marcando-o como inativo.
+// Um colaboorador desabilitado é um colaborador demitido
 func (r *ColaboradorRepository) Disable(ctx context.Context, colaboradorId uuid.UUID) error {
 	query := `
 		UPDATE colaboradores
@@ -118,7 +162,7 @@ func (r *ColaboradorRepository) Disable(ctx context.Context, colaboradorId uuid.
 	result, err := r.pool.Exec(ctx, query, colaboradorId)
 
 	if err != nil {
-		return fmt.Errorf("erro ao deletar colaborador: %w", err)
+		return fmt.Errorf("erro ao desabilitar colaborador: %w", err)
 	}
 
 	if result.RowsAffected() == 0 {
@@ -129,17 +173,19 @@ func (r *ColaboradorRepository) Disable(ctx context.Context, colaboradorId uuid.
 } // Fim Disable
 
 // Busca um colaborador no banco de dados usando seu ID.
+// Vai trazer apenas um colaborador ativo
 func (r *ColaboradorRepository) FindById(ctx context.Context, colaboradorId uuid.UUID) (*colaborador.Colaborador, error) {
 	query := `
-		SELECT id, nome, email, telefone, cargo, departamento, foto_url, ativo, data_admissao, data_desligamento
+		SELECT id, nome, email, telefone, cargo, departamento, foto_url, ativo, ativo_plantao, data_admissao, data_desligamento
 		FROM colaboradores
-		WHERE id = $1
+		WHERE id = $1 AND ativo = 'Y'
 	`
 
 	row := r.pool.QueryRow(ctx, query, colaboradorId)
 
 	var c colaborador.Colaborador
 	var ativo string
+	var ativoPlantao string
 
 	err := row.Scan(
 		&c.Id,
@@ -150,6 +196,7 @@ func (r *ColaboradorRepository) FindById(ctx context.Context, colaboradorId uuid
 		&c.Setor,
 		&c.Foto,
 		&ativo,
+		&ativoPlantao,
 		&c.DataAdmissao,
 		&c.DataDesligamento,
 	)
@@ -163,22 +210,25 @@ func (r *ColaboradorRepository) FindById(ctx context.Context, colaboradorId uuid
 	}
 
 	c.Status = statusColaboradorFromDB(ativo)
+	c.AtivoPlantao = statusColaboradorFromDB(ativoPlantao)
 
 	return &c, nil
 } // Fim FindById
 
 // Busca um colaborador no banco de dados usando seu email.
+// Vai trazer apenas cloaboradores ativos
 func (r *ColaboradorRepository) FindByEmail(ctx context.Context, email string) (*colaborador.Colaborador, error) {
 	query := `
-		SELECT id, nome, email, telefone, cargo, departamento, foto_url, ativo, data_admissao, data_desligamento
+		SELECT id, nome, email, telefone, cargo, departamento, foto_url, ativo, ativo_plantao, data_admissao, data_desligamento
 		FROM colaboradores
-		WHERE email = $1
+		WHERE email = $1 AND ativo = 'Y'
 	`
 
 	row := r.pool.QueryRow(ctx, query, email)
 
 	var c colaborador.Colaborador
 	var ativo string
+	var ativoPlantao string
 
 	err := row.Scan(
 		&c.Id,
@@ -189,6 +239,7 @@ func (r *ColaboradorRepository) FindByEmail(ctx context.Context, email string) (
 		&c.Setor,
 		&c.Foto,
 		&ativo,
+		&ativoPlantao,
 		&c.DataAdmissao,
 		&c.DataDesligamento,
 	)
@@ -202,21 +253,25 @@ func (r *ColaboradorRepository) FindByEmail(ctx context.Context, email string) (
 	}
 
 	c.Status = statusColaboradorFromDB(ativo)
+	c.AtivoPlantao = statusColaboradorFromDB(ativoPlantao)
 
 	return &c, nil
 } // Fim FindByEmail
 
 // Busca colaboradores no banco de dados com base em filtros opcionais.
 // Permite filtrar por nome, email, telefone, cargo, departamento e data de admissão.
+// Vai trazer apenas cloaboradores ativos
 func (r *ColaboradorRepository) FindByFilter(ctx context.Context, filter colaborador.ColaboradorFilter) ([]colaborador.Colaborador, error) {
 	query := `
-		SELECT id, nome, email, telefone, cargo, departamento, foto_url, ativo, data_admissao, data_desligamento
+		SELECT id, nome, email, telefone, cargo, departamento, foto_url, ativo, ativo_plantao, data_admissao, data_desligamento
 		FROM colaboradores
 	`
 
 	var conditions []string
 	var args []any
 	argPos := 1
+
+	conditions = append(conditions, "ativo = 'Y'")
 
 	if filter.Nome != nil {
 		conditions = append(conditions, fmt.Sprintf("nome ILIKE $%d", argPos))
@@ -271,6 +326,7 @@ func (r *ColaboradorRepository) FindByFilter(ctx context.Context, filter colabor
 	for rows.Next() {
 		var c colaborador.Colaborador
 		var ativo string
+		var ativoPlantao string
 
 		err := rows.Scan(
 			&c.Id,
@@ -281,6 +337,7 @@ func (r *ColaboradorRepository) FindByFilter(ctx context.Context, filter colabor
 			&c.Setor,
 			&c.Foto,
 			&ativo,
+			&ativoPlantao,
 			&c.DataAdmissao,
 			&c.DataDesligamento,
 		)
@@ -290,6 +347,7 @@ func (r *ColaboradorRepository) FindByFilter(ctx context.Context, filter colabor
 		}
 
 		c.Status = statusColaboradorFromDB(ativo)
+		c.AtivoPlantao = statusColaboradorFromDB(ativoPlantao)
 		colaboradores = append(colaboradores, c)
 	}
 

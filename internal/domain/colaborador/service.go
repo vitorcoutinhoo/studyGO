@@ -6,6 +6,7 @@ import (
 	"plantao/internal/api/dto"
 	"plantao/utils"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -23,7 +24,7 @@ func NewColaboradorService(repository ColaboradorRepository) *ColaboradorService
 } // Fim NewColaboradorService
 
 // Cria um novo colaborador com validações e armazenamento
-func (s *ColaboradorService) CreateColaborador(ctx context.Context, colaboradorDTO *dto.CreateColaboradorRequest) (*Colaborador, error) {
+func (s *ColaboradorService) CreateColaborador(ctx context.Context, colaboradorDTO *dto.CreateColaboradorRequest) (*dto.ColaboradorResponse, error) {
 	colaborador, err := createColaboradorDtoToDomain(colaboradorDTO)
 
 	if err != nil {
@@ -31,7 +32,7 @@ func (s *ColaboradorService) CreateColaborador(ctx context.Context, colaboradorD
 	}
 
 	if s.repository.ExistsEmail(ctx, colaborador.Email) {
-		return nil, ErrorInvalidEmail
+		return nil, ErrorEmailAlreadyExists
 	}
 
 	col, err := NewColaborador(
@@ -43,65 +44,79 @@ func (s *ColaboradorService) CreateColaborador(ctx context.Context, colaboradorD
 		colaborador.Foto,
 		colaborador.DataAdmissao,
 		colaborador.DataDesligamento,
+		colaborador.Status,
+		colaborador.AtivoPlantao,
 	)
 
 	if err != nil {
 		return nil, err
 	}
 
-	if err := s.repository.Store(ctx, col); err != nil {
+	colaboradorReturn, err := s.repository.Store(ctx, col)
+
+	if err != nil {
 		return nil, err
 	}
 
-	return col, nil
+	colaboradorResponse, err := colaboradorToResponse(colaboradorReturn)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return colaboradorResponse, nil
 } // Fim CreateColaborador
 
 // Atualiza um colaborador existente com novas informações
-func (s *ColaboradorService) UpdateColaborador(ctx context.Context, colaboradorDTO *dto.UpdateColaboradorRequest, colaboradorId string) (*Colaborador, error) {
+func (s *ColaboradorService) UpdateColaborador(ctx context.Context, colaboradorDTO *dto.UpdateColaboradorRequest, colaboradorId string) error {
 	id, err := uuid.Parse(colaboradorId)
 
 	if err != nil {
-		return nil, fmt.Errorf("UUID inválido: %v", err)
+		return fmt.Errorf("UUID inválido: %v", err)
 	}
 
 	colaborador, err := s.repository.FindById(ctx, id)
 
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	if colaborador == nil {
-		return nil, ErrorColaboradorNotFound
+		return ErrorColaboradorNotFound
 	}
 
 	if s.repository.ExistsEmailExcludingId(ctx, colaborador.Email, colaborador.Id) {
-		return nil, ErrorInvalidEmail
+		return ErrorEmailAlreadyExists
 	}
 
-	sts, err := statusColaboradorFromDTO(colaboradorDTO.Status)
+	colaboradorDomain, err := updateColaboradorDtoToDomain(colaboradorDTO)
 
 	if err != nil {
-		return nil, err
+		return nil
 	}
 
 	err = colaborador.UpdateDados(
-		colaboradorDTO.Email,
-		colaboradorDTO.Telefone,
-		colaboradorDTO.Cargo,
-		colaboradorDTO.Setor,
-		colaboradorDTO.Foto,
-		sts,
+		&colaboradorDomain.Nome,
+		&colaboradorDomain.Email,
+		&colaboradorDomain.Telefone,
+		&colaboradorDomain.Cargo,
+		&colaboradorDomain.Setor,
+		&colaboradorDomain.Foto,
+		colaboradorDomain.DataAdmissao,
+		colaboradorDomain.DataDesligamento,
+		&colaboradorDomain.Status,
+		&colaboradorDomain.AtivoPlantao,
 	)
 
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	if err := s.repository.Update(ctx, colaborador); err != nil {
-		return nil, err
+		return err
 	}
 
-	return colaborador, nil
+	return nil
 } // Fim UpdateColaborador
 
 // Desativa um colaborador pelo ID
@@ -124,7 +139,7 @@ func (s *ColaboradorService) DisableColaborador(ctx context.Context, colaborador
 } // Fim DisableColaborador
 
 // Recupera um colaborador pelo ID
-func (s *ColaboradorService) GetColaboradorById(ctx context.Context, colaboradorId string) (*Colaborador, error) {
+func (s *ColaboradorService) GetColaboradorById(ctx context.Context, colaboradorId string) (*dto.ColaboradorResponse, error) {
 	id, err := uuid.Parse(colaboradorId)
 
 	if err != nil {
@@ -141,15 +156,19 @@ func (s *ColaboradorService) GetColaboradorById(ctx context.Context, colaborador
 		return nil, err
 	}
 
-	return colaborador, nil
+	colaboradorResponse, err := colaboradorToResponse(colaborador)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return colaboradorResponse, nil
 } // Fim GetColaboradorById
 
 // Recupera colaboradores com base em filtros opcionais
 // Permite filtrar por nome, email, telefone, cargo, departamento e data de admissão
-func (s *ColaboradorService) GetColaboradorByFilter(ctx context.Context, filterReq dto.GetColaboradoresByFilterRequest) ([]Colaborador, error) {
+func (s *ColaboradorService) GetColaboradorByFilter(ctx context.Context, filterReq dto.GetColaboradoresByFilterRequest) ([]dto.ColaboradorResponse, error) {
 	filter := filterDtoToFilterDomain(filterReq)
-
-	fmt.Println(filter)
 
 	colaboradores, err := s.repository.FindByFilter(ctx, filter)
 
@@ -157,18 +176,49 @@ func (s *ColaboradorService) GetColaboradorByFilter(ctx context.Context, filterR
 		return nil, err
 	}
 
-	return colaboradores, nil
+	responses := make([]dto.ColaboradorResponse, 0, len(colaboradores))
+
+	for i := range colaboradores {
+		resp, err := colaboradorToResponse(&colaboradores[i])
+		if err != nil {
+			return nil, err
+		}
+
+		responses = append(responses, *resp)
+	}
+
+	return responses, nil
 } // Fim GetVolaboradorByFilter
 
 // Converte a requisição de criação de colaborador para o domínio
 func createColaboradorDtoToDomain(r *dto.CreateColaboradorRequest) (*Colaborador, error) {
-	dataAdmissao, err := utils.ParseBrToUsDate(r.DataAdmissao)
+	dataAdmissao, err := utils.ParseBrToUsDate(&r.DataAdmissao)
 
 	if err != nil {
 		return nil, err
 	}
 
-	dataDesligamento, err := utils.ParseBrToUsDate(r.DataDesligamento)
+	var dataDesligamento *time.Time
+
+	if r.DataDesligamento != nil {
+		dataTemp, err := utils.ParseBrToUsDate(r.DataDesligamento)
+
+		if err != nil {
+			return nil, err
+		}
+
+		dataDesligamento = dataTemp
+	} else {
+		dataDesligamento = nil
+	}
+
+	ativo, err := statusColaboradorFromDTO(r.Status)
+
+	if err != nil {
+		return nil, err
+	}
+
+	ativoPlantao, err := statusColaboradorFromDTO(r.AtivoPlantao)
 
 	if err != nil {
 		return nil, err
@@ -181,10 +231,123 @@ func createColaboradorDtoToDomain(r *dto.CreateColaboradorRequest) (*Colaborador
 		Cargo:            r.Cargo,
 		Setor:            r.Setor,
 		Foto:             r.Foto,
+		Status:           ativo,
+		AtivoPlantao:     ativoPlantao,
 		DataAdmissao:     dataAdmissao,
 		DataDesligamento: dataDesligamento,
 	}, nil
 } // Fim toDomain
+
+// Conversor do DTO de UPDATE para uma entidade do DOMÍNIO
+func updateColaboradorDtoToDomain(r *dto.UpdateColaboradorRequest) (*Colaborador, error) {
+	dataAdmissao, err := utils.ParseBrToUsDate(r.DataAdmissao)
+
+	if err != nil {
+		return nil, err
+	}
+
+	var dataDesligamento *time.Time
+
+	if r.DataDesligamento != nil {
+		dataTemp, err := utils.ParseBrToUsDate(r.DataDesligamento)
+
+		if err != nil {
+			return nil, err
+		}
+
+		dataDesligamento = dataTemp
+	} else {
+		dataDesligamento = nil
+	}
+
+	ativo, err := statusColaboradorFromDTO(*r.Status)
+
+	if err != nil {
+		return nil, err
+	}
+
+	ativoPlantao, err := statusColaboradorFromDTO(*r.AtivoPlantao)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &Colaborador{
+		Nome:             *r.Nome,
+		Email:            *r.Email,
+		Telefone:         *r.Telefone,
+		Cargo:            *r.Cargo,
+		Setor:            *r.Setor,
+		Foto:             *r.Foto,
+		Status:           ativo,
+		AtivoPlantao:     ativoPlantao,
+		DataAdmissao:     dataAdmissao,
+		DataDesligamento: dataDesligamento,
+	}, nil
+} // Fim updateColaboradorDtoToDomain
+
+// Converte um colaborador do domínio para um DTO
+func colaboradorToResponse(c *Colaborador) (*dto.ColaboradorResponse, error) {
+	if c == nil {
+		return nil, fmt.Errorf("colaborador vazio ou nulo")
+	}
+
+	status, err := statusColaboradorToDTO(c.Status)
+
+	if err != nil {
+		return nil, err
+	}
+
+	statusPlantao, err := statusColaboradorToDTO(c.AtivoPlantao)
+
+	if err != nil {
+		return nil, err
+	}
+
+	dataAdmissao, err := utils.ParseUsToBrDate(c.DataAdmissao)
+
+	if err != nil {
+		return nil, err
+	}
+
+	var dataDeligamento string
+
+	if c.DataDesligamento != nil {
+		dataTemp, err := utils.ParseUsToBrDate(c.DataDesligamento)
+
+		if err != nil {
+			return nil, err
+		}
+
+		dataDeligamento = dataTemp
+	}
+
+	return &dto.ColaboradorResponse{
+		Id:               c.Id.String(),
+		Nome:             c.Nome,
+		Email:            c.Email,
+		Telefone:         c.Telefone,
+		Cargo:            c.Cargo,
+		Setor:            c.Setor,
+		Foto:             c.Foto,
+		Status:           status,
+		AtivoPlantao:     statusPlantao,
+		DataAdmissao:     dataAdmissao,
+		DataDesligamento: dataDeligamento,
+	}, nil
+} // Fim colaboradorToResponse
+
+// Converte um status do domínio para um status do DTO(Texto)
+func statusColaboradorToDTO(status StatusColaborador) (string, error) {
+	switch status {
+	case 1:
+		return "ativo", nil
+	case 2:
+		return "inativo", nil
+	default:
+		return "", ErrorInvalidStatus
+	}
+} // Fim statusColaboradorToDTO
 
 // Converte o status do colaborador a partir do DTO
 func statusColaboradorFromDTO(value string) (StatusColaborador, error) {
