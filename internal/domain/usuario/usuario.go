@@ -24,27 +24,28 @@ const (
 )
 
 type Usuario struct {
-	Id             uuid.UUID
-	IdColabborador uuid.UUID
-	Email          string
-	Senha          string
-	Role           Role
-	Ativo          StatusUsuario
-	CreateAt       *time.Time
-	UpdateAt       *time.Time
+	Id            uuid.UUID
+	IdColaborador uuid.UUID
+	Email         string
+	Senha         string
+	Role          Role
+	Ativo         StatusUsuario
+	CreateAt      *time.Time
+	UpdateAt      *time.Time
 }
 
 var (
-	ErrorUserNotFound  = errors.New("Usuário não encontrado!")
-	ErrorInvalidEmail  = errors.New("Email Inválido!")
-	ErrorEmailexists   = errors.New("Email já existe!")
-	ErrorPasswordShort = errors.New("Senha muito curta, deve conter no minimo 6 caracteres!")
-	ErrorInvalidRole   = errors.New("Role Inválida!")
-	ErrorInvalidStatus = errors.New("Status Inválido!")
-	ErrorInvalidNome   = errors.New("Nome Inválido!")
+	ErrorUserNotFound       = errors.New("Usuário não encontrado!")
+	ErrorInvalidEmail       = errors.New("Email Inválido!")
+	ErrorEmailexists        = errors.New("Email já existe!")
+	ErrorPasswordShort      = errors.New("Senha muito curta, deve conter no minimo 6 caracteres!")
+	ErrorInvalidRole        = errors.New("Role Inválida!")
+	ErrorInvalidStatus      = errors.New("Status Inválido!")
+	ErrorInvalidNome        = errors.New("Nome Inválido!")
+	ErrorEmailAlreadyExists = errors.New("Email já existe!")
 )
 
-func NewUsuario(id, idColaborador uuid.UUID, email, senha string, role Role, ativo StatusUsuario) (*Usuario, error) {
+func NewUsuario(idColaborador uuid.UUID, email, senha string, role Role, ativo StatusUsuario) (*Usuario, error) {
 	if !isEmailValid(email) {
 		return nil, ErrorInvalidEmail
 	}
@@ -62,12 +63,11 @@ func NewUsuario(id, idColaborador uuid.UUID, email, senha string, role Role, ati
 	}
 
 	return &Usuario{
-		Id:             id,
-		IdColabborador: idColaborador,
-		Email:          email,
-		Senha:          senha,
-		Role:           role,
-		Ativo:          ativo,
+		IdColaborador: idColaborador,
+		Email:         email,
+		Senha:         senha,
+		Role:          role,
+		Ativo:         ativo,
 	}, nil
 }
 

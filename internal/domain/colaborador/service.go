@@ -31,7 +31,13 @@ func (s *ColaboradorService) CreateColaborador(ctx context.Context, colaboradorD
 		return nil, err
 	}
 
-	if s.repository.ExistsEmail(ctx, colaborador.Email) {
+	exists, err := s.repository.ExistsEmail(ctx, colaborador.Email)
+
+	if err != nil {
+		return nil, fmt.Errorf("erro ao verificar existência de email: %w", err)
+	}
+
+	if exists {
 		return nil, ErrorEmailAlreadyExists
 	}
 
@@ -85,7 +91,13 @@ func (s *ColaboradorService) UpdateColaborador(ctx context.Context, colaboradorD
 		return ErrorColaboradorNotFound
 	}
 
-	if s.repository.ExistsEmailExcludingId(ctx, colaborador.Email, colaborador.Id) {
+	exists, err := s.repository.ExistsEmailExcludingId(ctx, colaborador.Email, colaborador.Id)
+
+	if err != nil {
+		return fmt.Errorf("erro ao verificar existência de email excluindo ID: %w", err)
+	}
+
+	if exists {
 		return ErrorEmailAlreadyExists
 	}
 
@@ -127,7 +139,13 @@ func (s *ColaboradorService) DisableColaborador(ctx context.Context, colaborador
 		return fmt.Errorf("UUID inválido: %v", err)
 	}
 
-	if !s.repository.ExistsId(ctx, id) {
+	exists, err := s.repository.ExistsId(ctx, id)
+
+	if err != nil {
+		return fmt.Errorf("erro ao verificar existência de ID: %w", err)
+	}
+
+	if !exists {
 		return ErrorColaboradorNotFound
 	}
 

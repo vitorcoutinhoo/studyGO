@@ -355,7 +355,7 @@ func (r *ColaboradorRepository) FindByFilter(ctx context.Context, filter colabor
 } // Fim FindByFilter
 
 // Verifica se um email já existe no banco de dados.
-func (r *ColaboradorRepository) ExistsEmail(ctx context.Context, email string) bool {
+func (r *ColaboradorRepository) ExistsEmail(ctx context.Context, email string) (bool, error) {
 	query := `
 		SELECT COUNT(1)
 		FROM colaboradores
@@ -367,14 +367,14 @@ func (r *ColaboradorRepository) ExistsEmail(ctx context.Context, email string) b
 	err := r.pool.QueryRow(ctx, query, email).Scan(&count)
 
 	if err != nil {
-		return false
+		return false, fmt.Errorf("erro ao verificar existência de email: %w", err)
 	}
 
-	return count > 0
+	return count > 0, nil
 } // Fim ExistsEmail
 
 // Verifica se o ID de um colaborador existe no banco de dados.
-func (r *ColaboradorRepository) ExistsId(ctx context.Context, colaboradorId uuid.UUID) bool {
+func (r *ColaboradorRepository) ExistsId(ctx context.Context, colaboradorId uuid.UUID) (bool, error) {
 	query := `
 		SELECT COUNT(1)
 		FROM colaboradores
@@ -386,14 +386,14 @@ func (r *ColaboradorRepository) ExistsId(ctx context.Context, colaboradorId uuid
 	err := r.pool.QueryRow(ctx, query, colaboradorId).Scan(&count)
 
 	if err != nil {
-		return false
+		return false, fmt.Errorf("erro ao verificar existência de ID: %w", err)
 	}
 
-	return count > 0
+	return count > 0, nil
 } // Fim ExistsId
 
 // Verifica se um email já existe no banco de dados, excluindo um colaborador específico pelo ID.
-func (r *ColaboradorRepository) ExistsEmailExcludingId(ctx context.Context, email string, colaboradorId uuid.UUID) bool {
+func (r *ColaboradorRepository) ExistsEmailExcludingId(ctx context.Context, email string, colaboradorId uuid.UUID) (bool, error) {
 	query := `
 		SELECT COUNT(1)
 		FROM colaboradores
@@ -405,10 +405,10 @@ func (r *ColaboradorRepository) ExistsEmailExcludingId(ctx context.Context, emai
 	err := r.pool.QueryRow(ctx, query, email, colaboradorId).Scan(&count)
 
 	if err != nil {
-		return false
+		return false, fmt.Errorf("erro ao verificar existência de email excluindo ID: %w", err)
 	}
 
-	return count > 0
+	return count > 0, nil
 } // Fim ExistsEmailExcludingId
 
 // Converte o status do colaborador para o formato do banco de dados.

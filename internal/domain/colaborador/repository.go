@@ -15,9 +15,9 @@ type ColaboradorRepository interface {
 	FindById(ctx context.Context, colaboradorId uuid.UUID) (*Colaborador, error)
 	FindByEmail(ctx context.Context, email string) (*Colaborador, error)
 	FindByFilter(ctx context.Context, filter ColaboradorFilter) ([]Colaborador, error)
-	ExistsEmail(ctx context.Context, email string) bool
-	ExistsId(ctx context.Context, colaboradorId uuid.UUID) bool
-	ExistsEmailExcludingId(ctx context.Context, email string, colaboradorId uuid.UUID) bool
+	ExistsEmail(ctx context.Context, email string) (bool, error)
+	ExistsId(ctx context.Context, colaboradorId uuid.UUID) (bool, error)
+	ExistsEmailExcludingId(ctx context.Context, email string, colaboradorId uuid.UUID) (bool, error)
 }
 
 // Filtro para busca de colaboradores, permitindo filtrar por nome, email, telefone, cargo, departamento e data de admissão.

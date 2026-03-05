@@ -5,8 +5,10 @@ import (
 	"plantao/internal/api"
 	"plantao/internal/domain/colaborador"
 	"plantao/internal/domain/plantao"
+	"plantao/internal/domain/usuario"
 	"plantao/internal/infra/config"
 	"plantao/internal/infra/persistence/postgres"
+	"plantao/internal/infra/security"
 
 	"go.uber.org/fx"
 )
@@ -15,8 +17,10 @@ func main() {
 	fx.New(
 		config.Module,
 		postgres.Module,
+		security.Module,
 		plantao.Module,
 		colaborador.Module,
+		usuario.Module,
 		api.Module,
 
 		fx.Invoke(func(lc fx.Lifecycle, server *api.Server) {

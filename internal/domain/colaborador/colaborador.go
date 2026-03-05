@@ -41,6 +41,7 @@ var (
 	ErrorEmailAlreadyExists  = errors.New("Email já existe!")
 	ErrorinvalidTelefone     = errors.New("Telefone Inválido!")
 	ErrorInvalidStatus       = errors.New("Status Inválido!")
+	ErrorInactiveColaborador = errors.New("Colaborador inativo!")
 )
 
 // Cria um novo colaborador com validações básicas

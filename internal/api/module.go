@@ -12,6 +12,7 @@ var Module = fx.Module(
 	fx.Provide(
 		controller.NewPlantaoController,
 		controller.NewColaboradorController,
+		controller.NewUsuarioController,
 		fx.Annotate(
 			NewRouter,
 			fx.As(new(http.Handler)),
