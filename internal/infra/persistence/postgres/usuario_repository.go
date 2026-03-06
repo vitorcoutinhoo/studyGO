@@ -120,6 +120,7 @@ func (r *UsuarioRepository) FindById(ctx context.Context, usuarioId uuid.UUID) (
 		id,
 		id_colaborador,
 		email,
+		senha_hash,
 		role,
 		ativo
 	FROM usuarios_login
@@ -133,6 +134,7 @@ func (r *UsuarioRepository) FindById(ctx context.Context, usuarioId uuid.UUID) (
 		&u.Id,
 		&u.IdColaborador,
 		&u.Email,
+		&u.Senha,
 		&u.Role,
 		&ativoDB,
 	)
@@ -157,6 +159,7 @@ func (r *UsuarioRepository) FindByEmail(ctx context.Context, email string) (*usu
 		id,
 		id_colaborador,
 		email,
+		senha_hash,
 		role,
 		ativo
 	FROM usuarios_login
@@ -170,6 +173,7 @@ func (r *UsuarioRepository) FindByEmail(ctx context.Context, email string) (*usu
 		&u.Id,
 		&u.IdColaborador,
 		&u.Email,
+		&u.Senha,
 		&u.Role,
 		&ativoDB,
 	)

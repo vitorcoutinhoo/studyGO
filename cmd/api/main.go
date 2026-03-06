@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"plantao/internal/api"
+	"plantao/internal/domain/auth"
 	"plantao/internal/domain/colaborador"
 	"plantao/internal/domain/plantao"
 	"plantao/internal/domain/usuario"
@@ -21,6 +22,7 @@ func main() {
 		plantao.Module,
 		colaborador.Module,
 		usuario.Module,
+		auth.Module,
 		api.Module,
 
 		fx.Invoke(func(lc fx.Lifecycle, server *api.Server) {
