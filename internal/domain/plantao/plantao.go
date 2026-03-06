@@ -2,6 +2,7 @@ package plantao
 
 import (
 	"errors"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -16,6 +17,8 @@ type Plantao struct {
 	ColaboradorId string
 	Periodo       *Periodo
 	Status        StatusPlantao
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
 }
 
 func NewPlantao(colaboradorId string, periodo *Periodo) (*Plantao, error) {
@@ -30,6 +33,8 @@ func NewPlantao(colaboradorId string, periodo *Periodo) (*Plantao, error) {
 		ColaboradorId: colaboradorId,
 		Periodo:       newPeriodo,
 		Status:        StatusPlantaoAgendado,
+		CreatedAt:     time.Now(),
+		UpdatedAt:     time.Now(),
 	}, nil
 }
 
@@ -39,5 +44,6 @@ func (p *Plantao) UpdateStatus(newStatus StatusPlantao) error {
 		return nil
 	}
 
+	p.UpdatedAt = time.Now()
 	return ErrorInvalidTransitionStatus
 }

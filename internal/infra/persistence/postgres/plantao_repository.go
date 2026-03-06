@@ -18,8 +18,8 @@ func NewPlantaoRepository(pool *pgxpool.Pool) *PlantaoRepository {
 
 func (r *PlantaoRepository) Store(ctx context.Context, plantao *plantao.Plantao) error {
 	query := `
-		INSERT INTO plantoes (id, colaborador_id, inicio, fim, status)
-		VALUES ($1, $2, $3, $4, $5)
+		INSERT INTO plantoes (id, colaborador_id, inicio, fim, status, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
 	`
 
 	_, err := r.pool.Exec(ctx, query,
@@ -28,6 +28,8 @@ func (r *PlantaoRepository) Store(ctx context.Context, plantao *plantao.Plantao)
 		plantao.Periodo.Inicio,
 		plantao.Periodo.Fim,
 		plantao.Status,
+		plantao.CreatedAt,
+		plantao.UpdatedAt,
 	)
 
 	if err != nil {
@@ -40,7 +42,7 @@ func (r *PlantaoRepository) Store(ctx context.Context, plantao *plantao.Plantao)
 func (r *PlantaoRepository) Update(ctx context.Context, plantao *plantao.Plantao) error {
 	query := `
 		UPDATE plantoes
-		SET colaborador_id = $2, inicio = $3, fim = $4, status = $5
+		SET colaborador_id = $2, inicio = $3, fim = $4, status = $5, created_at = $6, updated_at = $7
 		WHERE id = $1
 	`
 
@@ -50,6 +52,8 @@ func (r *PlantaoRepository) Update(ctx context.Context, plantao *plantao.Plantao
 		plantao.Periodo.Inicio,
 		plantao.Periodo.Fim,
 		plantao.Status,
+		plantao.CreatedAt,
+		plantao.UpdatedAt,
 	)
 
 	if err != nil {
@@ -75,7 +79,7 @@ func (r *PlantaoRepository) Delete(ctx context.Context, plantaoId string) error 
 
 func (r *PlantaoRepository) FindById(ctx context.Context, plantaoId string) (*plantao.Plantao, error) {
 	query := `
-		SELECT id, colaborador_id, inicio, fim, status
+		SELECT id, colaborador_id, inicio, fim, status, created_at, updated_at
 		FROM plantoes
 		WHERE id = $1
 	`
@@ -89,6 +93,8 @@ func (r *PlantaoRepository) FindById(ctx context.Context, plantaoId string) (*pl
 		&p.Periodo.Inicio,
 		&p.Periodo.Fim,
 		&p.Status,
+		&p.CreatedAt,
+		&p.UpdatedAt,
 	)
 
 	if err != nil {
@@ -104,7 +110,7 @@ func (r *PlantaoRepository) Find(
 ) ([]plantao.Plantao, error) {
 
 	query := `
-		SELECT id, colaborador_id, inicio, fim, status
+		SELECT id, colaborador_id, inicio, fim, status, created_at, updated_at
 		FROM plantoes
 		WHERE 1=1
 	`
@@ -170,6 +176,8 @@ func (r *PlantaoRepository) Find(
 			&p.Periodo.Inicio,
 			&p.Periodo.Fim,
 			&p.Status,
+			&p.CreatedAt,
+			&p.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}
