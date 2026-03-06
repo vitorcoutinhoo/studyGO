@@ -22,14 +22,13 @@ func NewUsuarioRepository(pool *pgxpool.Pool) *UsuarioRepository {
 func (r *UsuarioRepository) Store(ctx context.Context, usuario *usuario.Usuario) (*usuario.Usuario, error) {
 	query := `
 	INSERT INTO usuarios_login (
-		id,
 		id_colaborador,
 		email,
 		senha_hash,
 		role,
 		ativo
 	)
-	VALUES ($1,$2,$3,$4,$5,$6)
+	VALUES ($1,$2,$3,$4,$5)
 	RETURNING id, id_colaborador, email, role, ativo, created_at, updated_at
 	`
 
@@ -38,7 +37,6 @@ func (r *UsuarioRepository) Store(ctx context.Context, usuario *usuario.Usuario)
 	err := r.pool.QueryRow(
 		ctx,
 		query,
-		usuario.Id,
 		usuario.IdColaborador,
 		usuario.Email,
 		usuario.Senha,
@@ -71,7 +69,7 @@ func (r *UsuarioRepository) Update(ctx context.Context, u *usuario.Usuario) erro
 		senha_hash = $2,
 		ativo = $3,
 		updated_at = CURRENT_TIMESTAMP
-	WHERE id = $4
+	WHERE id = $4 AND ativo = 'Y'
 	`
 
 	result, err := r.pool.Exec(
@@ -100,7 +98,7 @@ func (r *UsuarioRepository) Disable(ctx context.Context, usuarioId uuid.UUID) er
 	SET
 		ativo = 'N',
 		updated_at = NOW()
-	WHERE id = $1
+	WHERE id = $1 AND ativo = 'Y'
 	`
 
 	result, err := r.pool.Exec(ctx, query, usuarioId)
@@ -125,7 +123,7 @@ func (r *UsuarioRepository) FindById(ctx context.Context, usuarioId uuid.UUID) (
 		role,
 		ativo
 	FROM usuarios_login
-	WHERE id = $1
+	WHERE id = $1 AND ativo = 'Y'
 	`
 
 	var u usuario.Usuario
@@ -153,12 +151,49 @@ func (r *UsuarioRepository) FindById(ctx context.Context, usuarioId uuid.UUID) (
 	return &u, nil
 }
 
+func (r *UsuarioRepository) FindByEmail(ctx context.Context, email string) (*usuario.Usuario, error) {
+	query := `
+	SELECT
+		id,
+		id_colaborador,
+		email,
+		role,
+		ativo
+	FROM usuarios_login
+	WHERE email = $1 AND ativo = 'Y'
+	`
+
+	var u usuario.Usuario
+	var ativoDB string
+
+	err := r.pool.QueryRow(ctx, query, email).Scan(
+		&u.Id,
+		&u.IdColaborador,
+		&u.Email,
+		&u.Role,
+		&ativoDB,
+	)
+
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, usuario.ErrorUserNotFound
+		}
+		return nil, err
+	}
+
+	sts := dbToStatus(ativoDB)
+
+	u.Ativo = sts
+
+	return &u, nil
+}
+
 func (r *UsuarioRepository) ExistsEmail(ctx context.Context, email string) (bool, error) {
 	query := `
 	SELECT EXISTS (
 		SELECT 1
 		FROM usuarios_login
-		WHERE email = $1
+		WHERE email = $1 AND ativo = 'Y'
 	)
 	`
 
@@ -178,7 +213,7 @@ func (r *UsuarioRepository) ExistsId(ctx context.Context, usuarioId uuid.UUID) (
 	SELECT EXISTS (
 		SELECT 1
 		FROM usuarios_login
-		WHERE id = $1
+		WHERE id = $1 AND ativo = 'Y'
 	)
 	`
 
@@ -199,7 +234,7 @@ func (r *UsuarioRepository) ExistsEmailExcludingId(ctx context.Context, email st
 		SELECT 1
 		FROM usuarios_login
 		WHERE email = $1
-		AND id <> $2
+		AND id <> $2 AND ativo = 'Y'
 	)
 	`
 

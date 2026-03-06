@@ -20,3 +20,8 @@ type UsuarioAdminRequestDTO struct {
 	Role             string `json:"role" validate:"required,oneof=admin user"`
 	Ativo            string `json:"ativo"`
 }
+
+type LoginRequestDTO struct {
+	Email string `json:"email" validate:"required,email"`
+	Senha string `json:"senha" validate:"required,min=6"`
+}

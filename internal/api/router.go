@@ -2,16 +2,25 @@ package api
 
 import (
 	"plantao/internal/api/controller"
+	"plantao/internal/api/midware"
 	"time"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
 
+const (
+	ADMIN_ROLE       = "admin"
+	COLABORADOR_ROLE = "colaborador"
+	GERENTE_ROLE     = "gerente"
+)
+
 func NewRouter(
 	plantaoController *controller.PlantaoController,
 	colaboradorController *controller.ColaboradorController,
 	usuarioController *controller.UsuarioController,
+	authController *controller.AuthController,
+	authMidware *midware.AuthMidware,
 ) *gin.Engine {
 	router := gin.Default()
 
@@ -25,7 +34,8 @@ func NewRouter(
 
 	setupPlantaoRoutes(router, plantaoController)
 	setupColaboradorRoutes(router, colaboradorController)
-	setupUsuarioRoutes(router, usuarioController)
+	setupUsuarioRoutes(router, usuarioController, authMidware)
+	setupAuthRoutes(router, authController)
 
 	return router
 }
@@ -72,12 +82,40 @@ func setupColaboradorRoutes(
 func setupUsuarioRoutes(
 	router *gin.Engine,
 	usuarioController *controller.UsuarioController,
+	authMidware *midware.AuthMidware,
 ) {
 	v1 := router.Group("/api/v1")
 	{
+		adminRoutes := v1.Group("/admin")
+		adminRoutes.Use(midware.RoleMidware("admin"))
+		{
+			//adminRoutes.GET("/usuarios", usuarioController.GetAllUsuarios)
+		}
+
+		usuarioAuthRoutes := v1.Group("/autheticated/usuarios")
+		usuarioAuthRoutes.Use(authMidware.AuthenticationMidware(), midware.RoleMidware(ADMIN_ROLE, GERENTE_ROLE, COLABORADOR_ROLE))
+		{
+			usuarioAuthRoutes.PUT("/:id_usuario", usuarioController.UpdateUsuario)
+			usuarioAuthRoutes.GET("/:id_usuario", usuarioController.GetUsuarioById)
+			usuarioAuthRoutes.DELETE("/:id_usuario", usuarioController.DisableUsuario)
+		}
+
 		usuarioRoutes := v1.Group("/usuarios")
 		{
-			usuarioRoutes.POST("colaboradores/:id_colaborador", usuarioController.CreateUsuario)
+			usuarioRoutes.POST("/colaboradores/:id_colaborador", usuarioController.CreateUsuario)
+		}
+	}
+}
+
+func setupAuthRoutes(
+	router *gin.Engine,
+	authController *controller.AuthController,
+) {
+	v1 := router.Group("/api/v1")
+	{
+		authRoutes := v1.Group("/auth")
+		{
+			authRoutes.POST("/login", authController.Login)
 		}
 	}
 }

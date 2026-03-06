@@ -176,6 +176,24 @@ func (s *UsuarioService) GetUsuarioById(ctx context.Context, usuarioId string) (
 	return usuarioToResponse(existingUsuario)
 } // Fim GetUsuarioById
 
+func (s *UsuarioService) GetUsuarioByEmail(ctx context.Context, email string) (*dto.UsuarioResponseDTO, error) {
+	existingUsuario, err := s.repository.FindByEmail(ctx, email)
+
+	if err != nil {
+		return nil, ErrorUserNotFound
+	}
+
+	response, err := usuarioToResponse(existingUsuario)
+
+	if err != nil {
+		return nil, err
+	}
+
+	fmt.Println("Service", response)
+
+	return response, nil
+}
+
 // Converte um objeto de domínio de usuário para um DTO de resposta, formatando os campos conforme necessário
 func usuarioToResponse(usuario *Usuario) (*dto.UsuarioResponseDTO, error) {
 	a, err := statusToString(usuario.Ativo)

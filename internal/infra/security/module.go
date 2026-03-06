@@ -13,5 +13,6 @@ var Module = fx.Module(
 			NewBcryptHasher,
 			fx.As(new(usuario.PasswordHasher)),
 		),
+		NewJWTService,
 	),
 )
