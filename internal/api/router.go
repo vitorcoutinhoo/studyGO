@@ -87,9 +87,9 @@ func setupUsuarioRoutes(
 	v1 := router.Group("/api/v1")
 	{
 		adminRoutes := v1.Group("/admin")
-		adminRoutes.Use(midware.RoleMidware("admin"))
+		adminRoutes.Use(authMidware.AuthenticationMidware(), midware.RoleMidware(ADMIN_ROLE))
 		{
-			//adminRoutes.GET("/usuarios", usuarioController.GetAllUsuarios)
+			//Rotas do administrador
 		}
 
 		usuarioAuthRoutes := v1.Group("/autheticated/usuarios")
