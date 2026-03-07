@@ -13,6 +13,7 @@ type Config struct {
 	Server   ServerConfig
 	Database DatabaseConfig
 	JWT      JWTConfig
+	SMTP     SMTPConfig
 }
 
 // Configurações do servidor, como porta e host
@@ -30,6 +31,14 @@ type JWTConfig struct {
 	PrivateKeyPath string
 	PublicKeyPath  string
 	ExpireTime     int64
+}
+
+type SMTPConfig struct {
+	Host     string
+	Port     string
+	Username string
+	Password string
+	From     string
 }
 
 // Pra teste, seria mais apropriado carregar de um arquivo ou variáveis de ambiente
@@ -58,6 +67,13 @@ func LoadConfig() (*Config, error) {
 			PrivateKeyPath: os.Getenv("JWT_PRIVATE_KEY_PATH"),
 			PublicKeyPath:  os.Getenv("JWT_PUBLIC_KEY_PATH"),
 			ExpireTime:     expireTime,
+		},
+		SMTP: SMTPConfig{
+			Host:     os.Getenv("SMTP_HOST"),
+			Port:     os.Getenv("SMTP_PORT"),
+			Username: os.Getenv("SMTP_USERNAME"),
+			Password: os.Getenv("SMTP_PASSWORD"),
+			From:     os.Getenv("SMTP_FROM"),
 		},
 	}, nil
 } // Fim LoadConfig

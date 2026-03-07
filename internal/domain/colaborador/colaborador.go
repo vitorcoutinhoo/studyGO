@@ -140,7 +140,7 @@ func (c *Colaborador) UpdateDados(nome, email, telefone, cargo, setor, foto *str
 
 // Verifica se o colaborador pode agendar um platão
 func (c *Colaborador) PodeAgendarPlatao() (bool, error) {
-	if c.Status != StatusAtivo {
+	if c.AtivoPlantao != StatusAtivo {
 		return false, errors.New("Colaborador inativo não pode agendar plantão")
 	}
 

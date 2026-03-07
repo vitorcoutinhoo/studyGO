@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"plantao/internal/api/dto"
+	"plantao/internal/domain/email"
 	"plantao/utils"
 	"strings"
 	"time"
@@ -13,13 +14,15 @@ import (
 
 // Serviço para gerenciar colaboradores
 type ColaboradorService struct {
-	repository ColaboradorRepository
+	repository  ColaboradorRepository
+	emailSender email.EmailSender
 }
 
 // Cria uma nova instância do serviço de colaborador
-func NewColaboradorService(repository ColaboradorRepository) *ColaboradorService {
+func NewColaboradorService(repository ColaboradorRepository, emailSender email.EmailSender) *ColaboradorService {
 	return &ColaboradorService{
-		repository: repository,
+		repository:  repository,
+		emailSender: emailSender,
 	}
 } // Fim NewColaboradorService
 
@@ -69,6 +72,12 @@ func (s *ColaboradorService) CreateColaborador(ctx context.Context, colaboradorD
 	if err != nil {
 		return nil, err
 	}
+
+	s.emailSender.SendEmail(
+		colaborador.Email,
+		"Bem-vindo ao Plantão",
+		fmt.Sprintf("Olá %s,\n\nBem-vindo ao Plantão! Sua conta foi criada com sucesso.\n\nAtenciosamente,\nEquipe do Plantão", colaborador.Nome),
+	)
 
 	return colaboradorResponse, nil
 } // Fim CreateColaborador
