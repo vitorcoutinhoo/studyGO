@@ -17,14 +17,38 @@ const (
 	StatusInativo
 )
 
+type CargoColaborador string
+
+const (
+	CargoAnalista               CargoColaborador = "Analista"
+	CargoGerente                CargoColaborador = "Gerente"
+	CargoConsultor              CargoColaborador = "Consultor"
+	CargoTecnico                CargoColaborador = "Técnico"
+	CargoOutro                  CargoColaborador = "Outro"
+	CargoDesenvolvedorFrontend  CargoColaborador = "Desenvolvedor Frontend"
+	CargoDesenvolvedorBackend   CargoColaborador = "Desenvolvedor Backend"
+	CargoDesenvolvedorFullstack CargoColaborador = "Desenvolvedor Fullstack"
+)
+
+type SetorColaborador string
+
+const (
+	SetorTI              SetorColaborador = "TI"
+	SetorRH              SetorColaborador = "RH"
+	SetorFinanceiro      SetorColaborador = "Financeiro"
+	SetorSuporte         SetorColaborador = "Suporte"
+	SetorDesenvolvimento SetorColaborador = "Desenvolvimento"
+	SetorDiretoria       SetorColaborador = "Diretoria"
+)
+
 // Estrutura do domínio Colaborador
 type Colaborador struct {
 	Id               uuid.UUID
 	Nome             string
 	Email            string
 	Telefone         string
-	Cargo            string
-	Setor            string
+	Cargo            CargoColaborador
+	Setor            SetorColaborador
 	Foto             string
 	Status           StatusColaborador
 	AtivoPlantao     StatusColaborador
@@ -42,10 +66,12 @@ var (
 	ErrorinvalidTelefone     = errors.New("Telefone Inválido!")
 	ErrorInvalidStatus       = errors.New("Status Inválido!")
 	ErrorInactiveColaborador = errors.New("Colaborador inativo!")
+	ErrorIvalidCargo         = errors.New("Cargo inválido!")
+	ErrorIvalidSetor         = errors.New("Setor inválido!")
 )
 
 // Cria um novo colaborador com validações básicas
-func NewColaborador(nome, email, telefone, cargo, setor, foto string, dataAdmissao, dataDesligamento *time.Time, ativo, ativoPlatao StatusColaborador) (*Colaborador, error) {
+func NewColaborador(nome, email, telefone, foto string, dataAdmissao, dataDesligamento *time.Time, ativo, ativoPlatao StatusColaborador, cargo CargoColaborador, setor SetorColaborador) (*Colaborador, error) {
 	if !isEmailValid(email) {
 		return nil, ErrorInvalidEmail
 	}
@@ -60,6 +86,14 @@ func NewColaborador(nome, email, telefone, cargo, setor, foto string, dataAdmiss
 
 	if !isStatusValid(ativo) {
 		return nil, ErrorInvalidStatus
+	}
+
+	if !isCargoValid(string(cargo)) {
+		return nil, ErrorIvalidCargo
+	}
+
+	if !isSetorValid(string(setor)) {
+		return nil, ErrorIvalidSetor
 	}
 
 	return &Colaborador{
@@ -78,7 +112,7 @@ func NewColaborador(nome, email, telefone, cargo, setor, foto string, dataAdmiss
 
 // Atualiza os dados do colaborador com validações básicas
 // Só vai atualizar os campos que não forem vazios
-func (c *Colaborador) UpdateDados(nome, email, telefone, cargo, setor, foto *string, dataAdmissao, dataDesligamento *time.Time, status, ativoPlantao *StatusColaborador) error {
+func (c *Colaborador) UpdateDados(nome, email, telefone, foto *string, dataAdmissao, dataDesligamento *time.Time, status, ativoPlantao *StatusColaborador, cargo *CargoColaborador, setor *SetorColaborador) error {
 	if nome != nil && *nome != "" {
 		c.Nome = *nome
 	}
@@ -163,3 +197,21 @@ func isTelefoneValid(telefone string) bool {
 
 	return phoneRegexBR.MatchString(telefone)
 } // Fim isTelefoneValid
+
+func isCargoValid(cargo string) bool {
+	switch cargo {
+	case string(CargoAnalista), string(CargoGerente), string(CargoConsultor), string(CargoTecnico), string(CargoOutro), string(CargoDesenvolvedorFrontend), string(CargoDesenvolvedorBackend), string(CargoDesenvolvedorFullstack):
+		return true
+	default:
+		return false
+	}
+}
+
+func isSetorValid(setor string) bool {
+	switch setor {
+	case string(SetorTI), string(SetorRH), string(SetorFinanceiro), string(SetorSuporte), string(SetorDesenvolvimento), string(SetorDiretoria):
+		return true
+	default:
+		return false
+	}
+}

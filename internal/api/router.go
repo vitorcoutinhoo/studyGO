@@ -93,7 +93,7 @@ func setupUsuarioRoutes(
 		}
 
 		usuarioAuthRoutes := v1.Group("/autheticated/usuarios")
-		usuarioAuthRoutes.Use(authMidware.AuthenticationMidware(), midware.RoleMidware(ADMIN_ROLE, GERENTE_ROLE, COLABORADOR_ROLE))
+		usuarioAuthRoutes.Use(authMidware.AuthenticationMidware(), midware.RoleMidware(COLABORADOR_ROLE))
 		{
 			usuarioAuthRoutes.PUT("/:id_usuario", usuarioController.UpdateUsuario)
 			usuarioAuthRoutes.GET("/:id_usuario", usuarioController.GetUsuarioById)

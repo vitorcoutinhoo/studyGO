@@ -48,13 +48,13 @@ func (s *ColaboradorService) CreateColaborador(ctx context.Context, colaboradorD
 		colaborador.Nome,
 		colaborador.Email,
 		colaborador.Telefone,
-		colaborador.Cargo,
-		colaborador.Setor,
 		colaborador.Foto,
 		colaborador.DataAdmissao,
 		colaborador.DataDesligamento,
 		colaborador.Status,
 		colaborador.AtivoPlantao,
+		colaborador.Cargo,
+		colaborador.Setor,
 	)
 
 	if err != nil {
@@ -120,13 +120,13 @@ func (s *ColaboradorService) UpdateColaborador(ctx context.Context, colaboradorD
 		&colaboradorDomain.Nome,
 		&colaboradorDomain.Email,
 		&colaboradorDomain.Telefone,
-		&colaboradorDomain.Cargo,
-		&colaboradorDomain.Setor,
 		&colaboradorDomain.Foto,
 		colaboradorDomain.DataAdmissao,
 		colaboradorDomain.DataDesligamento,
 		&colaboradorDomain.Status,
 		&colaboradorDomain.AtivoPlantao,
+		&colaboradorDomain.Cargo,
+		&colaboradorDomain.Setor,
 	)
 
 	if err != nil {
@@ -251,17 +251,29 @@ func createColaboradorDtoToDomain(r *dto.CreateColaboradorRequest) (*Colaborador
 		return nil, err
 	}
 
+	cargo, err := ParseCargoColaborador(r.Cargo)
+
+	if err != nil {
+		return nil, err
+	}
+
+	setor, err := ParseSetorColaborador(r.Setor)
+
+	if err != nil {
+		return nil, err
+	}
+
 	return &Colaborador{
 		Nome:             r.Nome,
 		Email:            r.Email,
 		Telefone:         r.Telefone,
-		Cargo:            r.Cargo,
-		Setor:            r.Setor,
+		Setor:            setor,
 		Foto:             r.Foto,
 		Status:           ativo,
 		AtivoPlantao:     ativoPlantao,
 		DataAdmissao:     dataAdmissao,
 		DataDesligamento: dataDesligamento,
+		Cargo:            cargo,
 	}, nil
 } // Fim toDomain
 
@@ -299,12 +311,24 @@ func updateColaboradorDtoToDomain(r *dto.UpdateColaboradorRequest) (*Colaborador
 		return nil, err
 	}
 
+	cargo, err := ParseCargoColaborador(*r.Cargo)
+
+	if err != nil {
+		return nil, err
+	}
+
+	setor, err := ParseSetorColaborador(*r.Setor)
+
+	if err != nil {
+		return nil, err
+	}
+
 	return &Colaborador{
 		Nome:             *r.Nome,
 		Email:            *r.Email,
 		Telefone:         *r.Telefone,
-		Cargo:            *r.Cargo,
-		Setor:            *r.Setor,
+		Cargo:            cargo,
+		Setor:            setor,
 		Foto:             *r.Foto,
 		Status:           ativo,
 		AtivoPlantao:     ativoPlantao,
@@ -354,8 +378,8 @@ func colaboradorToResponse(c *Colaborador) (*dto.ColaboradorResponse, error) {
 		Nome:             c.Nome,
 		Email:            c.Email,
 		Telefone:         c.Telefone,
-		Cargo:            c.Cargo,
-		Setor:            c.Setor,
+		Cargo:            string(c.Cargo),
+		Setor:            string(c.Setor),
 		Foto:             c.Foto,
 		Status:           status,
 		AtivoPlantao:     statusPlantao,
@@ -387,6 +411,48 @@ func statusColaboradorFromDTO(value string) (StatusColaborador, error) {
 		return 0, ErrorInvalidStatus
 	}
 } // Fim StatusColaboradorFromDTO
+
+func ParseCargoColaborador(s string) (CargoColaborador, error) {
+	switch s {
+	case string(CargoAnalista):
+		return CargoAnalista, nil
+	case string(CargoGerente):
+		return CargoGerente, nil
+	case string(CargoConsultor):
+		return CargoConsultor, nil
+	case string(CargoTecnico):
+		return CargoTecnico, nil
+	case string(CargoOutro):
+		return CargoOutro, nil
+	case string(CargoDesenvolvedorFrontend):
+		return CargoDesenvolvedorFrontend, nil
+	case string(CargoDesenvolvedorBackend):
+		return CargoDesenvolvedorBackend, nil
+	case string(CargoDesenvolvedorFullstack):
+		return CargoDesenvolvedorFullstack, nil
+	default:
+		return "", fmt.Errorf("cargo inválido: %s", s)
+	}
+}
+
+func ParseSetorColaborador(s string) (SetorColaborador, error) {
+	switch s {
+	case string(SetorRH):
+		return SetorRH, nil
+	case string(SetorTI):
+		return SetorTI, nil
+	case string(SetorFinanceiro):
+		return SetorFinanceiro, nil
+	case string(SetorSuporte):
+		return SetorSuporte, nil
+	case string(SetorDesenvolvimento):
+		return SetorDesenvolvimento, nil
+	case string(SetorDiretoria):
+		return SetorDiretoria, nil
+	default:
+		return "", fmt.Errorf("setor inválido: %s", s)
+	}
+}
 
 // Converte a requisição de filtro de colaboradores para o domínio
 func filterDtoToFilterDomain(filterReq dto.GetColaboradoresByFilterRequest) ColaboradorFilter {
