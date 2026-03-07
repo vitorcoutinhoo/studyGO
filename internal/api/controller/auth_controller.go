@@ -1,24 +1,20 @@
 package controller
 
 import (
-	"fmt"
 	"net/http"
 	"plantao/internal/api/dto"
-	"plantao/internal/domain/usuario"
-	"plantao/internal/infra/security"
+	"plantao/internal/domain/auth"
 
 	"github.com/gin-gonic/gin"
 )
 
 type AuthController struct {
-	jwtService     *security.JWTService
-	usuarioService *usuario.UsuarioService
+	authService *auth.AuthService
 }
 
-func NewAuthController(jwtService *security.JWTService, usuarioService *usuario.UsuarioService) *AuthController {
+func NewAuthController(authService *auth.AuthService) *AuthController {
 	return &AuthController{
-		jwtService:     jwtService,
-		usuarioService: usuarioService,
+		authService: authService,
 	}
 }
 
@@ -30,19 +26,10 @@ func (a *AuthController) Login(ctx *gin.Context) {
 		return
 	}
 
-	u, err := a.usuarioService.GetUsuarioByEmail(ctx, req.Email)
-
-	fmt.Println("Login ", u)
+	token, err := a.authService.Authenticate(ctx, &req)
 
 	if err != nil {
-		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "email ou senha invalidos"})
-		return
-	}
-
-	token, err := a.jwtService.GenerateToken(u.Id, u.Role)
-
-	if err != nil {
-		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "credenciais inválidas"})
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 		return
 	}
 
