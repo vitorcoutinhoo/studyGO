@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"plantao/internal/api/dto"
 	"plantao/internal/domain/comunicacao"
-	"plantao/internal/domain/email"
 	"plantao/utils"
 	"strings"
 	"time"
@@ -16,15 +15,13 @@ import (
 // Serviço para gerenciar colaboradores
 type ColaboradorService struct {
 	repository   ColaboradorRepository
-	emailSender  email.EmailSender
 	envioService *comunicacao.EnvioService
 }
 
 // Cria uma nova instância do serviço de colaborador
-func NewColaboradorService(repository ColaboradorRepository, emailSender email.EmailSender, envioService *comunicacao.EnvioService) *ColaboradorService {
+func NewColaboradorService(repository ColaboradorRepository, envioService *comunicacao.EnvioService) *ColaboradorService {
 	return &ColaboradorService{
 		repository:   repository,
-		emailSender:  emailSender,
 		envioService: envioService,
 	}
 } // Fim NewColaboradorService
