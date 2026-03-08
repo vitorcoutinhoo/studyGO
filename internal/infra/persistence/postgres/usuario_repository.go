@@ -41,7 +41,7 @@ func (r *UsuarioRepository) Store(ctx context.Context, usuario *usuario.Usuario)
 		usuario.Email,
 		usuario.Senha,
 		usuario.Role,
-		statusToDB(usuario.Ativo),
+		statusToDBUsuario(usuario.Ativo),
 	).Scan(
 		&usuario.Id,
 		&usuario.IdColaborador,
@@ -56,7 +56,7 @@ func (r *UsuarioRepository) Store(ctx context.Context, usuario *usuario.Usuario)
 		return nil, err
 	}
 
-	usuario.Ativo = dbToStatus(ativoDB)
+	usuario.Ativo = dbToStatusUsuario(ativoDB)
 
 	return usuario, nil
 }
@@ -77,7 +77,7 @@ func (r *UsuarioRepository) Update(ctx context.Context, u *usuario.Usuario) erro
 		query,
 		u.Email,
 		u.Senha,
-		statusToDB(u.Ativo),
+		statusToDBUsuario(u.Ativo),
 		u.Id,
 	)
 
@@ -146,7 +146,7 @@ func (r *UsuarioRepository) FindById(ctx context.Context, usuarioId uuid.UUID) (
 		return nil, err
 	}
 
-	sts := dbToStatus(ativoDB)
+	sts := dbToStatusUsuario(ativoDB)
 
 	u.Ativo = sts
 
@@ -185,7 +185,7 @@ func (r *UsuarioRepository) FindByEmail(ctx context.Context, email string) (*usu
 		return nil, err
 	}
 
-	sts := dbToStatus(ativoDB)
+	sts := dbToStatusUsuario(ativoDB)
 
 	u.Ativo = sts
 
@@ -253,7 +253,7 @@ func (r *UsuarioRepository) ExistsEmailExcludingId(ctx context.Context, email st
 	return exists, nil
 }
 
-func statusToDB(status usuario.StatusUsuario) string {
+func statusToDBUsuario(status usuario.StatusUsuario) string {
 	switch status {
 	case usuario.StatusAtivo:
 		return "Y"
@@ -264,7 +264,7 @@ func statusToDB(status usuario.StatusUsuario) string {
 	}
 }
 
-func dbToStatus(dbValue string) usuario.StatusUsuario {
+func dbToStatusUsuario(dbValue string) usuario.StatusUsuario {
 	switch dbValue {
 	case "Y":
 		return usuario.StatusAtivo

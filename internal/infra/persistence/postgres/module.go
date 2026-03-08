@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"plantao/internal/domain/colaborador"
+	"plantao/internal/domain/comunicacao"
 	"plantao/internal/domain/plantao"
 	"plantao/internal/domain/usuario"
 
@@ -23,6 +24,14 @@ var Module = fx.Module(
 		fx.Annotate(
 			NewUsuarioRepository,
 			fx.As(new(usuario.UsuarioRepository)),
+		),
+		fx.Annotate(
+			NewModeloRepository,
+			fx.As(new(comunicacao.ModeloComunicaRepository)),
+		),
+		fx.Annotate(
+			NewEnvioRepository,
+			fx.As(new(comunicacao.EnvioComunicacaoRepository)),
 		),
 	),
 )

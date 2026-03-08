@@ -16,6 +16,7 @@ var Module = fx.Module(
 		controller.NewUsuarioController,
 		controller.NewAuthController,
 		midware.NewAuthMidware,
+		controller.NewModeloComunicacaoController,
 		fx.Annotate(
 			NewRouter,
 			fx.As(new(http.Handler)),

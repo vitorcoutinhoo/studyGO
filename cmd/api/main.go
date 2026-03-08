@@ -5,6 +5,7 @@ import (
 	"plantao/internal/api"
 	"plantao/internal/domain/auth"
 	"plantao/internal/domain/colaborador"
+	"plantao/internal/domain/comunicacao"
 	"plantao/internal/domain/plantao"
 	"plantao/internal/domain/usuario"
 	"plantao/internal/infra/config"
@@ -24,6 +25,7 @@ func main() {
 		usuario.Module,
 		auth.Module,
 		api.Module,
+		comunicacao.Module,
 
 		fx.Invoke(func(lc fx.Lifecycle, server *api.Server) {
 			lc.Append(fx.Hook{
