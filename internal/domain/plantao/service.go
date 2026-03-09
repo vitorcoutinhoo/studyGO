@@ -3,19 +3,24 @@ package plantao
 import "context"
 
 type PlantaoService struct {
-	reposiotory PlantaoRepository
+	repository PlantaoRepository
 }
 
 func NewPlantaoService(repository PlantaoRepository) *PlantaoService {
 	return &PlantaoService{
-		reposiotory: repository,
+		repository: repository,
 	}
 }
+
 func (s *PlantaoService) CreatePlantao(ctx context.Context, colaboradorId string, periodo *Periodo) (*Plantao, error) {
-	existingPlantoes, _ := s.reposiotory.Find(ctx, &Filtro{
+	existingPlantoes, err := s.repository.Find(ctx, &Filtro{
 		ColaboradorID: colaboradorId,
 		Periodo:       periodo,
 	})
+
+	if err != nil {
+		return nil, err
+	}
 
 	if existingPlantoes != nil {
 		return nil, ErrorExistingPlantao
@@ -26,7 +31,7 @@ func (s *PlantaoService) CreatePlantao(ctx context.Context, colaboradorId string
 		return nil, err
 	}
 
-	if err := s.reposiotory.Store(ctx, plantao); err != nil {
+	if err := s.repository.Store(ctx, plantao); err != nil {
 		return nil, err
 	}
 
@@ -34,7 +39,11 @@ func (s *PlantaoService) CreatePlantao(ctx context.Context, colaboradorId string
 }
 
 func (s *PlantaoService) UpdatePlantaoStatus(ctx context.Context, plantaoId string, newStatus StatusPlantao) (*Plantao, error) {
-	plantao, _ := s.reposiotory.FindById(ctx, plantaoId)
+	plantao, err := s.repository.FindById(ctx, plantaoId)
+	if err != nil {
+		return nil, err
+	}
+
 	if plantao == nil {
 		return nil, ErrorPlantaoNotFinded
 	}
@@ -43,7 +52,7 @@ func (s *PlantaoService) UpdatePlantaoStatus(ctx context.Context, plantaoId stri
 		return nil, err
 	}
 
-	if err := s.reposiotory.Update(ctx, plantao); err != nil {
+	if err := s.repository.Update(ctx, plantao); err != nil {
 		return nil, err
 	}
 
@@ -51,20 +60,24 @@ func (s *PlantaoService) UpdatePlantaoStatus(ctx context.Context, plantaoId stri
 }
 
 func (s *PlantaoService) DeletePlantao(ctx context.Context, plantaoId string) error {
-	plantao, _ := s.reposiotory.FindById(ctx, plantaoId)
+	plantao, err := s.repository.FindById(ctx, plantaoId)
+	if err != nil {
+		return err
+	}
+
 	if plantao == nil {
 		return ErrorPlantaoNotFinded
 	}
 
-	if err := s.reposiotory.Delete(ctx, plantaoId); err != nil {
-		return err
-	}
-
-	return nil
+	return s.repository.Delete(ctx, plantaoId)
 }
 
 func (s *PlantaoService) GetPlantaoById(ctx context.Context, plantaoId string) (*Plantao, error) {
-	plantao, _ := s.reposiotory.FindById(ctx, plantaoId)
+	plantao, err := s.repository.FindById(ctx, plantaoId)
+	if err != nil {
+		return nil, err
+	}
+
 	if plantao == nil {
 		return nil, ErrorPlantaoNotFinded
 	}
@@ -73,46 +86,23 @@ func (s *PlantaoService) GetPlantaoById(ctx context.Context, plantaoId string) (
 }
 
 func (s *PlantaoService) GetPlantoes(ctx context.Context, filter *Filtro) ([]Plantao, error) {
-	plantoes, err := s.reposiotory.Find(ctx, filter)
-	if err != nil {
-		return nil, err
-	}
-
-	return plantoes, nil
+	return s.repository.Find(ctx, filter)
 }
 
 func (s *PlantaoService) GetPlantoesByColaboradorId(ctx context.Context, colaboradorId string) ([]Plantao, error) {
-	plantoes, err := s.reposiotory.Find(ctx, &Filtro{
+	return s.repository.Find(ctx, &Filtro{
 		ColaboradorID: colaboradorId,
 	})
-
-	if err != nil {
-		return nil, err
-	}
-
-	return plantoes, nil
 }
 
 func (s *PlantaoService) GetPlantoesByPeriodo(ctx context.Context, periodo *Periodo) ([]Plantao, error) {
-	plantoes, err := s.reposiotory.Find(ctx, &Filtro{
+	return s.repository.Find(ctx, &Filtro{
 		Periodo: periodo,
 	})
-
-	if err != nil {
-		return nil, err
-	}
-
-	return plantoes, nil
 }
 
 func (s *PlantaoService) GetPlantoesByStatus(ctx context.Context, status StatusPlantao) ([]Plantao, error) {
-	plantoes, err := s.reposiotory.Find(ctx, &Filtro{
+	return s.repository.Find(ctx, &Filtro{
 		Status: &status,
 	})
-
-	if err != nil {
-		return nil, err
-	}
-
-	return plantoes, nil
 }

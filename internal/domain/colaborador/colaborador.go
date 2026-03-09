@@ -63,11 +63,11 @@ var (
 	ErrorColaboradorNotFound = errors.New("Colaborador não encontrado!")
 	ErrorInvalidEmail        = errors.New("Email Inválido!")
 	ErrorEmailAlreadyExists  = errors.New("Email já existe!")
-	ErrorinvalidTelefone     = errors.New("Telefone Inválido!")
+	ErrorInvalidTelefone     = errors.New("Telefone Inválido!")
 	ErrorInvalidStatus       = errors.New("Status Inválido!")
 	ErrorInactiveColaborador = errors.New("Colaborador inativo!")
-	ErrorIvalidCargo         = errors.New("Cargo inválido!")
-	ErrorIvalidSetor         = errors.New("Setor inválido!")
+	ErrorInvalidCargo        = errors.New("Cargo inválido!")
+	ErrorInvalidSetor        = errors.New("Setor inválido!")
 )
 
 // Cria um novo colaborador com validações básicas
@@ -77,7 +77,7 @@ func NewColaborador(nome, email, telefone, foto string, dataAdmissao, dataDeslig
 	}
 
 	if !isTelefoneValid(telefone) {
-		return nil, ErrorinvalidTelefone
+		return nil, ErrorInvalidTelefone
 	}
 
 	if !isStatusValid(ativoPlatao) {
@@ -89,11 +89,11 @@ func NewColaborador(nome, email, telefone, foto string, dataAdmissao, dataDeslig
 	}
 
 	if !isCargoValid(string(cargo)) {
-		return nil, ErrorIvalidCargo
+		return nil, ErrorInvalidCargo
 	}
 
 	if !isSetorValid(string(setor)) {
-		return nil, ErrorIvalidSetor
+		return nil, ErrorInvalidSetor
 	}
 
 	return &Colaborador{
@@ -127,7 +127,7 @@ func (c *Colaborador) UpdateDados(nome, email, telefone, foto *string, dataAdmis
 
 	if telefone != nil && *telefone != "" {
 		if !isTelefoneValid(*telefone) {
-			return ErrorinvalidTelefone
+			return ErrorInvalidTelefone
 		}
 
 		c.Telefone = *telefone

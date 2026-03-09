@@ -39,11 +39,11 @@ func NewPlantao(colaboradorId string, periodo *Periodo) (*Plantao, error) {
 }
 
 func (p *Plantao) UpdateStatus(newStatus StatusPlantao) error {
-	if p.Status.canStatusPlantaoTransitionTo(newStatus) {
-		p.Status = newStatus
-		return nil
+	if !p.Status.canStatusPlantaoTransitionTo(newStatus) {
+		return ErrorInvalidTransitionStatus
 	}
 
+	p.Status = newStatus
 	p.UpdatedAt = time.Now()
-	return ErrorInvalidTransitionStatus
+	return nil
 }

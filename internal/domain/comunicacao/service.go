@@ -195,13 +195,13 @@ func ParseTipoComunicacao(s string) (TipoComunicacao, error) {
 func ParseNomeEnvio(s string) (NomeEnvio, error) {
 	switch s {
 	case "Boas Vindas":
-		return NomeEnvio(BoasVindas), nil
+		return BoasVindas, nil
 	case "Novo Plantão":
-		return NomeEnvio(BoasVindas), nil
+		return NovoPlantao, nil
 	case "Cadastro Atualizado":
-		return NomeEnvio(BoasVindas), nil
+		return CadastroAtualizado, nil
 	case "Cadastro Excluido":
-		return NomeEnvio(BoasVindas), nil
+		return CadastroExcluido, nil
 	default:
 		return "", fmt.Errorf("tipo de envio inválido: %s", s)
 	}

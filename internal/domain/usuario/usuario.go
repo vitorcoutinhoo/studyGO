@@ -30,8 +30,8 @@ type Usuario struct {
 	Senha         string
 	Role          Role
 	Ativo         StatusUsuario
-	CreateAt      *time.Time
-	UpdateAt      *time.Time
+	CreatedAt     *time.Time
+	UpdatedAt     *time.Time
 }
 
 var (

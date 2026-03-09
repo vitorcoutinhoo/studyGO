@@ -14,12 +14,20 @@ func ParseBrToUsDate(data *string) (*time.Time, error) {
 		return nil, fmt.Errorf("erro, data vazia")
 	}
 
-	layout := "02/01/2006"
+	layouts := []string{"02/01/2006", "2006-01-02"}
 
-	t, err := time.Parse(layout, *data)
+	var t time.Time
+	var err error
+
+	for _, layout := range layouts {
+		t, err = time.Parse(layout, *data)
+		if err == nil {
+			break
+		}
+	}
 
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("data inválida, use DD/MM/AAAA ou AAAA-MM-DD")
 	}
 
 	return &t, nil

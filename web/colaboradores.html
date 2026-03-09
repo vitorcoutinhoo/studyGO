@@ -50,9 +50,9 @@
           <option value="Gerente">Gerente</option>
           <option value="Consultor">Consultor</option>
           <option value="Técnico">Técnico</option>
-          <option value="DesenvolvedorFrontend">Dev Frontend</option>
-          <option value="DesenvolvedorBackend">Dev Backend</option>
-          <option value="DesenvolvedorFullstack">Dev Fullstack</option>
+          <option value="Desenvolvedor Frontend">Dev Frontend</option>
+          <option value="Desenvolvedor Backend">Dev Backend</option>
+          <option value="Desenvolvedor Fullstack">Dev Fullstack</option>
           <option value="Outro">Outro</option>
         </select>
       </label>
@@ -68,14 +68,14 @@
       </label>
       <label>Status
         <select id="status">
-          <option value="1">Ativo</option>
-          <option value="2">Inativo</option>
+          <option value="ativo">Ativo</option>
+          <option value="inativo">Inativo</option>
         </select>
       </label>
       <label>Ativo Plantão
         <select id="ativo_plantao">
-          <option value="1">Sim</option>
-          <option value="2">Não</option>
+          <option value="ativo">Sim</option>
+          <option value="inativo">Não</option>
         </select>
       </label>
     </div>
@@ -137,7 +137,7 @@
         status: document.getElementById('status').value,
         ativo_plantao: document.getElementById('ativo_plantao').value,
         data_admissao: document.getElementById('data_admissao').value,
-        foto: ''
+        foto_url: ''
       };
 
       try {
@@ -183,8 +183,7 @@
           return;
         }
 
-        // ColaboradorResponse não tem json tags → Go serializa com letra maiúscula
-        const cols = ['Id', 'Nome', 'Email', 'Telefone', 'Cargo', 'Setor', 'Status', 'AtivoPlantao', 'DataAdmissao'];
+        const cols = ['id', 'nome', 'email', 'telefone', 'cargo', 'setor', 'status', 'ativo_plantao', 'data_admissao'];
         let html = '<table><thead><tr>' + cols.map(c => `<th>${c}</th>`).join('') + '</tr></thead><tbody>';
         lista.forEach(c => {
           html += '<tr>' + cols.map(k => `<td>${c[k] ?? ''}</td>`).join('') + '</tr>';

@@ -59,13 +59,13 @@ func (s *ColaboradorService) CreateColaborador(ctx context.Context, col *Colabor
 		return nil, err
 	}
 
-	err = s.envioService.SendEmailComunicacao(
-		ctx,
-		"Boas Vindas",
-		colaboradorReturn.Id.String(),
-		colaboradorReturn.Email,
-		colaboradorReturn.Nome,
-	)
+	// err = s.envioService.SendEmailComunicacao(
+	// 	ctx,
+	// 	"Boas Vindas",
+	// 	colaboradorReturn.Id.String(),
+	// 	colaboradorReturn.Email,
+	// 	colaboradorReturn.Nome,
+	// )
 
 	if err != nil {
 		return nil, err

@@ -98,7 +98,7 @@ func setupUsuarioRoutes(
 			//Rotas do administrador
 		}
 
-		usuarioAuthRoutes := v1.Group("/autheticated/usuarios")
+		usuarioAuthRoutes := v1.Group("/authenticated/usuarios")
 		usuarioAuthRoutes.Use(authMidware.AuthenticationMidware(), midware.RoleMidware(COLABORADOR_ROLE))
 		{
 			usuarioAuthRoutes.PUT("/:id_usuario", usuarioController.UpdateUsuario)

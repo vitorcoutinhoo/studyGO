@@ -101,14 +101,10 @@ func (c *ColaboradorController) GetColaboradorById(ctx *gin.Context) {
 func (c *ColaboradorController) GetColaboradoresByFilter(ctx *gin.Context) {
 	var filter dto.GetColaboradoresByFilterRequest
 
-	fmt.Println(filter)
-
 	if err := ctx.ShouldBindQuery(&filter); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-
-	fmt.Println(filter)
 
 	results, err := c.service.GetColaboradorByFilter(ctx, filterDtoToFilterDomain(filter))
 	if err != nil {
@@ -142,6 +138,14 @@ func (c *ColaboradorController) DisableColaborador(ctx *gin.Context) {
 } // Fim DisableColaborador
 
 func createColaboradorDtoToDomain(r *dto.CreateColaboradorRequest) (*colaborador.Colaborador, error) {
+	if r.Status == "" {
+		r.Status = "ativo"
+	}
+
+	if r.AtivoPlantao == "" {
+		r.AtivoPlantao = "ativo"
+	}
+
 	dataAdmissao, err := utils.ParseBrToUsDate(&r.DataAdmissao)
 	if err != nil {
 		return nil, err
