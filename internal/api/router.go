@@ -32,8 +32,8 @@ func NewRouter(
 		MaxAge:           12 * time.Hour,
 	}))
 
-	setupPlantaoRoutes(router, plantaoController)
-	setupColaboradorRoutes(router, colaboradorController)
+	setupPlantaoRoutes(router, plantaoController, authMidware)
+	setupColaboradorRoutes(router, colaboradorController, authMidware)
 	setupUsuarioRoutes(router, usuarioController, authMidware)
 	setupAuthRoutes(router, authController)
 
@@ -43,10 +43,12 @@ func NewRouter(
 func setupPlantaoRoutes(
 	router *gin.Engine,
 	plantaoController *controller.PlantaoController,
+	authMidware *midware.AuthMidware,
 ) {
 	v1 := router.Group("/api/v1")
 	{
 		plantaoRoutes := v1.Group("/plantoes")
+		plantaoRoutes.Use(authMidware.AuthenticationMidware(), midware.RoleMidware(ADMIN_ROLE, GERENTE_ROLE, COLABORADOR_ROLE))
 		{
 			plantaoRoutes.POST("", plantaoController.CreatePlantao)
 			plantaoRoutes.GET("", plantaoController.GetPlantoes)
@@ -65,10 +67,12 @@ func setupPlantaoRoutes(
 func setupColaboradorRoutes(
 	router *gin.Engine,
 	colaboradorController *controller.ColaboradorController,
+	authMidware *midware.AuthMidware,
 ) {
 	v1 := router.Group("/api/v1")
 	{
 		colaboradorRoutes := v1.Group("/colaboradores")
+		colaboradorRoutes.Use(authMidware.AuthenticationMidware(), midware.RoleMidware(ADMIN_ROLE, GERENTE_ROLE, COLABORADOR_ROLE))
 		{
 			colaboradorRoutes.POST("", colaboradorController.CreateColaborador)
 			colaboradorRoutes.PUT("/:id", colaboradorController.UpdateColaborador)
