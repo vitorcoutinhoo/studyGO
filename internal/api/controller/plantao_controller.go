@@ -2,6 +2,7 @@ package controller
 
 import (
 	"net/http"
+	"plantao/internal/api/dto"
 	"plantao/internal/domain/plantao"
 	"strconv"
 	"time"
@@ -19,29 +20,8 @@ func NewPlantaoController(service *plantao.PlantaoService) *PlantaoController {
 	}
 }
 
-type PeriodoRequest struct {
-	Inicio string `json:"inicio" binding:"required"`
-	Fim    string `json:"fim" binding:"required"`
-}
-
-type CreatePlantaoRequest struct {
-	Periodo       PeriodoRequest `json:"periodo" binding:"required"`
-	ColaboradorId string         `json:"colaborador_id" binding:"required"`
-}
-
-type UpdateStatusPlantaoRequest struct {
-	NewStatus string `json:"new_status" binding:"required"`
-}
-
-type CreatePlantaoResponse struct {
-	Id            string                `json:"id"`
-	ColaboradorId string                `json:"colaborador_id"`
-	Periodo       plantao.Periodo       `json:"periodo"`
-	Status        plantao.StatusPlantao `json:"status"`
-}
-
 func (p *PlantaoController) CreatePlantao(ctx *gin.Context) {
-	var req CreatePlantaoRequest
+	var req dto.CreatePlantaoRequest
 
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -79,7 +59,7 @@ func (p *PlantaoController) CreatePlantao(ctx *gin.Context) {
 }
 
 func (p *PlantaoController) UpdateStatusPlantao(ctx *gin.Context) {
-	var req UpdateStatusPlantaoRequest
+	var req dto.UpdateStatusPlantaoRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -119,7 +99,7 @@ func (p *PlantaoController) GetPlantoes(ctx *gin.Context) {
 		return
 	}
 
-	var response []CreatePlantaoResponse
+	var response []dto.CreatePlantaoResponse
 	for _, plantao := range plantoes {
 		response = append(response, *toPlantaoResponse(&plantao))
 	}
@@ -136,7 +116,7 @@ func (p *PlantaoController) GetPlantoesByColaboradorId(ctx *gin.Context) {
 		return
 	}
 
-	var response []CreatePlantaoResponse
+	var response []dto.CreatePlantaoResponse
 	for _, plantao := range plantoes {
 		response = append(response, *toPlantaoResponse(&plantao))
 	}
@@ -179,7 +159,7 @@ func (p *PlantaoController) GetPlantoesByPeriodo(ctx *gin.Context) {
 		return
 	}
 
-	var response []CreatePlantaoResponse
+	var response []dto.CreatePlantaoResponse
 	for _, plantao := range plantoes {
 		response = append(response, *toPlantaoResponse(&plantao))
 	}
@@ -202,7 +182,7 @@ func (p *PlantaoController) GetPlantoesByStatus(ctx *gin.Context) {
 		return
 	}
 
-	var response []CreatePlantaoResponse
+	var response []dto.CreatePlantaoResponse
 	for _, plantao := range plantoes {
 		response = append(response, *toPlantaoResponse(&plantao))
 	}
@@ -222,8 +202,8 @@ func (p *PlantaoController) DeletePlantao(ctx *gin.Context) {
 	ctx.Status(http.StatusNoContent)
 }
 
-func toPlantaoResponse(plantao *plantao.Plantao) *CreatePlantaoResponse {
-	return &CreatePlantaoResponse{
+func toPlantaoResponse(plantao *plantao.Plantao) *dto.CreatePlantaoResponse {
+	return &dto.CreatePlantaoResponse{
 		Id:            plantao.Id,
 		ColaboradorId: plantao.ColaboradorId,
 		Periodo:       *plantao.Periodo,

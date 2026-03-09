@@ -3,16 +3,16 @@ package controller
 import (
 	"net/http"
 	"plantao/internal/api/dto"
-	"plantao/internal/domain/auth"
+	"plantao/internal/domain/usuario"
 
 	"github.com/gin-gonic/gin"
 )
 
 type AuthController struct {
-	authService *auth.AuthService
+	authService *usuario.AuthService
 }
 
-func NewAuthController(authService *auth.AuthService) *AuthController {
+func NewAuthController(authService *usuario.AuthService) *AuthController {
 	return &AuthController{
 		authService: authService,
 	}

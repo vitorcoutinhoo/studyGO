@@ -2,18 +2,17 @@ package comunicacao
 
 import (
 	"context"
-	"plantao/internal/domain/email"
 
 	"github.com/google/uuid"
 )
 
 type EnvioService struct {
 	envioRepository  EnvioComunicacaoRepository
-	emailRepository  email.EmailSender
+	emailRepository  Mailer
 	modeloRepository ModeloComunicaRepository
 }
 
-func NewEnvioService(envioRepository EnvioComunicacaoRepository, emailRepository email.EmailSender, modeloRepository ModeloComunicaRepository) *EnvioService {
+func NewEnvioService(envioRepository EnvioComunicacaoRepository, emailRepository Mailer, modeloRepository ModeloComunicaRepository) *EnvioService {
 	return &EnvioService{
 		envioRepository:  envioRepository,
 		emailRepository:  emailRepository,

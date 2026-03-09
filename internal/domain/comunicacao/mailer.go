@@ -1,5 +1,5 @@
-package email
+package comunicacao
 
-type EmailSender interface {
+type Mailer interface {
 	SendEmail(to string, subject string, body string) error
 }

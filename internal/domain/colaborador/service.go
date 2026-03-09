@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"plantao/internal/api/dto"
 	"plantao/internal/domain/comunicacao"
-	"plantao/utils"
+	"plantao/internal/utils"
 	"strings"
 	"time"
 

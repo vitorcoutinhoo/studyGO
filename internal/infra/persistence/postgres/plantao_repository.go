@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"plantao/internal/domain/plantao"
+	"strconv"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -18,7 +19,7 @@ func NewPlantaoRepository(pool *pgxpool.Pool) *PlantaoRepository {
 
 func (r *PlantaoRepository) Store(ctx context.Context, plantao *plantao.Plantao) error {
 	query := `
-		INSERT INTO plantoes (id, colaborador_id, inicio, fim, status, created_at, updated_at)
+		INSERT INTO plantoes (id, id_colaborador, data_inicio, data_fim, status, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7)
 	`
 
@@ -27,7 +28,7 @@ func (r *PlantaoRepository) Store(ctx context.Context, plantao *plantao.Plantao)
 		plantao.ColaboradorId,
 		plantao.Periodo.Inicio,
 		plantao.Periodo.Fim,
-		plantao.Status,
+		strconv.Itoa(int(plantao.Status)),
 		plantao.CreatedAt,
 		plantao.UpdatedAt,
 	)
@@ -42,7 +43,7 @@ func (r *PlantaoRepository) Store(ctx context.Context, plantao *plantao.Plantao)
 func (r *PlantaoRepository) Update(ctx context.Context, plantao *plantao.Plantao) error {
 	query := `
 		UPDATE plantoes
-		SET colaborador_id = $2, inicio = $3, fim = $4, status = $5, created_at = $6, updated_at = $7
+		SET id_colaborador = $2, data_inicio = $3, data_fim = $4, status = $5, created_at = $6, updated_at = $7
 		WHERE id = $1
 	`
 
@@ -51,7 +52,7 @@ func (r *PlantaoRepository) Update(ctx context.Context, plantao *plantao.Plantao
 		plantao.ColaboradorId,
 		plantao.Periodo.Inicio,
 		plantao.Periodo.Fim,
-		plantao.Status,
+		strconv.Itoa(int(plantao.Status)),
 		plantao.CreatedAt,
 		plantao.UpdatedAt,
 	)
@@ -79,11 +80,12 @@ func (r *PlantaoRepository) Delete(ctx context.Context, plantaoId string) error 
 
 func (r *PlantaoRepository) FindById(ctx context.Context, plantaoId string) (*plantao.Plantao, error) {
 	query := `
-		SELECT id, colaborador_id, inicio, fim, status, created_at, updated_at
+		SELECT id, id_colaborador, data_inicio, data_fim, status, created_at, updated_at
 		FROM plantoes
 		WHERE id = $1
 	`
 	var p plantao.Plantao
+	var statusStr string
 	row := r.pool.QueryRow(ctx, query, plantaoId)
 	p.Periodo = &plantao.Periodo{}
 
@@ -92,14 +94,19 @@ func (r *PlantaoRepository) FindById(ctx context.Context, plantaoId string) (*pl
 		&p.ColaboradorId,
 		&p.Periodo.Inicio,
 		&p.Periodo.Fim,
-		&p.Status,
+		&statusStr,
 		&p.CreatedAt,
 		&p.UpdatedAt,
 	)
-
 	if err != nil {
 		return nil, fmt.Errorf("failed to scan plantao: %w", err)
 	}
+
+	statusInt, err := strconv.Atoi(statusStr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse status: %w", err)
+	}
+	p.Status = plantao.StatusPlantao(statusInt)
 
 	return &p, nil
 }
@@ -110,7 +117,7 @@ func (r *PlantaoRepository) Find(
 ) ([]plantao.Plantao, error) {
 
 	query := `
-		SELECT id, colaborador_id, inicio, fim, status, created_at, updated_at
+		SELECT id, id_colaborador, data_inicio, data_fim, status, created_at, updated_at
 		FROM plantoes
 		WHERE 1=1
 	`
@@ -120,7 +127,7 @@ func (r *PlantaoRepository) Find(
 
 	// Filtro por colaborador
 	if filtro != nil && filtro.ColaboradorID != "" {
-		query += fmt.Sprintf(" AND colaborador_id = $%d", arg)
+		query += fmt.Sprintf(" AND id_colaborador = $%d", arg)
 		args = append(args, filtro.ColaboradorID)
 		arg++
 	}
@@ -128,7 +135,7 @@ func (r *PlantaoRepository) Find(
 	// Filtro por período
 	if filtro != nil && filtro.Periodo != nil {
 		query += fmt.Sprintf(
-			" AND inicio >= $%d AND fim <= $%d",
+			" AND data_inicio >= $%d AND data_fim <= $%d",
 			arg,
 			arg+1,
 		)
@@ -136,13 +143,13 @@ func (r *PlantaoRepository) Find(
 			filtro.Periodo.Inicio,
 			filtro.Periodo.Fim,
 		)
-		arg++
+		arg += 2
 	}
 
 	// Filtro por status
 	if filtro != nil && filtro.Status != nil {
 		query += fmt.Sprintf(" AND status = $%d", arg)
-		args = append(args, filtro.Status)
+		args = append(args, strconv.Itoa(int(*filtro.Status)))
 		arg++
 	}
 
@@ -168,6 +175,7 @@ func (r *PlantaoRepository) Find(
 	var plantoes []plantao.Plantao
 	for rows.Next() {
 		var p plantao.Plantao
+		var statusStr string
 		p.Periodo = &plantao.Periodo{}
 
 		if err := rows.Scan(
@@ -175,12 +183,19 @@ func (r *PlantaoRepository) Find(
 			&p.ColaboradorId,
 			&p.Periodo.Inicio,
 			&p.Periodo.Fim,
-			&p.Status,
+			&statusStr,
 			&p.CreatedAt,
 			&p.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}
+
+		statusInt, err := strconv.Atoi(statusStr)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse status: %w", err)
+		}
+		p.Status = plantao.StatusPlantao(statusInt)
+
 		plantoes = append(plantoes, p)
 	}
 

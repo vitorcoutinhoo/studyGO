@@ -2,32 +2,21 @@ package main
 
 import (
 	"context"
-	"plantao/internal/api"
-	"plantao/internal/domain/auth"
-	"plantao/internal/domain/colaborador"
-	"plantao/internal/domain/comunicacao"
-	"plantao/internal/domain/plantao"
-	"plantao/internal/domain/usuario"
-	"plantao/internal/infra/config"
-	"plantao/internal/infra/persistence/postgres"
-	"plantao/internal/infra/security"
+	apihttp "plantao/internal/api/http"
+	appfx "plantao/internal/fx"
 
 	"go.uber.org/fx"
 )
 
 func main() {
 	fx.New(
-		config.Module,
-		postgres.Module,
-		security.Module,
-		plantao.Module,
-		colaborador.Module,
-		usuario.Module,
-		auth.Module,
-		api.Module,
-		comunicacao.Module,
+		appfx.ConfigModule,
+		appfx.PostgresModule,
+		appfx.SecurityModule,
+		appfx.DomainModule,
+		appfx.APIModule,
 
-		fx.Invoke(func(lc fx.Lifecycle, server *api.Server) {
+		fx.Invoke(func(lc fx.Lifecycle, server *apihttp.Server) {
 			lc.Append(fx.Hook{
 				OnStart: func(ctx context.Context) error {
 					go server.Start()

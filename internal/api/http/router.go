@@ -1,8 +1,8 @@
-package api
+package apihttp
 
 import (
 	"plantao/internal/api/controller"
-	"plantao/internal/api/midware"
+	midware "plantao/internal/api/middleware"
 	"time"
 
 	"github.com/gin-contrib/cors"
