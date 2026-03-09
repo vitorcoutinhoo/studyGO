@@ -21,6 +21,7 @@ func NewRouter(
 	usuarioController *controller.UsuarioController,
 	authController *controller.AuthController,
 	authMidware *midware.AuthMidware,
+	modeloComunicacaoController *controller.ModeloComunicacaoController,
 ) *gin.Engine {
 	router := gin.Default()
 
@@ -36,6 +37,7 @@ func NewRouter(
 	setupColaboradorRoutes(router, colaboradorController, authMidware)
 	setupUsuarioRoutes(router, usuarioController, authMidware)
 	setupAuthRoutes(router, authController)
+	setupModeloComunicacaoRoutes(router, modeloComunicacaoController, authMidware)
 
 	return router
 }
@@ -97,7 +99,7 @@ func setupUsuarioRoutes(
 		}
 
 		usuarioAuthRoutes := v1.Group("/autheticated/usuarios")
-		usuarioAuthRoutes.Use(authMidware.AuthenticationMidware(), midware.RoleMidware(ADMIN_ROLE, GERENTE_ROLE, COLABORADOR_ROLE))
+		usuarioAuthRoutes.Use(authMidware.AuthenticationMidware(), midware.RoleMidware(COLABORADOR_ROLE))
 		{
 			usuarioAuthRoutes.PUT("/:id_usuario", usuarioController.UpdateUsuario)
 			usuarioAuthRoutes.GET("/:id_usuario", usuarioController.GetUsuarioById)
@@ -120,6 +122,25 @@ func setupAuthRoutes(
 		authRoutes := v1.Group("/auth")
 		{
 			authRoutes.POST("/login", authController.Login)
+		}
+	}
+}
+
+func setupModeloComunicacaoRoutes(
+	router *gin.Engine,
+	modeloComunicacaoControler *controller.ModeloComunicacaoController,
+	authMidware *midware.AuthMidware,
+) {
+	v1 := router.Group("/api/v1")
+	{
+		modeloComunicacao := v1.Group("/auth/admin/modelo-comunicacao")
+		modeloComunicacao.Use(authMidware.AuthenticationMidware(), midware.RoleMidware(ADMIN_ROLE))
+		{
+			modeloComunicacao.POST("/", modeloComunicacaoControler.CreateModeloComunicacao)
+			modeloComunicacao.PUT("/:id_modelo", modeloComunicacaoControler.UpdateModeloComunicacao)
+			modeloComunicacao.DELETE("/:id_modelo", modeloComunicacaoControler.DisableModeloComunicacao)
+			modeloComunicacao.GET("/", modeloComunicacaoControler.GetAllModelosComunicacao)
+			modeloComunicacao.GET("/:id_modelo", modeloComunicacaoControler.GetModeloComunicacaoById)
 		}
 	}
 }
