@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"fmt"
 	"net/http"
 	"plantao/internal/api/dto"
 	"plantao/internal/domain/colaborador"

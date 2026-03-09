@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	apihttp "plantao/internal/api/http"
+	"plantao/internal/api/middleware"
 	appfx "plantao/internal/fx"
 
 	"go.uber.org/fx"
@@ -15,6 +16,8 @@ func main() {
 		appfx.SecurityModule,
 		appfx.DomainModule,
 		appfx.APIModule,
+
+		fx.Invoke(middleware.StartRateLimitCleanup),
 
 		fx.Invoke(func(lc fx.Lifecycle, server *apihttp.Server) {
 			lc.Append(fx.Hook{

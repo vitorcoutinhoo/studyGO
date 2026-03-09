@@ -20,7 +20,7 @@ type Role string
 const (
 	RoleAdmin       = "admin"
 	RoleColaborador = "colaborador"
-	RoleGerente     = "financeiro"
+	RoleGerente     = "gerente"
 )
 
 type Usuario struct {

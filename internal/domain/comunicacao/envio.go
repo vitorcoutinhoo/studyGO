@@ -7,27 +7,6 @@ import (
 	"github.com/google/uuid"
 )
 
-/*
-CREATE TABLE envios_comunicacao (
-    id UUID DEFAULT gen_random_uuid() NOT NULL,
-    id_modelo UUID,
-    id_colaborador UUID NOT NULL,
-    tipo VARCHAR(100) NOT NULL,
-    destinatario VARCHAR(255) NOT NULL,
-    assunto VARCHAR(255),
-    corpo TEXT NOT NULL,
-    status VARCHAR(50) DEFAULT 'enviado',
-    data_envio TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    data_leitura TIMESTAMP,
-    erro_log TEXT,
-    CONSTRAINT envios_comunicacao_pkey PRIMARY KEY (id),
-    CONSTRAINT envios_comunicacao_id_modelo_fkey FOREIGN KEY (id_modelo)
-        REFERENCES modelos_comunicacao (id),
-    CONSTRAINT envios_comunicacao_id_colaborador_fkey FOREIGN KEY (id_colaborador)
-        REFERENCES colaboradores (id)
-);
-*/
-
 type StatusEnvio string
 
 const (
