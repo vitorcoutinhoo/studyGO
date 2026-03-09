@@ -25,10 +25,9 @@ func (r *EnvioRepository) Store(ctx context.Context, com *comunicacao.Envio) err
 		assunto,
 		corpo,
 		status,
-		data_envio,
 		erro_log
 	)
-	VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+	VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
 	`
 
 	_, err := r.pool.Exec(
@@ -41,7 +40,6 @@ func (r *EnvioRepository) Store(ctx context.Context, com *comunicacao.Envio) err
 		com.Assunto,
 		com.Corpo,
 		string(com.Status),
-		com.DataEnvio,
 		com.ErroLog,
 	)
 

@@ -119,7 +119,7 @@ func (s *ColaboradorService) UpdateColaborador(ctx context.Context, colaboradorD
 	colaboradorDomain, err := updateColaboradorDtoToDomain(colaboradorDTO)
 
 	if err != nil {
-		return nil
+		return err
 	}
 
 	err = colaborador.UpdateDados(

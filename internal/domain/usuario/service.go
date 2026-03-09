@@ -189,8 +189,6 @@ func (s *UsuarioService) GetUsuarioByEmail(ctx context.Context, email string) (*
 		return nil, err
 	}
 
-	fmt.Println("Service", response)
-
 	return response, nil
 }
 

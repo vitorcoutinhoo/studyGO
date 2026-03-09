@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"fmt"
 	"net/http"
 	"plantao/internal/api/dto"
 	"plantao/internal/domain/colaborador"
@@ -78,14 +77,10 @@ func (c *ColaboradorController) GetColaboradorById(ctx *gin.Context) {
 func (c *ColaboradorController) GetColaboradoresByFilter(ctx *gin.Context) {
 	var filter dto.GetColaboradoresByFilterRequest
 
-	fmt.Println(filter)
-
 	if err := ctx.ShouldBindQuery(&filter); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-
-	fmt.Println(filter)
 
 	colaboradores, err := c.service.GetColaboradorByFilter(ctx, filter)
 

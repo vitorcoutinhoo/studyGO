@@ -2,6 +2,7 @@ package apihttp
 
 import (
 	"plantao/internal/api/controller"
+	"plantao/internal/api/middleware"
 	midware "plantao/internal/api/middleware"
 	"time"
 
@@ -26,12 +27,14 @@ func NewRouter(
 	router := gin.Default()
 
 	router.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"*"},
+		AllowOrigins:     []string{"http://localhost:3000"},
 		AllowMethods:     []string{"GET", "POST", "PATCH", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
-		AllowCredentials: false,
+		AllowCredentials: true,
 		MaxAge:           12 * time.Hour,
 	}))
+
+	router.Use(middleware.RateLimitMiddleware())
 
 	setupPlantaoRoutes(router, plantaoController, authMidware)
 	setupColaboradorRoutes(router, colaboradorController, authMidware)

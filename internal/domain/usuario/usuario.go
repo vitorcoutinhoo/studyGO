@@ -20,7 +20,7 @@ type Role string
 const (
 	RoleAdmin       = "admin"
 	RoleColaborador = "colaborador"
-	RoleGerente     = "financeiro"
+	RoleGerente     = "gerente"
 )
 
 type Usuario struct {
@@ -30,8 +30,8 @@ type Usuario struct {
 	Senha         string
 	Role          Role
 	Ativo         StatusUsuario
-	CreateAt      *time.Time
-	UpdateAt      *time.Time
+	CreatedAt     *time.Time
+	UpdatedAt     *time.Time
 }
 
 var (

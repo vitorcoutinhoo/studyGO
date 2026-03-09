@@ -246,11 +246,11 @@ func parseNomeEnvio(s string) (NomeEnvio, error) {
 	case "Boas Vindas":
 		return NomeEnvio(BoasVindas), nil
 	case "Novo Plantão":
-		return NomeEnvio(BoasVindas), nil
+		return NomeEnvio(NovoPlantao), nil
 	case "Cadastro Atualizado":
-		return NomeEnvio(BoasVindas), nil
+		return NomeEnvio(CadastroAtualizado), nil
 	case "Cadastro Excluido":
-		return NomeEnvio(BoasVindas), nil
+		return NomeEnvio(CadastroExcluido), nil
 	default:
 		return "", fmt.Errorf("tipo de envio inválido: %s", s)
 	}

@@ -48,8 +48,8 @@ func (r *UsuarioRepository) Store(ctx context.Context, usuario *usuario.Usuario)
 		&usuario.Email,
 		&usuario.Role,
 		&ativoDB,
-		&usuario.CreateAt,
-		&usuario.UpdateAt,
+		&usuario.CreatedAt,
+		&usuario.UpdatedAt,
 	)
 
 	if err != nil {
