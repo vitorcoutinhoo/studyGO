@@ -98,7 +98,7 @@ func (c *ModeloComunicacaoController) GetAllModelosComunicacao(ctx *gin.Context)
 func modeloComunicacaoToResponse(m comunicacao.Comunicacao) dto.ModeloComunicacaoResponseDTO {
 	return dto.ModeloComunicacaoResponseDTO{
 		Id:              m.Id.String(),
-		Nome:            string(m.Nome),
+		Nome:            m.Nome,
 		TipoComunicacao: string(m.TipoComunicacao),
 		Assunto:         m.Assunto,
 		Corpo:           m.Corpo,

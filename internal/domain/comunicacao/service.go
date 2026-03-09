@@ -2,7 +2,6 @@ package comunicacao
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/google/uuid"
 )
@@ -34,13 +33,7 @@ func (s *ModeloComunicacaoService) CreateModeloComunicacao(ctx context.Context, 
 		return nil, err
 	}
 
-	nomeEnvio, err := ParseNomeEnvio(nome)
-
-	if err != nil {
-		return nil, err
-	}
-
-	newModelo, err := NewComunicacao(assunto, corpo, StatusAtivo, sts, nomeEnvio)
+	newModelo, err := NewComunicacao(nome, assunto, corpo, StatusAtivo, sts)
 
 	if err != nil {
 		return nil, err
@@ -88,13 +81,7 @@ func (s *ModeloComunicacaoService) UpdateModeloComunicacao(ctx context.Context, 
 		return err
 	}
 
-	nomeEnvio, err := ParseNomeEnvio(nome)
-
-	if err != nil {
-		return err
-	}
-
-	err = modelo.UpdateComunicacao(assunto, corpo, &status, &tipo, &nomeEnvio)
+	err = modelo.UpdateComunicacao(&nome, &assunto, &corpo, &status, &tipo)
 
 	if err != nil {
 		return err
@@ -190,19 +177,4 @@ func ParseTipoComunicacao(s string) (TipoComunicacao, error) {
 	}
 
 	return "", ErrorInvalidTipoComunicacao
-}
-
-func ParseNomeEnvio(s string) (NomeEnvio, error) {
-	switch s {
-	case "Boas Vindas":
-		return BoasVindas, nil
-	case "Novo Plantão":
-		return NovoPlantao, nil
-	case "Cadastro Atualizado":
-		return CadastroAtualizado, nil
-	case "Cadastro Excluido":
-		return CadastroExcluido, nil
-	default:
-		return "", fmt.Errorf("tipo de envio inválido: %s", s)
-	}
 }

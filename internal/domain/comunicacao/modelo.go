@@ -21,18 +21,9 @@ const (
 	SMS   TipoComunicacao = "SMS"
 )
 
-type NomeEnvio string
-
-const (
-	BoasVindas         NomeEnvio = "Boas Vindas"
-	NovoPlantao        NomeEnvio = "Novo Plantão"
-	CadastroAtualizado NomeEnvio = "Cadastro Atualizado"
-	CadastroExcluido   NomeEnvio = "Cadastro Excluido"
-)
-
 type Comunicacao struct {
 	Id              uuid.UUID
-	Nome            NomeEnvio
+	Nome            string
 	TipoComunicacao TipoComunicacao
 	Assunto         string
 	Corpo           string
@@ -51,7 +42,11 @@ var (
 	ErrorModeloComunicacaoNotFound      = errors.New("Modelo de comunicação não encontrado")
 )
 
-func NewComunicacao(assunto, corpo string, ativo StatusModeloComunicacao, tipoComunicacao TipoComunicacao, nome NomeEnvio) (*Comunicacao, error) {
+func NewComunicacao(nome, assunto, corpo string, ativo StatusModeloComunicacao, tipoComunicacao TipoComunicacao) (*Comunicacao, error) {
+	if len(nome) < 1 {
+		return nil, ErrorIvalidNome
+	}
+
 	if len(assunto) < 1 {
 		return nil, ErrorAssunto
 	}
@@ -68,10 +63,6 @@ func NewComunicacao(assunto, corpo string, ativo StatusModeloComunicacao, tipoCo
 		return nil, ErrorInvalidTipoComunicacao
 	}
 
-	if !isNomeEnvioValid(nome) {
-		return nil, ErrorIvalidNome
-	}
-
 	return &Comunicacao{
 		Nome:            nome,
 		TipoComunicacao: tipoComunicacao,
@@ -81,11 +72,8 @@ func NewComunicacao(assunto, corpo string, ativo StatusModeloComunicacao, tipoCo
 	}, nil
 }
 
-func (c *Comunicacao) UpdateComunicacao(assunto, corpo string, ativo *StatusModeloComunicacao, tipoComunicacao *TipoComunicacao, nome *NomeEnvio) error {
-	if nome != nil {
-		if !isNomeEnvioValid(*nome) {
-			return ErrorIvalidNome
-		}
+func (c *Comunicacao) UpdateComunicacao(nome, assunto, corpo *string, ativo *StatusModeloComunicacao, tipoComunicacao *TipoComunicacao) error {
+	if nome != nil && *nome != "" {
 		c.Nome = *nome
 	}
 
@@ -97,12 +85,12 @@ func (c *Comunicacao) UpdateComunicacao(assunto, corpo string, ativo *StatusMode
 		c.TipoComunicacao = *tipoComunicacao
 	}
 
-	if assunto != "" {
-		c.Assunto = assunto
+	if assunto != nil && *assunto != "" {
+		c.Assunto = *assunto
 	}
 
-	if corpo != "" {
-		c.Corpo = corpo
+	if corpo != nil && *corpo != "" {
+		c.Corpo = *corpo
 	}
 
 	if ativo != nil {
@@ -123,15 +111,6 @@ func isStatusComunicacaoValid(status StatusModeloComunicacao) bool {
 func isTipoComunicacaoValid(t TipoComunicacao) bool {
 	switch t {
 	case Email, SMS:
-		return true
-	}
-
-	return false
-}
-
-func isNomeEnvioValid(n NomeEnvio) bool {
-	switch n {
-	case BoasVindas, NovoPlantao, CadastroAtualizado, CadastroExcluido:
 		return true
 	}
 
