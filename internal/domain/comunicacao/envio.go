@@ -29,7 +29,7 @@ var (
 	ErrorInvalidStatusEnvio  = errors.New("Status de envio invalido!")
 )
 
-func NewEnvio(idModelo, idColaborador uuid.UUID, tipoComunicacao TipoComunicacao, destinatario, assunto, corpo, erroLog string, status StatusEnvio) (*Envio, error) {
+func NewEnvio(idModelo uuid.UUID, tipoComunicacao TipoComunicacao, destinatario, erroLog string, status StatusEnvio) (*Envio, error) {
 	if len(destinatario) < 1 {
 		return nil, ErrorInvalidDestinatario
 	}
@@ -40,11 +40,8 @@ func NewEnvio(idModelo, idColaborador uuid.UUID, tipoComunicacao TipoComunicacao
 
 	return &Envio{
 		IdModelo:        idModelo,
-		IdColaborador:   idColaborador,
 		TipoComunicacao: tipoComunicacao,
 		Destinatario:    destinatario,
-		Assunto:         assunto,
-		Corpo:           corpo,
 		Status:          status,
 		ErroLog:         erroLog,
 	}, nil

@@ -2,8 +2,6 @@ package comunicacao
 
 import (
 	"context"
-
-	"github.com/google/uuid"
 )
 
 type EnvioService struct {
@@ -33,12 +31,6 @@ func (s *EnvioService) SendEmailComunicacao(
 		return err
 	}
 
-	idCol, err := uuid.Parse(idColaborador)
-
-	if err != nil {
-		return err
-	}
-
 	err = s.emailRepository.SendEmail(
 		destinatario,
 		modelo.Assunto,
@@ -55,11 +47,8 @@ func (s *EnvioService) SendEmailComunicacao(
 
 	newEnvio, err := NewEnvio(
 		modelo.Id,
-		idCol,
 		Email,
 		destinatario,
-		modelo.Assunto,
-		modelo.Corpo,
 		emailLog,
 		statusEnvio,
 	)

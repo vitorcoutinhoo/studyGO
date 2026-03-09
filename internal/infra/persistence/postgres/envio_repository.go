@@ -19,26 +19,20 @@ func (r *EnvioRepository) Store(ctx context.Context, com *comunicacao.Envio) err
 	query := `
 	INSERT INTO envios_comunicacao (
 		id_modelo,
-		id_colaborador,
 		tipo,
 		destinatario,
-		assunto,
-		corpo,
 		status,
 		erro_log
 	)
-	VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+	VALUES ($1,$2,$3,$4,$5)
 	`
 
 	_, err := r.pool.Exec(
 		ctx,
 		query,
 		com.IdModelo,
-		com.IdColaborador,
 		string(com.TipoComunicacao),
 		com.Destinatario,
-		com.Assunto,
-		com.Corpo,
 		string(com.Status),
 		com.ErroLog,
 	)

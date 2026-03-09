@@ -20,7 +20,7 @@ type Client struct {
 var (
 	clients = make(map[string]*Client)
 	mu      sync.Mutex
-	limit   = 5
+	limit   = 100
 	window  = 1 * time.Minute
 )
 
