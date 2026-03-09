@@ -3,7 +3,6 @@ package comunicacao
 import (
 	"context"
 	"fmt"
-	"plantao/internal/api/dto"
 
 	"github.com/google/uuid"
 )
@@ -18,8 +17,8 @@ func NewModeloComunicacaoService(repository ModeloComunicaRepository) *ModeloCom
 	}
 }
 
-func (s *ModeloComunicacaoService) CreateModeloComunicacao(ctx context.Context, com *dto.ModeloComunicacaoRequestDTO) (*dto.ModeloComunicacaoResponseDTO, error) {
-	exists, err := s.repository.ExistsName(ctx, com.Nome)
+func (s *ModeloComunicacaoService) CreateModeloComunicacao(ctx context.Context, nome, tipoComunicacao, assunto, corpo string) (*Comunicacao, error) {
+	exists, err := s.repository.ExistsName(ctx, nome)
 
 	if err != nil {
 		return nil, err
@@ -29,40 +28,28 @@ func (s *ModeloComunicacaoService) CreateModeloComunicacao(ctx context.Context, 
 		return nil, ErrorModeloComunicacaoAlreadyExists
 	}
 
-	sts, err := parseTipoComunicacao(com.TipoComunicacao)
+	sts, err := ParseTipoComunicacao(tipoComunicacao)
 
 	if err != nil {
 		return nil, err
 	}
 
-	nomeEnvio, err := parseNomeEnvio(com.Nome)
+	nomeEnvio, err := ParseNomeEnvio(nome)
 
 	if err != nil {
 		return nil, err
 	}
 
-	newModelo, err := NewComunicacao(com.Assunto, com.Corpo, StatusAtivo, sts, nomeEnvio)
+	newModelo, err := NewComunicacao(assunto, corpo, StatusAtivo, sts, nomeEnvio)
 
 	if err != nil {
 		return nil, err
 	}
 
-	createdModelo, err := s.repository.Store(ctx, newModelo)
-
-	if err != nil {
-		return nil, err
-	}
-
-	response, err := domainToResponse(*createdModelo)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return response, nil
+	return s.repository.Store(ctx, newModelo)
 }
 
-func (s *ModeloComunicacaoService) UpdateModeloComunicacao(ctx context.Context, id string, com *dto.ModeloComunicacaoUpdateRequestDTO) error {
+func (s *ModeloComunicacaoService) UpdateModeloComunicacao(ctx context.Context, id, nome, tipoComunicacao, assunto, corpo, ativo string) error {
 	modeloID, err := uuid.Parse(id)
 
 	if err != nil {
@@ -79,7 +66,7 @@ func (s *ModeloComunicacaoService) UpdateModeloComunicacao(ctx context.Context, 
 		return ErrorModeloComunicacaoNotFound
 	}
 
-	exists, err := s.repository.ExistsNameExcludingId(ctx, com.Nome, modeloID)
+	exists, err := s.repository.ExistsNameExcludingId(ctx, nome, modeloID)
 
 	if err != nil {
 		return err
@@ -89,43 +76,31 @@ func (s *ModeloComunicacaoService) UpdateModeloComunicacao(ctx context.Context, 
 		return ErrorModeloComunicacaoAlreadyExists
 	}
 
-	tipo, err := parseTipoComunicacao(com.TipoComunicacao)
+	tipo, err := ParseTipoComunicacao(tipoComunicacao)
 
 	if err != nil {
 		return err
 	}
 
-	status, err := parseStatusModeloComunicacao(com.Ativo)
+	status, err := ParseStatusModeloComunicacao(ativo)
 
 	if err != nil {
 		return err
 	}
 
-	nomeEnvio, err := parseNomeEnvio(com.Nome)
+	nomeEnvio, err := ParseNomeEnvio(nome)
 
 	if err != nil {
 		return err
 	}
 
-	err = modelo.UpdateComunicacao(
-		com.Assunto,
-		com.Corpo,
-		&status,
-		&tipo,
-		&nomeEnvio,
-	)
+	err = modelo.UpdateComunicacao(assunto, corpo, &status, &tipo, &nomeEnvio)
 
 	if err != nil {
 		return err
 	}
 
-	err = s.repository.Update(ctx, modelo)
-
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return s.repository.Update(ctx, modelo)
 }
 
 func (s *ModeloComunicacaoService) DisableModeloComunicacao(ctx context.Context, id string) error {
@@ -145,16 +120,10 @@ func (s *ModeloComunicacaoService) DisableModeloComunicacao(ctx context.Context,
 		return ErrorModeloComunicacaoNotFound
 	}
 
-	err = s.repository.Disable(ctx, modeloID)
-
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return s.repository.Disable(ctx, modeloID)
 }
 
-func (s *ModeloComunicacaoService) GetModeloComunicacaoById(ctx context.Context, id string) (*dto.ModeloComunicacaoResponseDTO, error) {
+func (s *ModeloComunicacaoService) GetModeloComunicacaoById(ctx context.Context, id string) (*Comunicacao, error) {
 	modeloID, err := uuid.Parse(id)
 
 	if err != nil {
@@ -171,44 +140,26 @@ func (s *ModeloComunicacaoService) GetModeloComunicacaoById(ctx context.Context,
 		return nil, ErrorModeloComunicacaoNotFound
 	}
 
-	return domainToResponse(*modelo)
+	return modelo, nil
 }
 
-func (s *ModeloComunicacaoService) GetAllModelosComunicacao(ctx context.Context) (*[]dto.ModeloComunicacaoResponseDTO, error) {
+func (s *ModeloComunicacaoService) GetAllModelosComunicacao(ctx context.Context) ([]Comunicacao, error) {
 	modelos, err := s.repository.FindAll(ctx)
 
 	if err != nil {
 		return nil, err
 	}
 
-	response := make([]dto.ModeloComunicacaoResponseDTO, 0, len(modelos))
+	result := make([]Comunicacao, 0, len(modelos))
 
-	for _, modelo := range modelos {
-
-		dtoResp, err := domainToResponse(*modelo)
-
-		if err != nil {
-			return nil, err
-		}
-
-		response = append(response, *dtoResp)
+	for _, m := range modelos {
+		result = append(result, *m)
 	}
 
-	return &response, nil
+	return result, nil
 }
 
-func domainToResponse(m Comunicacao) (*dto.ModeloComunicacaoResponseDTO, error) {
-	return &dto.ModeloComunicacaoResponseDTO{
-		Id:              m.Id.String(),
-		Nome:            string(m.Nome),
-		TipoComunicacao: string(m.TipoComunicacao),
-		Assunto:         m.Assunto,
-		Corpo:           m.Corpo,
-		Ativo:           parseStatusModeloComunicacaoString(m.Ativo),
-	}, nil
-}
-
-func parseStatusModeloComunicacao(s string) (StatusModeloComunicacao, error) {
+func ParseStatusModeloComunicacao(s string) (StatusModeloComunicacao, error) {
 	switch s {
 	case "ATIVO":
 		return StatusAtivo, nil
@@ -219,7 +170,7 @@ func parseStatusModeloComunicacao(s string) (StatusModeloComunicacao, error) {
 	return 0, ErrorInvalidStatus
 }
 
-func parseStatusModeloComunicacaoString(s StatusModeloComunicacao) string {
+func ParseStatusModeloComunicacaoString(s StatusModeloComunicacao) string {
 	switch s {
 	case StatusAtivo:
 		return "ATIVO"
@@ -230,7 +181,7 @@ func parseStatusModeloComunicacaoString(s StatusModeloComunicacao) string {
 	return "UNKNOWN"
 }
 
-func parseTipoComunicacao(s string) (TipoComunicacao, error) {
+func ParseTipoComunicacao(s string) (TipoComunicacao, error) {
 	switch s {
 	case "EMAIL":
 		return Email, nil
@@ -241,7 +192,7 @@ func parseTipoComunicacao(s string) (TipoComunicacao, error) {
 	return "", ErrorInvalidTipoComunicacao
 }
 
-func parseNomeEnvio(s string) (NomeEnvio, error) {
+func ParseNomeEnvio(s string) (NomeEnvio, error) {
 	switch s {
 	case "Boas Vindas":
 		return NomeEnvio(BoasVindas), nil

@@ -3,7 +3,6 @@ package usuario
 import (
 	"context"
 	"errors"
-	"plantao/internal/api/dto"
 )
 
 var ErrInvalidCredentials = errors.New("Senha ou email inválidos")
@@ -22,8 +21,8 @@ func NewAuthService(repository UsuarioRepository, password PasswordHasher, token
 	}
 }
 
-func (s *AuthService) Authenticate(ctx context.Context, login *dto.LoginRequestDTO) (*string, error) {
-	user, err := s.repository.FindByEmail(ctx, login.Email)
+func (s *AuthService) Authenticate(ctx context.Context, email, senha string) (*string, error) {
+	user, err := s.repository.FindByEmail(ctx, email)
 
 	if err != nil {
 		return nil, err
@@ -33,7 +32,7 @@ func (s *AuthService) Authenticate(ctx context.Context, login *dto.LoginRequestD
 		return nil, ErrInvalidCredentials
 	}
 
-	if !s.password.ComparePassword(user.Senha, login.Senha) {
+	if !s.password.ComparePassword(user.Senha, senha) {
 		return nil, ErrInvalidCredentials
 	}
 

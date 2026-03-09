@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"fmt"
 	"net/http"
 	"plantao/internal/api/dto"
 	"plantao/internal/domain/usuario"
@@ -28,14 +29,21 @@ func (c *UsuarioController) CreateUsuario(ctx *gin.Context) {
 		return
 	}
 
-	usuario, err := c.service.CreateUsuario(ctx, &req, idColaborador)
+	result, err := c.service.CreateUsuario(ctx, req.Email, req.Senha, idColaborador)
 
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	ctx.JSON(http.StatusCreated, usuario)
+	resp, err := usuarioToResponse(result)
+
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	ctx.JSON(http.StatusCreated, resp)
 }
 
 func (c *UsuarioController) UpdateUsuario(ctx *gin.Context) {
@@ -48,9 +56,7 @@ func (c *UsuarioController) UpdateUsuario(ctx *gin.Context) {
 		return
 	}
 
-	err := c.service.UpdateUsuario(ctx, &req, idUsuario)
-
-	if err != nil {
+	if err := c.service.UpdateUsuario(ctx, req.Email, req.Senha, idUsuario); err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -61,9 +67,7 @@ func (c *UsuarioController) UpdateUsuario(ctx *gin.Context) {
 func (c *UsuarioController) DisableUsuario(ctx *gin.Context) {
 	idUsuario := ctx.Param("id_usuario")
 
-	err := c.service.DisableUsuario(ctx, idUsuario)
-
-	if err != nil {
+	if err := c.service.DisableUsuario(ctx, idUsuario); err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -74,12 +78,39 @@ func (c *UsuarioController) DisableUsuario(ctx *gin.Context) {
 func (c *UsuarioController) GetUsuarioById(ctx *gin.Context) {
 	idUsuario := ctx.Param("id_usuario")
 
-	usuario, err := c.service.GetUsuarioById(ctx, idUsuario)
+	result, err := c.service.GetUsuarioById(ctx, idUsuario)
 
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	ctx.JSON(http.StatusOK, usuario)
+	resp, err := usuarioToResponse(result)
+
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, resp)
+}
+
+func usuarioToResponse(u *usuario.Usuario) (*dto.UsuarioResponseDTO, error) {
+	if u == nil {
+		return nil, fmt.Errorf("usuário vazio ou nulo")
+	}
+
+	ativo, err := usuario.StatusUsuarioString(u.Ativo)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &dto.UsuarioResponseDTO{
+		Id:            u.Id.String(),
+		IdColaborador: u.IdColaborador.String(),
+		Email:         u.Email,
+		Role:          string(u.Role),
+		Ativo:         ativo,
+	}, nil
 }

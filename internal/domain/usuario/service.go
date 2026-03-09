@@ -3,7 +3,6 @@ package usuario
 import (
 	"context"
 	"fmt"
-	"plantao/internal/api/dto"
 	"plantao/internal/domain/colaborador"
 
 	"github.com/google/uuid"
@@ -17,7 +16,6 @@ type UsuarioService struct {
 }
 
 // Cria uma nova instância do serviço de usuário
-// Recebe como parâmetros o repositório de usuário e o repositório de colaborador para realizar as operações necessárias
 func NewUsuarioService(repository UsuarioRepository, colaboradorRepository colaborador.ColaboradorRepository, passwordHasher PasswordHasher) *UsuarioService {
 	return &UsuarioService{
 		repository:            repository,
@@ -27,7 +25,7 @@ func NewUsuarioService(repository UsuarioRepository, colaboradorRepository colab
 } // Fim NewUsuarioService
 
 // Cria um novo usuário com validações e armazenamento
-func (s *UsuarioService) CreateUsuario(ctx context.Context, usuario *dto.UsuarioRequestDTO, colaboradorId string) (*dto.UsuarioResponseDTO, error) {
+func (s *UsuarioService) CreateUsuario(ctx context.Context, email, senha, colaboradorId string) (*Usuario, error) {
 	colaboradorUUID, err := uuid.Parse(colaboradorId)
 
 	if err != nil {
@@ -44,13 +42,13 @@ func (s *UsuarioService) CreateUsuario(ctx context.Context, usuario *dto.Usuario
 		return nil, colaborador.ErrorColaboradorNotFound
 	}
 
-	newUsuario, err := NewUsuario(colaboradorUUID, usuario.Email, usuario.Senha, RoleColaborador, StatusAtivo)
+	newUsuario, err := NewUsuario(colaboradorUUID, email, senha, RoleColaborador, StatusAtivo)
 
 	if err != nil {
 		return nil, err
 	}
 
-	exists, err = s.repository.ExistsEmail(ctx, usuario.Email)
+	exists, err = s.repository.ExistsEmail(ctx, email)
 
 	if err != nil {
 		return nil, fmt.Errorf("erro ao verificar existência de email: %w", err)
@@ -60,7 +58,7 @@ func (s *UsuarioService) CreateUsuario(ctx context.Context, usuario *dto.Usuario
 		return nil, ErrorEmailAlreadyExists
 	}
 
-	hashedPassword, err := s.passwordHasher.HashPassword(usuario.Senha)
+	hashedPassword, err := s.passwordHasher.HashPassword(senha)
 
 	if err != nil {
 		return nil, fmt.Errorf("erro ao hashear senha: %w", err)
@@ -68,23 +66,11 @@ func (s *UsuarioService) CreateUsuario(ctx context.Context, usuario *dto.Usuario
 
 	newUsuario.Senha = hashedPassword
 
-	createdUsuario, err := s.repository.Store(ctx, newUsuario)
-
-	if err != nil {
-		return nil, err
-	}
-
-	usuarioResponse, err := usuarioToResponse(createdUsuario)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return usuarioResponse, nil
+	return s.repository.Store(ctx, newUsuario)
 } // Fim CreateUsuario
 
 // Atualiza um usuário existente com novas informações
-func (s *UsuarioService) UpdateUsuario(ctx context.Context, usuario *dto.UsuarioRequestDTO, usuarioId string) error {
+func (s *UsuarioService) UpdateUsuario(ctx context.Context, email, senha, usuarioId string) error {
 	usuarioUUID, err := uuid.Parse(usuarioId)
 
 	if err != nil {
@@ -105,13 +91,13 @@ func (s *UsuarioService) UpdateUsuario(ctx context.Context, usuario *dto.Usuario
 		return colaborador.ErrorInactiveColaborador
 	}
 
-	err = existingUsuario.UpdateUsuario(usuario.Email, usuario.Senha, nil)
+	err = existingUsuario.UpdateUsuario(email, senha, nil)
 
 	if err != nil {
 		return err
 	}
 
-	exists, err := s.repository.ExistsEmailExcludingId(ctx, usuario.Email, existingUsuario.Id)
+	exists, err := s.repository.ExistsEmailExcludingId(ctx, email, existingUsuario.Id)
 
 	if err != nil {
 		return fmt.Errorf("erro ao verificar existência de email excluindo ID: %w", err)
@@ -121,8 +107,8 @@ func (s *UsuarioService) UpdateUsuario(ctx context.Context, usuario *dto.Usuario
 		return ErrorEmailAlreadyExists
 	}
 
-	if usuario.Senha != "" {
-		hashedPassword, err := s.passwordHasher.HashPassword(usuario.Senha)
+	if senha != "" {
+		hashedPassword, err := s.passwordHasher.HashPassword(senha)
 
 		if err != nil {
 			return fmt.Errorf("erro ao hashear senha: %w", err)
@@ -155,8 +141,8 @@ func (s *UsuarioService) DisableUsuario(ctx context.Context, usuarioId string) e
 	return s.repository.Disable(ctx, existingUsuario.Id)
 } // Fim DisableUsuario
 
-// Recupera um usuário pelo ID, retornando suas informações em um formato adequado para resposta
-func (s *UsuarioService) GetUsuarioById(ctx context.Context, usuarioId string) (*dto.UsuarioResponseDTO, error) {
+// Recupera um usuário pelo ID
+func (s *UsuarioService) GetUsuarioById(ctx context.Context, usuarioId string) (*Usuario, error) {
 	usuarioUUID, err := uuid.Parse(usuarioId)
 
 	if err != nil {
@@ -173,46 +159,21 @@ func (s *UsuarioService) GetUsuarioById(ctx context.Context, usuarioId string) (
 		return nil, err
 	}
 
-	return usuarioToResponse(existingUsuario)
+	return existingUsuario, nil
 } // Fim GetUsuarioById
 
-func (s *UsuarioService) GetUsuarioByEmail(ctx context.Context, email string) (*dto.UsuarioResponseDTO, error) {
+func (s *UsuarioService) GetUsuarioByEmail(ctx context.Context, email string) (*Usuario, error) {
 	existingUsuario, err := s.repository.FindByEmail(ctx, email)
 
 	if err != nil {
 		return nil, ErrorUserNotFound
 	}
 
-	response, err := usuarioToResponse(existingUsuario)
-
-	if err != nil {
-		return nil, err
-	}
-
-	fmt.Println("Service", response)
-
-	return response, nil
+	return existingUsuario, nil
 }
 
-// Converte um objeto de domínio de usuário para um DTO de resposta, formatando os campos conforme necessário
-func usuarioToResponse(usuario *Usuario) (*dto.UsuarioResponseDTO, error) {
-	a, err := statusToString(usuario.Ativo)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return &dto.UsuarioResponseDTO{
-		Id:            usuario.Id.String(),
-		IdColaborador: usuario.IdColaborador.String(),
-		Email:         usuario.Email,
-		Role:          string(usuario.Role),
-		Ativo:         a,
-	}, nil
-} // Fim usuarioToResponse
-
-// Converte o status do usuário para uma string legível, verificando se o status é válido
-func statusToString(status StatusUsuario) (string, error) {
+// Converte o status do usuário para string
+func StatusUsuarioString(status StatusUsuario) (string, error) {
 	switch status {
 	case StatusAtivo:
 		return "ativo", nil
@@ -221,4 +182,4 @@ func statusToString(status StatusUsuario) (string, error) {
 	default:
 		return "desconecido", ErrorInvalidStatus
 	}
-} // Fim statusToString
+} // Fim StatusUsuarioString

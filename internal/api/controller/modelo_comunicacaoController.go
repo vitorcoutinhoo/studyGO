@@ -26,14 +26,14 @@ func (c *ModeloComunicacaoController) CreateModeloComunicacao(ctx *gin.Context) 
 		return
 	}
 
-	modelo, err := c.service.CreateModeloComunicacao(ctx, &req)
+	modelo, err := c.service.CreateModeloComunicacao(ctx, req.Nome, req.TipoComunicacao, req.Assunto, req.Corpo)
 
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	ctx.JSON(http.StatusCreated, modelo)
+	ctx.JSON(http.StatusCreated, modeloComunicacaoToResponse(*modelo))
 }
 
 func (c *ModeloComunicacaoController) UpdateModeloComunicacao(ctx *gin.Context) {
@@ -46,9 +46,7 @@ func (c *ModeloComunicacaoController) UpdateModeloComunicacao(ctx *gin.Context) 
 		return
 	}
 
-	err := c.service.UpdateModeloComunicacao(ctx, idModelo, &req)
-
-	if err != nil {
+	if err := c.service.UpdateModeloComunicacao(ctx, idModelo, req.Nome, req.TipoComunicacao, req.Assunto, req.Corpo, req.Ativo); err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -59,9 +57,7 @@ func (c *ModeloComunicacaoController) UpdateModeloComunicacao(ctx *gin.Context) 
 func (c *ModeloComunicacaoController) DisableModeloComunicacao(ctx *gin.Context) {
 	idModelo := ctx.Param("id_modelo")
 
-	err := c.service.DisableModeloComunicacao(ctx, idModelo)
-
-	if err != nil {
+	if err := c.service.DisableModeloComunicacao(ctx, idModelo); err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -79,7 +75,7 @@ func (c *ModeloComunicacaoController) GetModeloComunicacaoById(ctx *gin.Context)
 		return
 	}
 
-	ctx.JSON(http.StatusOK, modelo)
+	ctx.JSON(http.StatusOK, modeloComunicacaoToResponse(*modelo))
 }
 
 func (c *ModeloComunicacaoController) GetAllModelosComunicacao(ctx *gin.Context) {
@@ -90,5 +86,22 @@ func (c *ModeloComunicacaoController) GetAllModelosComunicacao(ctx *gin.Context)
 		return
 	}
 
-	ctx.JSON(http.StatusOK, modelos)
+	responses := make([]dto.ModeloComunicacaoResponseDTO, 0, len(modelos))
+
+	for _, m := range modelos {
+		responses = append(responses, modeloComunicacaoToResponse(m))
+	}
+
+	ctx.JSON(http.StatusOK, responses)
+}
+
+func modeloComunicacaoToResponse(m comunicacao.Comunicacao) dto.ModeloComunicacaoResponseDTO {
+	return dto.ModeloComunicacaoResponseDTO{
+		Id:              m.Id.String(),
+		Nome:            string(m.Nome),
+		TipoComunicacao: string(m.TipoComunicacao),
+		Assunto:         m.Assunto,
+		Corpo:           m.Corpo,
+		Ativo:           comunicacao.ParseStatusModeloComunicacaoString(m.Ativo),
+	}
 }
