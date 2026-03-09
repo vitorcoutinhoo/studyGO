@@ -17,11 +17,8 @@ const (
 type Envio struct {
 	Id              uuid.UUID
 	IdModelo        uuid.UUID
-	IdColaborador   uuid.UUID
 	TipoComunicacao TipoComunicacao
 	Destinatario    string
-	Assunto         string
-	Corpo           string
 	Status          StatusEnvio
 	DataEnvio       time.Time
 	ErroLog         string

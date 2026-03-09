@@ -3,6 +3,7 @@ package colaborador
 import (
 	"context"
 	"fmt"
+	"log"
 	"strings"
 
 	"plantao/internal/domain/comunicacao"
@@ -59,17 +60,18 @@ func (s *ColaboradorService) CreateColaborador(ctx context.Context, col *Colabor
 		return nil, err
 	}
 
-	// err = s.envioService.SendEmailComunicacao(
-	// 	ctx,
-	// 	"Boas Vindas",
-	// 	colaboradorReturn.Id.String(),
-	// 	colaboradorReturn.Email,
-	// 	colaboradorReturn.Nome,
-	// )
-
-	if err != nil {
-		return nil, err
-	}
+	go func() {
+		err := s.envioService.SendEmailComunicacao(
+			context.Background(),
+			"Boas Vindas",
+			colaboradorReturn.Id.String(),
+			colaboradorReturn.Email,
+			colaboradorReturn.Nome,
+		)
+		if err != nil {
+			log.Printf("[email] erro ao enviar boas-vindas para %s: %v", colaboradorReturn.Email, err)
+		}
+	}()
 
 	return colaboradorReturn, nil
 } // Fim CreateColaborador

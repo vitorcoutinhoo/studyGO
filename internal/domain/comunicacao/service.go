@@ -197,19 +197,11 @@ func ParseNomeEnvio(s string) (NomeEnvio, error) {
 	case "Boas Vindas":
 		return BoasVindas, nil
 	case "Novo Plantão":
-<<<<<<< HEAD
 		return NovoPlantao, nil
 	case "Cadastro Atualizado":
 		return CadastroAtualizado, nil
 	case "Cadastro Excluido":
 		return CadastroExcluido, nil
-=======
-		return NomeEnvio(NovoPlantao), nil
-	case "Cadastro Atualizado":
-		return NomeEnvio(CadastroAtualizado), nil
-	case "Cadastro Excluido":
-		return NomeEnvio(CadastroExcluido), nil
->>>>>>> 2088c8ae5eb4e7a26cdf35f5733b25e986b571ac
 	default:
 		return "", fmt.Errorf("tipo de envio inválido: %s", s)
 	}
