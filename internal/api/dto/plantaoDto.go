@@ -1,6 +1,9 @@
 package dto
 
-import "plantao/internal/domain/plantao"
+import (
+	"plantao/internal/domain/plantao"
+	"plantao/internal/domain/shared"
+)
 
 type PeriodoRequest struct {
 	Inicio string `json:"inicio" binding:"required"`
@@ -19,6 +22,6 @@ type UpdateStatusPlantaoRequest struct {
 type CreatePlantaoResponse struct {
 	Id            string                `json:"id"`
 	ColaboradorId string                `json:"colaborador_id"`
-	Periodo       plantao.Periodo       `json:"periodo"`
+	Periodo       shared.Periodo        `json:"periodo"`
 	Status        plantao.StatusPlantao `json:"status"`
 }

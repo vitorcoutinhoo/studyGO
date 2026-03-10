@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"plantao/internal/api/dto"
 	"plantao/internal/domain/plantao"
+	"plantao/internal/domain/shared"
 	"strconv"
 	"time"
 
@@ -40,7 +41,7 @@ func (p *PlantaoController) CreatePlantao(ctx *gin.Context) {
 		return
 	}
 
-	periodo := &plantao.Periodo{
+	periodo := &shared.Periodo{
 		Inicio: inicio,
 		Fim:    fim,
 	}
@@ -147,7 +148,7 @@ func (p *PlantaoController) GetPlantoesByPeriodo(ctx *gin.Context) {
 		return
 	}
 
-	var periodo = plantao.Periodo{
+	var periodo = shared.Periodo{
 		Inicio: inicio,
 		Fim:    fim,
 	}

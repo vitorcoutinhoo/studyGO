@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"plantao/internal/domain/plantao"
+	"plantao/internal/domain/shared"
 	"strconv"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -87,7 +88,7 @@ func (r *PlantaoRepository) FindById(ctx context.Context, plantaoId string) (*pl
 	var p plantao.Plantao
 	var statusStr string
 	row := r.pool.QueryRow(ctx, query, plantaoId)
-	p.Periodo = &plantao.Periodo{}
+	p.Periodo = &shared.Periodo{}
 
 	err := row.Scan(
 		&p.Id,
@@ -176,7 +177,7 @@ func (r *PlantaoRepository) Find(
 	for rows.Next() {
 		var p plantao.Plantao
 		var statusStr string
-		p.Periodo = &plantao.Periodo{}
+		p.Periodo = &shared.Periodo{}
 
 		if err := rows.Scan(
 			&p.Id,

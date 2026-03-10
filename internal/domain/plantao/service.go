@@ -1,6 +1,10 @@
 package plantao
 
-import "context"
+import (
+	"context"
+
+	"plantao/internal/domain/shared"
+)
 
 type PlantaoService struct {
 	repository PlantaoRepository
@@ -12,7 +16,7 @@ func NewPlantaoService(repository PlantaoRepository) *PlantaoService {
 	}
 }
 
-func (s *PlantaoService) CreatePlantao(ctx context.Context, colaboradorId string, periodo *Periodo) (*Plantao, error) {
+func (s *PlantaoService) CreatePlantao(ctx context.Context, colaboradorId string, periodo *shared.Periodo) (*Plantao, error) {
 	existingPlantoes, err := s.repository.Find(ctx, &Filtro{
 		ColaboradorID: colaboradorId,
 		Periodo:       periodo,
@@ -95,7 +99,7 @@ func (s *PlantaoService) GetPlantoesByColaboradorId(ctx context.Context, colabor
 	})
 }
 
-func (s *PlantaoService) GetPlantoesByPeriodo(ctx context.Context, periodo *Periodo) ([]Plantao, error) {
+func (s *PlantaoService) GetPlantoesByPeriodo(ctx context.Context, periodo *shared.Periodo) ([]Plantao, error) {
 	return s.repository.Find(ctx, &Filtro{
 		Periodo: periodo,
 	})

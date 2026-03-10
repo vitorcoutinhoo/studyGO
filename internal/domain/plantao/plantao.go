@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"plantao/internal/domain/shared"
 )
 
 var (
@@ -15,14 +16,14 @@ var (
 type Plantao struct {
 	Id            string
 	ColaboradorId string
-	Periodo       *Periodo
+	Periodo       *shared.Periodo
 	Status        StatusPlantao
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
 }
 
-func NewPlantao(colaboradorId string, periodo *Periodo) (*Plantao, error) {
-	newPeriodo, err := NewPeriodo(periodo.Inicio, periodo.Fim)
+func NewPlantao(colaboradorId string, periodo *shared.Periodo) (*Plantao, error) {
+	newPeriodo, err := shared.NewPeriodo(periodo.Inicio, periodo.Fim)
 
 	if err != nil {
 		return nil, err

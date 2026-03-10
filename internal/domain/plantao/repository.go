@@ -1,6 +1,10 @@
 package plantao
 
-import "context"
+import (
+	"context"
+
+	"plantao/internal/domain/shared"
+)
 
 type PlantaoRepository interface {
 	Store(ctx context.Context, plantao *Plantao) error
@@ -12,7 +16,7 @@ type PlantaoRepository interface {
 
 type Filtro struct {
 	ColaboradorID string
-	Periodo       *Periodo
+	Periodo       *shared.Periodo
 	Status        *StatusPlantao
 	Limit         *int
 	Offset        *int
