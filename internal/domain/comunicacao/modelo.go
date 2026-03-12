@@ -82,11 +82,7 @@ var (
 
 func NewComunicacao(nome, assunto, corpo string, ativo StatusModeloComunicacao, tipoComunicacao TipoComunicacao) (*Comunicacao, error) {
 	if len(nome) < 1 {
-<<<<<<< HEAD
-		return nil, ErrorIvalidNome
-=======
 		return nil, ErrorInvalidNome
->>>>>>> d11a0e72eee1413a7717b7799acbb895e3e868f1
 	}
 
 	if len(assunto) < 1 {
@@ -139,9 +135,6 @@ func (c *Comunicacao) UpdateComunicacao(nome, assunto, corpo *string, ativo *Sta
 		c.Assunto = *assunto
 	}
 
-<<<<<<< HEAD
-	if corpo != nil && *corpo != "" {
-=======
 	if corpo != nil {
 		err := validateEmailBodyTag(*tipoComunicacao, *corpo)
 
@@ -155,7 +148,6 @@ func (c *Comunicacao) UpdateComunicacao(nome, assunto, corpo *string, ativo *Sta
 			return err
 		}
 
->>>>>>> d11a0e72eee1413a7717b7799acbb895e3e868f1
 		c.Corpo = *corpo
 	}
 
@@ -193,8 +185,6 @@ func isTipoComunicacaoValid(t TipoComunicacao) bool {
 
 	return false
 }
-<<<<<<< HEAD
-=======
 
 func validateEmailBodyTag(tipoComunicacao TipoComunicacao, body string) error {
 	tags, ok := requiredTags[tipoComunicacao]
@@ -241,4 +231,3 @@ func isValidHTML(htmlBody string) error {
 
 	return nil
 }
->>>>>>> d11a0e72eee1413a7717b7799acbb895e3e868f1

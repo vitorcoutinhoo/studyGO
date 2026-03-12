@@ -8,6 +8,7 @@ import (
 	apihttp "plantao/internal/api/http"
 	"plantao/internal/domain/colaborador"
 	"plantao/internal/domain/comunicacao"
+	"plantao/internal/domain/financeiro"
 	"plantao/internal/domain/plantao"
 	"plantao/internal/domain/usuario"
 	"plantao/internal/infra/config"
@@ -26,6 +27,7 @@ var PostgresModule = fx.Module("postgres",
 	fx.Provide(
 		pgstore.NewPool,
 		fx.Annotate(pgstore.NewPlantaoRepository, fx.As(new(plantao.PlantaoRepository))),
+		fx.Annotate(pgstore.NewFeriadoRepository, fx.As(new(financeiro.FeriadoRepository))),
 		fx.Annotate(pgstore.NewColaboradorRepository, fx.As(new(colaborador.ColaboradorRepository))),
 		fx.Annotate(pgstore.NewUsuarioRepository, fx.As(new(usuario.UsuarioRepository))),
 		fx.Annotate(pgstore.NewModeloRepository, fx.As(new(comunicacao.ModeloComunicaRepository))),
@@ -44,6 +46,7 @@ var SecurityModule = fx.Module("security",
 
 var DomainModule = fx.Module("domain",
 	fx.Provide(
+		financeiro.NewFeriadoService,
 		plantao.NewPlantaoService,
 		colaborador.NewColaboradorService,
 		usuario.NewUsuarioService,
@@ -56,6 +59,7 @@ var DomainModule = fx.Module("domain",
 var APIModule = fx.Module("api",
 	fx.Provide(
 		controller.NewPlantaoController,
+		controller.NewFeriadoController,
 		controller.NewColaboradorController,
 		controller.NewUsuarioController,
 		controller.NewAuthController,

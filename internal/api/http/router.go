@@ -23,6 +23,7 @@ func NewRouter(
 	authController *controller.AuthController,
 	authMidware *midware.AuthMidware,
 	modeloComunicacaoController *controller.ModeloComunicacaoController,
+	feriadoController *controller.FeriadoController,
 ) *gin.Engine {
 	router := gin.Default()
 
@@ -40,6 +41,7 @@ func NewRouter(
 	setupUsuarioRoutes(router, usuarioController, authMidware)
 	setupAuthRoutes(router, authController)
 	setupModeloComunicacaoRoutes(router, modeloComunicacaoController, authMidware)
+	setupFeriadoRoutes(router, feriadoController, authMidware)
 
 	return router
 }
@@ -83,6 +85,22 @@ func setupColaboradorRoutes(
 			colaboradorRoutes.DELETE("/:id", colaboradorController.DisableColaborador)
 			colaboradorRoutes.GET("/:id", colaboradorController.GetColaboradorById)
 			colaboradorRoutes.GET("", colaboradorController.GetColaboradoresByFilter)
+		}
+	}
+}
+
+func setupFeriadoRoutes(
+	router *gin.Engine,
+	feriadoController *controller.FeriadoController,
+	authMidware *midware.AuthMidware,
+) {
+	v1 := router.Group("/api/v1")
+	{
+		feriadoRoutes := v1.Group("/admin/feriados")
+		feriadoRoutes.Use(authMidware.AuthenticationMidware(), midware.RoleMidware(ADMIN_ROLE))
+		{
+			feriadoRoutes.GET("", feriadoController.GetFeriadosByAno)
+			feriadoRoutes.PATCH("/:id/data", feriadoController.UpdateDataFeriado)
 		}
 	}
 }
