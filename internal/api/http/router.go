@@ -24,6 +24,7 @@ func NewRouter(
 	authMidware *midware.AuthMidware,
 	modeloComunicacaoController *controller.ModeloComunicacaoController,
 	feriadoController *controller.FeriadoController,
+	valorDiaController *controller.ValorDiaController,
 ) *gin.Engine {
 	router := gin.Default()
 
@@ -42,6 +43,7 @@ func NewRouter(
 	setupAuthRoutes(router, authController)
 	setupModeloComunicacaoRoutes(router, modeloComunicacaoController, authMidware)
 	setupFeriadoRoutes(router, feriadoController, authMidware)
+	setupValorDiaRoutes(router, valorDiaController, authMidware)
 
 	return router
 }
@@ -81,10 +83,26 @@ func setupColaboradorRoutes(
 		colaboradorRoutes.Use(authMidware.AuthenticationMidware(), midware.RoleMidware(ADMIN_ROLE, GERENTE_ROLE, COLABORADOR_ROLE))
 		{
 			colaboradorRoutes.POST("", colaboradorController.CreateColaborador)
-			colaboradorRoutes.PUT("/:id", colaboradorController.UpdateColaborador)
+			colaboradorRoutes.PATCH("/:id", colaboradorController.UpdateColaborador)
 			colaboradorRoutes.DELETE("/:id", colaboradorController.DisableColaborador)
 			colaboradorRoutes.GET("/:id", colaboradorController.GetColaboradorById)
 			colaboradorRoutes.GET("", colaboradorController.GetColaboradoresByFilter)
+		}
+	}
+}
+
+func setupValorDiaRoutes(
+	router *gin.Engine,
+	valorDiaController *controller.ValorDiaController,
+	authMidware *midware.AuthMidware,
+) {
+	v1 := router.Group("/api/v1")
+	{
+		valorDiaRoutes := v1.Group("/admin/config-valores")
+		valorDiaRoutes.Use(authMidware.AuthenticationMidware(), midware.RoleMidware(ADMIN_ROLE))
+		{
+			valorDiaRoutes.GET("", valorDiaController.GetVigentes)
+			valorDiaRoutes.POST("", valorDiaController.SetValor)
 		}
 	}
 }

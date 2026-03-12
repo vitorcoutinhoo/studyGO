@@ -73,7 +73,7 @@ func (p *PlantaoController) UpdateStatusPlantao(ctx *gin.Context) {
 	}
 
 	plantaoId := ctx.Param("id")
-	_, err = p.service.UpdatePlantaoStatus(ctx.Request.Context(), plantaoId, plantao.StatusPlantao(status))
+	_, err = p.service.UpdatePlantaoStatus(ctx.Request.Context(), plantaoId, plantao.StatusPlantao(status), req.Observacoes)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -209,5 +209,7 @@ func toPlantaoResponse(plantao *plantao.Plantao) *dto.CreatePlantaoResponse {
 		ColaboradorId: plantao.ColaboradorId,
 		Periodo:       *plantao.Periodo,
 		Status:        plantao.Status,
+		ValorTotal:    plantao.ValorTotal,
+		Observacoes:   plantao.Observacoes,
 	}
 }

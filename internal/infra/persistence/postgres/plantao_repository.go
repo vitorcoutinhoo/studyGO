@@ -7,6 +7,7 @@ import (
 	"plantao/internal/domain/shared"
 	"strconv"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -81,7 +82,7 @@ func (r *PlantaoRepository) Delete(ctx context.Context, plantaoId string) error 
 
 func (r *PlantaoRepository) FindById(ctx context.Context, plantaoId string) (*plantao.Plantao, error) {
 	query := `
-		SELECT id, id_colaborador, data_inicio, data_fim, status, created_at, updated_at
+		SELECT id, id_colaborador, data_inicio, data_fim, status, valor_total, observacoes, created_at, updated_at
 		FROM plantoes
 		WHERE id = $1
 	`
@@ -96,6 +97,8 @@ func (r *PlantaoRepository) FindById(ctx context.Context, plantaoId string) (*pl
 		&p.Periodo.Inicio,
 		&p.Periodo.Fim,
 		&statusStr,
+		&p.ValorTotal,
+		&p.Observacoes,
 		&p.CreatedAt,
 		&p.UpdatedAt,
 	)
@@ -118,7 +121,7 @@ func (r *PlantaoRepository) Find(
 ) ([]plantao.Plantao, error) {
 
 	query := `
-		SELECT id, id_colaborador, data_inicio, data_fim, status, created_at, updated_at
+		SELECT id, id_colaborador, data_inicio, data_fim, status, valor_total, observacoes, created_at, updated_at
 		FROM plantoes
 		WHERE 1=1
 	`
@@ -185,6 +188,8 @@ func (r *PlantaoRepository) Find(
 			&p.Periodo.Inicio,
 			&p.Periodo.Fim,
 			&statusStr,
+			&p.ValorTotal,
+			&p.Observacoes,
 			&p.CreatedAt,
 			&p.UpdatedAt,
 		); err != nil {
@@ -201,4 +206,33 @@ func (r *PlantaoRepository) Find(
 	}
 
 	return plantoes, nil
+}
+
+func (r *PlantaoRepository) StoreDetalhesAndUpdateValorTotal(ctx context.Context, plantaoId string, valorTotal float64, observacoes *string, detalhes []plantao.PlantaoDetalhe) error {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	for _, d := range detalhes {
+		_, err := tx.Exec(ctx,
+			`INSERT INTO plantoes_detalhes (id, id_plantao, data, tipo_dia, valor)
+			 VALUES ($1, $2, $3, $4, $5)`,
+			uuid.NewString(), d.IdPlantao, d.Data, d.TipoDia, d.Valor,
+		)
+		if err != nil {
+			return fmt.Errorf("failed to store plantao detalhe: %w", err)
+		}
+	}
+
+	_, err = tx.Exec(ctx,
+		`UPDATE plantoes SET valor_total = $2, observacoes = $3, updated_at = NOW() WHERE id = $1`,
+		plantaoId, valorTotal, observacoes,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to update valor_total: %w", err)
+	}
+
+	return tx.Commit(ctx)
 }

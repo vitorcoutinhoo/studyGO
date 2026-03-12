@@ -67,6 +67,34 @@ func (r *FeriadoRepository) FindByAno(ctx context.Context, ano int) ([]financeir
 	return feriados, nil
 }
 
+func (r *FeriadoRepository) FindByPeriodo(ctx context.Context, inicio, fim time.Time) (map[time.Time]bool, error) {
+	query := `
+		SELECT data FROM feriados
+		WHERE data BETWEEN $1 AND $2
+	`
+
+	rows, err := r.pool.Query(ctx, query, inicio, fim)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find feriados by periodo: %w", err)
+	}
+	defer rows.Close()
+
+	feriados := make(map[time.Time]bool)
+	for rows.Next() {
+		var data time.Time
+		if err := rows.Scan(&data); err != nil {
+			return nil, err
+		}
+		feriados[normalizeDate(data)] = true
+	}
+
+	return feriados, nil
+}
+
+func normalizeDate(t time.Time) time.Time {
+	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, time.UTC)
+}
+
 func (r *FeriadoRepository) UpdateData(ctx context.Context, id uuid.UUID, novaData time.Time) error {
 	query := `UPDATE feriados SET data = $2 WHERE id = $1`
 

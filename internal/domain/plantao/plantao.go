@@ -18,6 +18,8 @@ type Plantao struct {
 	ColaboradorId string
 	Periodo       *shared.Periodo
 	Status        StatusPlantao
+	ValorTotal    float64
+	Observacoes   *string
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
 }

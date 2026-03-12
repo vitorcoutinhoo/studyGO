@@ -16,7 +16,8 @@ type CreatePlantaoRequest struct {
 }
 
 type UpdateStatusPlantaoRequest struct {
-	NewStatus string `json:"new_status" binding:"required"`
+	NewStatus   string  `json:"new_status" binding:"required"`
+	Observacoes *string `json:"observacoes"`
 }
 
 type CreatePlantaoResponse struct {
@@ -24,4 +25,6 @@ type CreatePlantaoResponse struct {
 	ColaboradorId string                `json:"colaborador_id"`
 	Periodo       shared.Periodo        `json:"periodo"`
 	Status        plantao.StatusPlantao `json:"status"`
+	ValorTotal    float64               `json:"valor_total"`
+	Observacoes   *string               `json:"observacoes,omitempty"`
 }

@@ -3,16 +3,19 @@ package plantao
 import (
 	"context"
 
+	"plantao/internal/domain/financeiro"
 	"plantao/internal/domain/shared"
 )
 
 type PlantaoService struct {
-	repository PlantaoRepository
+	repository    PlantaoRepository
+	calculoService *financeiro.CalculoService
 }
 
-func NewPlantaoService(repository PlantaoRepository) *PlantaoService {
+func NewPlantaoService(repository PlantaoRepository, calculoService *financeiro.CalculoService) *PlantaoService {
 	return &PlantaoService{
-		repository: repository,
+		repository:    repository,
+		calculoService: calculoService,
 	}
 }
 
@@ -42,7 +45,7 @@ func (s *PlantaoService) CreatePlantao(ctx context.Context, colaboradorId string
 	return plantao, nil
 }
 
-func (s *PlantaoService) UpdatePlantaoStatus(ctx context.Context, plantaoId string, newStatus StatusPlantao) (*Plantao, error) {
+func (s *PlantaoService) UpdatePlantaoStatus(ctx context.Context, plantaoId string, newStatus StatusPlantao, observacoes *string) (*Plantao, error) {
 	plantao, err := s.repository.FindById(ctx, plantaoId)
 	if err != nil {
 		return nil, err
@@ -56,8 +59,32 @@ func (s *PlantaoService) UpdatePlantaoStatus(ctx context.Context, plantaoId stri
 		return nil, err
 	}
 
-	if err := s.repository.Update(ctx, plantao); err != nil {
-		return nil, err
+	if newStatus == StatusPlantaoConcluido {
+		resultado, err := s.calculoService.Calcular(ctx, plantao.Periodo)
+		if err != nil {
+			return nil, err
+		}
+
+		detalhes := make([]PlantaoDetalhe, 0, len(resultado.Dias))
+		for _, d := range resultado.Dias {
+			detalhes = append(detalhes, PlantaoDetalhe{
+				IdPlantao: plantaoId,
+				Data:      d.Data,
+				TipoDia:   string(d.TipoDia),
+				Valor:     d.Valor,
+			})
+		}
+
+		if err := s.repository.StoreDetalhesAndUpdateValorTotal(ctx, plantaoId, resultado.ValorTotal, observacoes, detalhes); err != nil {
+			return nil, err
+		}
+
+		plantao.ValorTotal = resultado.ValorTotal
+		plantao.Observacoes = observacoes
+	} else {
+		if err := s.repository.Update(ctx, plantao); err != nil {
+			return nil, err
+		}
 	}
 
 	return plantao, nil
