@@ -2,9 +2,13 @@ package comunicacao
 
 import (
 	"errors"
+	"fmt"
+	"regexp"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
+	"golang.org/x/net/html"
 )
 
 type StatusModeloComunicacao int
@@ -17,22 +21,47 @@ const (
 type TipoComunicacao string
 
 const (
-	Email TipoComunicacao = "EMAIL"
-	SMS   TipoComunicacao = "SMS"
+	PlantaoAgendado       TipoComunicacao = "Plantão Agendado"
+	PlantaoConluido       TipoComunicacao = "Plantão Concluido"
+	PlantaoAindaAberto    TipoComunicacao = "Plantão Ainda Está Aberto"
+	PlantaoPago           TipoComunicacao = "Plantão Pago"
+	ColaboradorCadastrado TipoComunicacao = "Colaborador Cadastrado"
+	ColaboradorAtualizado TipoComunicacao = "Colaborador Atualizado"
+	ColaboradorDeletado   TipoComunicacao = "Colaborador Deletado"
+	UsuarioCadastrado     TipoComunicacao = "Usuário Cadastrado"
+	EmailAtualizado       TipoComunicacao = "Email do Usuário Atualizado"
+	SenhaAtualizada       TipoComunicacao = "Senha do Usuário Atualizada"
+	UsuarioDeletado       TipoComunicacao = "Usuário Deletado"
 )
 
-type NomeEnvio string
+type TagBody string
 
 const (
-	BoasVindas         NomeEnvio = "Boas Vindas"
-	NovoPlantao        NomeEnvio = "Novo Plantão"
-	CadastroAtualizado NomeEnvio = "Cadastro Atualizado"
-	CadastroExcluido   NomeEnvio = "Cadastro Excluido"
+	Nome       TagBody = "nome"
+	DataInicio TagBody = "dataInicio"
+	DataFim    TagBody = "dataFim"
+	ValorPago  TagBody = "valorPago"
+	Email      TagBody = "email"
+	DataAtual  TagBody = "dataAtual"
 )
+
+var requiredTags = map[TipoComunicacao][]TagBody{
+	PlantaoAgendado:       {Nome, DataInicio, DataFim},
+	PlantaoConluido:       {Nome, DataInicio, DataFim},
+	PlantaoAindaAberto:    {Nome, DataInicio, DataFim},
+	PlantaoPago:           {Nome, DataInicio, DataFim, ValorPago},
+	ColaboradorCadastrado: {Nome, Email},
+	ColaboradorAtualizado: {Nome, Email},
+	ColaboradorDeletado:   {Nome, DataAtual},
+	UsuarioCadastrado:     {Nome, Email},
+	EmailAtualizado:       {Nome, Email},
+	SenhaAtualizada:       {Nome, DataAtual},
+	UsuarioDeletado:       {Nome, DataAtual},
+}
 
 type Comunicacao struct {
 	Id              uuid.UUID
-	Nome            NomeEnvio
+	Nome            string
 	TipoComunicacao TipoComunicacao
 	Assunto         string
 	Corpo           string
@@ -42,7 +71,7 @@ type Comunicacao struct {
 }
 
 var (
-	ErrorIvalidNome                     = errors.New("Nome do envio invalido!")
+	ErrorInvalidNome                    = errors.New("Nome do envio invalido!")
 	ErrorInvalidTipoComunicacao         = errors.New("Tipo de comunicação invalido")
 	ErrorAssunto                        = errors.New("Assunto invalido")
 	ErrorInvalidCorpo                   = errors.New("Corpo da comunicação invalido")
@@ -51,13 +80,25 @@ var (
 	ErrorModeloComunicacaoNotFound      = errors.New("Modelo de comunicação não encontrado")
 )
 
-func NewComunicacao(assunto, corpo string, ativo StatusModeloComunicacao, tipoComunicacao TipoComunicacao, nome NomeEnvio) (*Comunicacao, error) {
+func NewComunicacao(nome, assunto, corpo string, ativo StatusModeloComunicacao, tipoComunicacao TipoComunicacao) (*Comunicacao, error) {
+	if len(nome) < 1 {
+		return nil, ErrorInvalidNome
+	}
+
 	if len(assunto) < 1 {
 		return nil, ErrorAssunto
 	}
 
-	if len(corpo) < 1 {
-		return nil, ErrorInvalidCorpo
+	err := validateEmailBodyTag(tipoComunicacao, corpo)
+
+	if err != nil {
+		return nil, err
+	}
+
+	err = isValidHTML(corpo)
+
+	if err != nil {
+		return nil, err
 	}
 
 	if !isStatusComunicacaoValid(ativo) {
@@ -66,10 +107,6 @@ func NewComunicacao(assunto, corpo string, ativo StatusModeloComunicacao, tipoCo
 
 	if !isTipoComunicacaoValid(tipoComunicacao) {
 		return nil, ErrorInvalidTipoComunicacao
-	}
-
-	if !isNomeEnvioValid(nome) {
-		return nil, ErrorIvalidNome
 	}
 
 	return &Comunicacao{
@@ -81,11 +118,8 @@ func NewComunicacao(assunto, corpo string, ativo StatusModeloComunicacao, tipoCo
 	}, nil
 }
 
-func (c *Comunicacao) UpdateComunicacao(assunto, corpo string, ativo *StatusModeloComunicacao, tipoComunicacao *TipoComunicacao, nome *NomeEnvio) error {
-	if nome != nil {
-		if !isNomeEnvioValid(*nome) {
-			return ErrorIvalidNome
-		}
+func (c *Comunicacao) UpdateComunicacao(nome, assunto, corpo *string, ativo *StatusModeloComunicacao, tipoComunicacao *TipoComunicacao) error {
+	if nome != nil && *nome != "" {
 		c.Nome = *nome
 	}
 
@@ -97,12 +131,24 @@ func (c *Comunicacao) UpdateComunicacao(assunto, corpo string, ativo *StatusMode
 		c.TipoComunicacao = *tipoComunicacao
 	}
 
-	if assunto != "" {
-		c.Assunto = assunto
+	if assunto != nil && *assunto != "" {
+		c.Assunto = *assunto
 	}
 
-	if corpo != "" {
-		c.Corpo = corpo
+	if corpo != nil {
+		err := validateEmailBodyTag(*tipoComunicacao, *corpo)
+
+		if err != nil {
+			return err
+		}
+
+		err = isValidHTML(*corpo)
+
+		if err != nil {
+			return err
+		}
+
+		c.Corpo = *corpo
 	}
 
 	if ativo != nil {
@@ -122,18 +168,66 @@ func isStatusComunicacaoValid(status StatusModeloComunicacao) bool {
 
 func isTipoComunicacaoValid(t TipoComunicacao) bool {
 	switch t {
-	case Email, SMS:
+	case
+		PlantaoAgendado,
+		PlantaoConluido,
+		PlantaoAindaAberto,
+		PlantaoPago,
+		ColaboradorCadastrado,
+		ColaboradorAtualizado,
+		ColaboradorDeletado,
+		UsuarioCadastrado,
+		EmailAtualizado,
+		SenhaAtualizada,
+		UsuarioDeletado:
 		return true
 	}
 
 	return false
 }
 
-func isNomeEnvioValid(n NomeEnvio) bool {
-	switch n {
-	case BoasVindas, NovoPlantao, CadastroAtualizado, CadastroExcluido:
-		return true
+func validateEmailBodyTag(tipoComunicacao TipoComunicacao, body string) error {
+	tags, ok := requiredTags[tipoComunicacao]
+
+	if !ok {
+		return fmt.Errorf("tipo de comunicação inválido: %s", tipoComunicacao)
 	}
 
-	return false
+	var missingTags []string
+
+	for _, tag := range tags {
+		pattern := fmt.Sprintf(`{{\s*\.%s\s*}}`, tag)
+		matched, _ := regexp.MatchString(pattern, body)
+
+		if !matched {
+			missingTags = append(missingTags, fmt.Sprintf("{{%s}}", tag))
+		}
+	}
+
+	if len(missingTags) > 0 {
+		return fmt.Errorf(
+			"tags obrigatórias ausentes para o tipo '%s': %s",
+			tipoComunicacao,
+			strings.Join(missingTags, ", "),
+		)
+	}
+
+	return nil
+}
+
+func isValidHTML(htmlBody string) error {
+	if strings.TrimSpace(htmlBody) == "" {
+		return errors.New("corpo do email não pode estar vazio")
+	}
+
+	_, err := html.Parse(strings.NewReader(htmlBody))
+	if err != nil {
+		return errors.New("HTML inválido no corpo do email")
+	}
+
+	if strings.Contains(strings.ToLower(htmlBody), "<script") {
+		return errors.New("scripts não são permitidos no email")
+	}
+
+	return nil
 }

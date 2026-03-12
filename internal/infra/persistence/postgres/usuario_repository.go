@@ -53,7 +53,7 @@ func (r *UsuarioRepository) Store(ctx context.Context, usuario *usuario.Usuario)
 	)
 
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("erro ao inserir novo usuário: %w", err)
 	}
 
 	usuario.Ativo = dbToStatusUsuario(ativoDB)
@@ -68,7 +68,7 @@ func (r *UsuarioRepository) Update(ctx context.Context, u *usuario.Usuario) erro
 		email = $1,
 		senha_hash = $2,
 		ativo = $3,
-		updated_at = CURRENT_TIMESTAMP
+		updated_at = NOW()
 	WHERE id = $4 AND ativo = 'Y'
 	`
 
@@ -96,6 +96,7 @@ func (r *UsuarioRepository) Disable(ctx context.Context, usuarioId uuid.UUID) er
 	query := `
 	UPDATE usuarios_login
 	SET
+		email = 'INATIVO_' || id || '_' || email,
 		ativo = 'N',
 		updated_at = NOW()
 	WHERE id = $1 AND ativo = 'Y'
@@ -108,7 +109,7 @@ func (r *UsuarioRepository) Disable(ctx context.Context, usuarioId uuid.UUID) er
 	}
 
 	if result.RowsAffected() == 0 {
-		return fmt.Errorf("usuário com ID %s não encontrado", usuarioId)
+		return fmt.Errorf("ID do usuário não encontrado")
 	}
 
 	return nil
@@ -122,7 +123,9 @@ func (r *UsuarioRepository) FindById(ctx context.Context, usuarioId uuid.UUID) (
 		email,
 		senha_hash,
 		role,
-		ativo
+		ativo,
+		created_at,
+		updated_at
 	FROM usuarios_login
 	WHERE id = $1 AND ativo = 'Y'
 	`
@@ -137,13 +140,15 @@ func (r *UsuarioRepository) FindById(ctx context.Context, usuarioId uuid.UUID) (
 		&u.Senha,
 		&u.Role,
 		&ativoDB,
+		&u.CreatedAt,
+		&u.UpdatedAt,
 	)
 
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, usuario.ErrorUserNotFound
 		}
-		return nil, err
+		return nil, fmt.Errorf("erro ao procurar usuário por id: %w", err)
 	}
 
 	sts := dbToStatusUsuario(ativoDB)
@@ -161,7 +166,9 @@ func (r *UsuarioRepository) FindByEmail(ctx context.Context, email string) (*usu
 		email,
 		senha_hash,
 		role,
-		ativo
+		ativo,
+		created_at,
+		updated_at
 	FROM usuarios_login
 	WHERE email = $1 AND ativo = 'Y'
 	`
@@ -176,13 +183,15 @@ func (r *UsuarioRepository) FindByEmail(ctx context.Context, email string) (*usu
 		&u.Senha,
 		&u.Role,
 		&ativoDB,
+		&u.CreatedAt,
+		&u.UpdatedAt,
 	)
 
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, usuario.ErrorUserNotFound
 		}
-		return nil, err
+		return nil, fmt.Errorf("erro ao procurar usuário por email: %w", err)
 	}
 
 	sts := dbToStatusUsuario(ativoDB)

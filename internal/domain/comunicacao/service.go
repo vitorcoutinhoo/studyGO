@@ -34,13 +34,7 @@ func (s *ModeloComunicacaoService) CreateModeloComunicacao(ctx context.Context, 
 		return nil, err
 	}
 
-	nomeEnvio, err := ParseNomeEnvio(nome)
-
-	if err != nil {
-		return nil, err
-	}
-
-	newModelo, err := NewComunicacao(assunto, corpo, StatusAtivo, sts, nomeEnvio)
+	newModelo, err := NewComunicacao(nome, assunto, corpo, StatusAtivo, sts)
 
 	if err != nil {
 		return nil, err
@@ -88,13 +82,7 @@ func (s *ModeloComunicacaoService) UpdateModeloComunicacao(ctx context.Context, 
 		return err
 	}
 
-	nomeEnvio, err := ParseNomeEnvio(nome)
-
-	if err != nil {
-		return err
-	}
-
-	err = modelo.UpdateComunicacao(assunto, corpo, &status, &tipo, &nomeEnvio)
+	err = modelo.UpdateComunicacao(&nome, &assunto, &corpo, &status, &tipo)
 
 	if err != nil {
 		return err
@@ -183,26 +171,29 @@ func ParseStatusModeloComunicacaoString(s StatusModeloComunicacao) string {
 
 func ParseTipoComunicacao(s string) (TipoComunicacao, error) {
 	switch s {
-	case "EMAIL":
-		return Email, nil
-	case "SMS":
-		return SMS, nil
-	}
-
-	return "", ErrorInvalidTipoComunicacao
-}
-
-func ParseNomeEnvio(s string) (NomeEnvio, error) {
-	switch s {
-	case "Boas Vindas":
-		return BoasVindas, nil
-	case "Novo Plantão":
-		return NovoPlantao, nil
-	case "Cadastro Atualizado":
-		return CadastroAtualizado, nil
-	case "Cadastro Excluido":
-		return CadastroExcluido, nil
+	case "Plantão Agendado":
+		return PlantaoAgendado, nil
+	case "Plantão Concluido":
+		return PlantaoConluido, nil
+	case "Plantão Ainda Está Aberto":
+		return PlantaoAindaAberto, nil
+	case "Plantão Pago":
+		return PlantaoPago, nil
+	case "Colaborador Cadastrado":
+		return ColaboradorCadastrado, nil
+	case "Colaborador Atualizado":
+		return ColaboradorAtualizado, nil
+	case "Colaborador Deletado":
+		return ColaboradorDeletado, nil
+	case "Usuário Cadastrado":
+		return UsuarioCadastrado, nil
+	case "Email do Usuário Atualizado":
+		return EmailAtualizado, nil
+	case "Senha do Usuário Atualizada":
+		return SenhaAtualizada, nil
+	case "Usuário Deletado":
+		return UsuarioDeletado, nil
 	default:
-		return "", fmt.Errorf("tipo de envio inválido: %s", s)
+		return "", fmt.Errorf("tipo de comunicação inválido: %s", s)
 	}
 }
