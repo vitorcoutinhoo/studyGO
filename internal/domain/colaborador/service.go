@@ -61,13 +61,19 @@ func (s *ColaboradorService) CreateColaborador(ctx context.Context, col *Colabor
 	}
 
 	go func() {
+		data := map[string]any{
+			string(comunicacao.Nome):  colaboradorReturn.Nome,
+			string(comunicacao.Email): colaboradorReturn.Email,
+		}
+
 		err := s.envioService.SendEmailComunicacao(
 			context.Background(),
-			"Boas Vindas",
+			comunicacao.ColaboradorCadastrado,
 			colaboradorReturn.Id.String(),
 			colaboradorReturn.Email,
-			colaboradorReturn.Nome,
+			data,
 		)
+
 		if err != nil {
 			log.Printf("[email] erro ao enviar boas-vindas para %s: %v", colaboradorReturn.Email, err)
 		}

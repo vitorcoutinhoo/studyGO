@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"fmt"
 	"plantao/internal/domain/comunicacao"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -38,7 +39,7 @@ func (r *EnvioRepository) Store(ctx context.Context, com *comunicacao.Envio) err
 	)
 
 	if err != nil {
-		return err
+		return fmt.Errorf("erro ao inserir envio de comunicação: %w", err)
 	}
 
 	return nil

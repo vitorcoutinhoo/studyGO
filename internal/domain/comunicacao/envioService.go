@@ -1,7 +1,10 @@
 package comunicacao
 
 import (
+	"bytes"
 	"context"
+	"fmt"
+	"html/template"
 )
 
 type EnvioService struct {
@@ -20,12 +23,18 @@ func NewEnvioService(envioRepository EnvioComunicacaoRepository, emailRepository
 
 func (s *EnvioService) SendEmailComunicacao(
 	ctx context.Context,
-	nomeModelo string,
+	tipoComunicacao TipoComunicacao,
 	idColaborador string,
 	destinatario string,
-	nomeColaborador string,
+	data map[string]any,
 ) error {
-	modelo, err := s.modeloRepository.FindByNome(ctx, nomeModelo)
+	modelo, err := s.modeloRepository.FindByTipo(ctx, string(tipoComunicacao))
+
+	if err != nil {
+		return err
+	}
+
+	body, err := renderTemplate(modelo.Corpo, data)
 
 	if err != nil {
 		return err
@@ -34,7 +43,7 @@ func (s *EnvioService) SendEmailComunicacao(
 	err = s.emailRepository.SendEmail(
 		destinatario,
 		modelo.Assunto,
-		modelo.Corpo,
+		body,
 	)
 
 	emailLog := "Envio feito com sucesso!"
@@ -47,7 +56,7 @@ func (s *EnvioService) SendEmailComunicacao(
 
 	newEnvio, err := NewEnvio(
 		modelo.Id,
-		Email,
+		tipoComunicacao,
 		destinatario,
 		emailLog,
 		statusEnvio,
@@ -58,4 +67,22 @@ func (s *EnvioService) SendEmailComunicacao(
 	}
 
 	return s.envioRepository.Store(ctx, newEnvio)
+}
+
+func renderTemplate(htmlBody string, data map[string]any) (string, error) {
+	tmpl, err := template.New("email").Parse(htmlBody)
+
+	if err != nil {
+		return "", fmt.Errorf("erro ao processar template do email: %w", err)
+	}
+
+	var result bytes.Buffer
+
+	err = tmpl.Execute(&result, data)
+
+	if err != nil {
+		return "", fmt.Errorf("erro ao reenderizar corpo do email: %w", err)
+	}
+
+	return result.String(), nil
 }

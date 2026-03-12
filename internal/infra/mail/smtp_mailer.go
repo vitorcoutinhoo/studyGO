@@ -26,8 +26,11 @@ func NewSMTPMailer(conf *config.Config) *SMTPMailer {
 func (m *SMTPMailer) SendEmail(to string, subject string, body string) error {
 	auth := smtp.PlainAuth("", m.Username, m.Password, m.Host)
 
-	msg := []byte("To: " + to + "\r\n" +
+	msg := []byte("From: " + m.From + "\r\n" +
+		"To: " + to + "\r\n" +
 		"Subject: " + subject + "\r\n" +
+		"MIME-Version: 1.0\r\n" +
+		"Content-Type: text/html; charset=\"UTF-8\"\r\n" +
 		"\r\n" +
 		body + "\r\n")
 

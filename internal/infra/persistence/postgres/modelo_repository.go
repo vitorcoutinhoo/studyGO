@@ -48,7 +48,7 @@ func (r *ModeloRepository) Store(ctx context.Context, com *comunicacao.Comunicac
 	).Scan(&id, &createdAt, &updatedAt)
 
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("erro ao inserir novo modelo de comunicação: %w", err)
 	}
 
 	com.Id = id
@@ -67,7 +67,7 @@ func (r *ModeloRepository) Update(ctx context.Context, com *comunicacao.Comunica
 		assunto = $3,
 		corpo = $4,
 		ativo = $5,
-		updated_at = CURRENT_TIMESTAMP
+		updated_at = NOW()
 	WHERE id = $6 AND ativo = 'Y'
 	`
 
@@ -83,7 +83,7 @@ func (r *ModeloRepository) Update(ctx context.Context, com *comunicacao.Comunica
 	)
 
 	if err != nil {
-		return fmt.Errorf("erro ao criar modelo de comunicação: %w", err)
+		return fmt.Errorf("erro ao atualizar modelo de comunicação: %w", err)
 	}
 
 	if result.RowsAffected() == 0 {
@@ -97,15 +97,16 @@ func (r *ModeloRepository) Disable(ctx context.Context, modeloId uuid.UUID) erro
 	query := `
 	UPDATE modelos_comunicacao
 	SET
+		tipo = 'INATIVO_' || id || '_' || tipo,
 		ativo = 'N',
-		updated_at = CURRENT_TIMESTAMP
+		updated_at = NOW()
 	WHERE id = $1 AND ativo = 'Y'
 	`
 
 	result, err := r.pool.Exec(ctx, query, modeloId)
 
 	if err != nil {
-		return err
+		return fmt.Errorf("erro ao desativar modelo de comunicação: %w", err)
 	}
 
 	if result.RowsAffected() == 0 {
@@ -151,7 +152,7 @@ func (r *ModeloRepository) FindById(ctx context.Context, modeloId uuid.UUID) (*c
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, fmt.Errorf("nenhum modelo de comunicação encontrado com ID [%s]", modeloId)
 		}
-		return nil, err
+		return nil, fmt.Errorf("erro ao procurar modelo de comunicação por ID: %w", err)
 	}
 
 	com.TipoComunicacao = comunicacao.TipoComunicacao(tipo)
@@ -162,7 +163,7 @@ func (r *ModeloRepository) FindById(ctx context.Context, modeloId uuid.UUID) (*c
 	return &com, nil
 }
 
-func (r *ModeloRepository) FindByNome(ctx context.Context, nome string) (*comunicacao.Comunicacao, error) {
+func (r *ModeloRepository) FindByTipo(ctx context.Context, tipoComunicacao string) (*comunicacao.Comunicacao, error) {
 	query := `
 	SELECT
 		id,
@@ -174,7 +175,7 @@ func (r *ModeloRepository) FindByNome(ctx context.Context, nome string) (*comuni
 		created_at,
 		updated_at
 	FROM modelos_comunicacao
-	WHERE nome = $1 AND ativo = 'Y'
+	WHERE tipo = $1 AND ativo = 'Y'
 	`
 
 	var com comunicacao.Comunicacao
@@ -183,7 +184,7 @@ func (r *ModeloRepository) FindByNome(ctx context.Context, nome string) (*comuni
 	var createdAt time.Time
 	var updatedAt time.Time
 
-	err := r.pool.QueryRow(ctx, query, nome).Scan(
+	err := r.pool.QueryRow(ctx, query, tipoComunicacao).Scan(
 		&com.Id,
 		&com.Nome,
 		&tipo,
@@ -196,9 +197,9 @@ func (r *ModeloRepository) FindByNome(ctx context.Context, nome string) (*comuni
 
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, fmt.Errorf("nenhum modelo de comunicação encontrado com nome [%s]", nome)
+			return nil, fmt.Errorf("nenhum modelo de comunicação encontrado com tipo [%s]", tipoComunicacao)
 		}
-		return nil, err
+		return nil, fmt.Errorf("erro ao procurar modelo de comunicação por tipo: %w", err)
 	}
 
 	com.TipoComunicacao = comunicacao.TipoComunicacao(tipo)
@@ -227,7 +228,7 @@ func (r *ModeloRepository) FindAll(ctx context.Context) ([]*comunicacao.Comunica
 	rows, err := r.pool.Query(ctx, query)
 
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("erro ao obter modelos de comunicação: %w", err)
 	}
 
 	defer rows.Close()
@@ -253,7 +254,7 @@ func (r *ModeloRepository) FindAll(ctx context.Context) ([]*comunicacao.Comunica
 		)
 
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("erro ao escanear modelo de comunicação: %w", err)
 		}
 
 		com.TipoComunicacao = comunicacao.TipoComunicacao(tipo)
@@ -265,7 +266,7 @@ func (r *ModeloRepository) FindAll(ctx context.Context) ([]*comunicacao.Comunica
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("erro ao iterar modelos de comunicação: %w", err)
 	}
 
 	return modelos, nil

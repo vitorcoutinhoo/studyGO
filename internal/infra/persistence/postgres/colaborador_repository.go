@@ -117,7 +117,7 @@ func (r *ColaboradorRepository) Update(ctx context.Context, colaborador *colabor
 			ativo_plantao = $8, 
 			data_admissao = $9,
 			data_desligamento = $10,
-			updated_at = CURRENT_TIMESTAMP
+			updated_at = NOW()
 		WHERE id = $11
 	`
 	ativo := statusColaboradorToDB(colaborador.Status)
@@ -152,9 +152,10 @@ func (r *ColaboradorRepository) Disable(ctx context.Context, colaboradorId uuid.
 	query := `
 		UPDATE colaboradores
 		SET
+			email = 'INATIVO_' || id || '_' || email,
 			ativo = 'N',
 			data_desligamento = CURRENT_DATE,
-			updated_at = CURRENT_TIMESTAMP
+			updated_at = NOW()
 		WHERE id = $1
 		  AND ativo = 'Y'
 	`
@@ -176,7 +177,7 @@ func (r *ColaboradorRepository) Disable(ctx context.Context, colaboradorId uuid.
 // Vai trazer apenas um colaborador ativo
 func (r *ColaboradorRepository) FindById(ctx context.Context, colaboradorId uuid.UUID) (*colaborador.Colaborador, error) {
 	query := `
-		SELECT id, nome, email, telefone, cargo, departamento, foto_url, ativo, ativo_plantao, data_admissao, data_desligamento
+		SELECT id, nome, email, telefone, cargo, departamento, foto_url, ativo, ativo_plantao, data_admissao, data_desligamento, created_at, updated_at
 		FROM colaboradores
 		WHERE id = $1 AND ativo = 'Y'
 	`
@@ -199,6 +200,8 @@ func (r *ColaboradorRepository) FindById(ctx context.Context, colaboradorId uuid
 		&ativoPlantao,
 		&c.DataAdmissao,
 		&c.DataDesligamento,
+		&c.CreatedAt,
+		&c.UpdatedAt,
 	)
 
 	if err != nil {
@@ -219,7 +222,7 @@ func (r *ColaboradorRepository) FindById(ctx context.Context, colaboradorId uuid
 // Vai trazer apenas cloaboradores ativos
 func (r *ColaboradorRepository) FindByEmail(ctx context.Context, email string) (*colaborador.Colaborador, error) {
 	query := `
-		SELECT id, nome, email, telefone, cargo, departamento, foto_url, ativo, ativo_plantao, data_admissao, data_desligamento
+		SELECT id, nome, email, telefone, cargo, departamento, foto_url, ativo, ativo_plantao, data_admissao, data_desligamento, created_at, updated_at
 		FROM colaboradores
 		WHERE email = $1 AND ativo = 'Y'
 	`
@@ -242,6 +245,8 @@ func (r *ColaboradorRepository) FindByEmail(ctx context.Context, email string) (
 		&ativoPlantao,
 		&c.DataAdmissao,
 		&c.DataDesligamento,
+		&c.CreatedAt,
+		&c.UpdatedAt,
 	)
 
 	if err != nil {
@@ -263,7 +268,7 @@ func (r *ColaboradorRepository) FindByEmail(ctx context.Context, email string) (
 // Vai trazer apenas cloaboradores ativos
 func (r *ColaboradorRepository) FindByFilter(ctx context.Context, filter colaborador.ColaboradorFilter) ([]colaborador.Colaborador, error) {
 	query := `
-		SELECT id, nome, email, telefone, cargo, departamento, foto_url, ativo, ativo_plantao, data_admissao, data_desligamento
+		SELECT id, nome, email, telefone, cargo, departamento, foto_url, ativo, ativo_plantao, data_admissao, data_desligamento, created_at, updated_at
 		FROM colaboradores
 	`
 
@@ -340,10 +345,12 @@ func (r *ColaboradorRepository) FindByFilter(ctx context.Context, filter colabor
 			&ativoPlantao,
 			&c.DataAdmissao,
 			&c.DataDesligamento,
+			&c.CreatedAt,
+			&c.UpdatedAt,
 		)
 
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("erro ao escanear colaborador: %w", err)
 		}
 
 		c.Status = statusColaboradorFromDB(ativo)
@@ -359,7 +366,7 @@ func (r *ColaboradorRepository) ExistsEmail(ctx context.Context, email string) (
 	query := `
 		SELECT COUNT(1)
 		FROM colaboradores
-		WHERE email = $1
+		WHERE email = $1 AND ativo = 'Y'
 	`
 
 	var count int
@@ -378,7 +385,7 @@ func (r *ColaboradorRepository) ExistsId(ctx context.Context, colaboradorId uuid
 	query := `
 		SELECT COUNT(1)
 		FROM colaboradores
-		WHERE id = $1
+		WHERE id = $1 AND ativo = 'Y'
 	`
 
 	var count int
@@ -397,7 +404,7 @@ func (r *ColaboradorRepository) ExistsEmailExcludingId(ctx context.Context, emai
 	query := `
 		SELECT COUNT(1)
 		FROM colaboradores
-		WHERE email = $1 AND id != $2
+		WHERE email = $1 AND id != $2 AND ativo = 'Y'
 	`
 
 	var count int

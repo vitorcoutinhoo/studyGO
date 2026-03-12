@@ -170,11 +170,29 @@ func ParseStatusModeloComunicacaoString(s StatusModeloComunicacao) string {
 
 func ParseTipoComunicacao(s string) (TipoComunicacao, error) {
 	switch s {
-	case "EMAIL":
-		return Email, nil
-	case "SMS":
-		return SMS, nil
+	case "Plantão Agendado":
+		return PlantaoAgendado, nil
+	case "Plantão Concluido":
+		return PlantaoConluido, nil
+	case "Plantão Ainda Está Aberto":
+		return PlantaoAindaAberto, nil
+	case "Plantão Pago":
+		return PlantaoPago, nil
+	case "Colaborador Cadastrado":
+		return ColaboradorCadastrado, nil
+	case "Colaborador Atualizado":
+		return ColaboradorAtualizado, nil
+	case "Colaborador Deletado":
+		return ColaboradorDeletado, nil
+	case "Usuário Cadastrado":
+		return UsuarioCadastrado, nil
+	case "Email do Usuário Atualizado":
+		return EmailAtualizado, nil
+	case "Senha do Usuário Atualizada":
+		return SenhaAtualizada, nil
+	case "Usuário Deletado":
+		return UsuarioDeletado, nil
+	default:
+		return "", fmt.Errorf("tipo de comunicação inválido: %s", s)
 	}
-
-	return "", ErrorInvalidTipoComunicacao
 }
