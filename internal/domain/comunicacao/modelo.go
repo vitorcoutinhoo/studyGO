@@ -212,6 +212,35 @@ func validateEmailBodyTag(tipoComunicacao TipoComunicacao, body string) error {
 		)
 	}
 
+	// Verifica tags não permitidas no body
+	allTagsPattern := `{{\s*\.(\w+)\s*}}`
+	re := regexp.MustCompile(allTagsPattern)
+	matches := re.FindAllStringSubmatch(body, -1)
+
+	allowedTags := make(map[TagBody]bool)
+
+	for _, tag := range tags {
+		allowedTags[tag] = true
+	}
+
+	var extraTags []string
+
+	for _, match := range matches {
+		foundTag := TagBody(match[1])
+
+		if !allowedTags[foundTag] {
+			extraTags = append(extraTags, fmt.Sprintf("{{.%s}}", foundTag))
+		}
+	}
+
+	if len(extraTags) > 0 {
+		return fmt.Errorf(
+			"tags não permitidas para o tipo '%s': %s",
+			tipoComunicacao,
+			strings.Join(extraTags, ", "),
+		)
+	}
+
 	return nil
 }
 

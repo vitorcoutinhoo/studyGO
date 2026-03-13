@@ -7,7 +7,6 @@ import (
 	"plantao/internal/domain/usuario"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 )
 
 type UsuarioController struct {
@@ -55,8 +54,6 @@ func (c *UsuarioController) UpdateUsuario(ctx *gin.Context) {
 		return
 	}
 
-	idUsuario := idUsuarioRaw.(uuid.UUID)
-
 	var req dto.UsuarioRequestDTO
 
 	if err := ctx.ShouldBindJSON(&req); err != nil {
@@ -64,7 +61,7 @@ func (c *UsuarioController) UpdateUsuario(ctx *gin.Context) {
 		return
 	}
 
-	if err := c.service.UpdateUsuario(ctx, req.Email, req.Senha, idUsuario.String()); err != nil {
+	if err := c.service.UpdateUsuario(ctx, req.Email, req.Senha, idUsuarioRaw.(string)); err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -80,9 +77,7 @@ func (c *UsuarioController) DeleteUsuario(ctx *gin.Context) {
 		return
 	}
 
-	idUsuario := idUsuarioRaw.(uuid.UUID)
-
-	if err := c.service.DeleteUsuario(ctx, idUsuario.String()); err != nil {
+	if err := c.service.DeleteUsuario(ctx, idUsuarioRaw.(string)); err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -98,9 +93,7 @@ func (c *UsuarioController) GetUsuarioById(ctx *gin.Context) {
 		return
 	}
 
-	idUsuario := idUsuarioRaw.(uuid.UUID)
-
-	result, err := c.service.GetUsuarioById(ctx, idUsuario.String())
+	result, err := c.service.GetUsuarioById(ctx, idUsuarioRaw.(string))
 
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})

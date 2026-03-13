@@ -105,11 +105,11 @@ func setupUsuarioRoutes(
 		}
 
 		usuarioAuthRoutes := v1.Group("/authenticated/usuarios")
-		usuarioAuthRoutes.Use(authMidware.AuthenticationMidware(), midware.RoleMidware(COLABORADOR_ROLE))
+		usuarioAuthRoutes.Use(authMidware.AuthenticationMidware(), midware.RoleMidware(COLABORADOR_ROLE, GERENTE_ROLE, ADMIN_ROLE))
 		{
-			usuarioAuthRoutes.PUT("/", usuarioController.UpdateUsuario)
-			usuarioAuthRoutes.GET("/", usuarioController.GetUsuarioById)
-			usuarioAuthRoutes.DELETE("/", usuarioController.DeleteUsuario)
+			usuarioAuthRoutes.PUT("", usuarioController.UpdateUsuario)
+			usuarioAuthRoutes.GET("", usuarioController.GetUsuarioById)
+			usuarioAuthRoutes.DELETE("", usuarioController.DeleteUsuario)
 		}
 
 		usuarioRoutes := v1.Group("/usuarios")

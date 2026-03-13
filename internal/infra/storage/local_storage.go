@@ -34,7 +34,8 @@ func (s *LocalStorage) Save(file io.ReadSeeker, fileName string) (string, error)
 
 	if contentType != "image/jpeg" &&
 		contentType != "image/png" &&
-		contentType != "image/webp" {
+		contentType != "image/webp" &&
+		contentType != "image/jpg" {
 		return "", errors.New("arquivo inválido")
 	}
 

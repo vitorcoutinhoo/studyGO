@@ -123,6 +123,8 @@ func (s *ColaboradorService) UpdateColaborador(ctx context.Context, col *Colabor
 		return ErrorEmailAlreadyExists
 	}
 
+	imagemAnterior := colaborador.Foto
+
 	err = colaborador.UpdateDados(
 		&col.Nome,
 		&col.Email,
@@ -148,6 +150,12 @@ func (s *ColaboradorService) UpdateColaborador(ctx context.Context, col *Colabor
 		}
 
 		colaborador.Foto = url
+
+		err = s.storageImage.Delete(imagemAnterior)
+
+		if err != nil {
+			return err
+		}
 	}
 
 	return s.repository.Update(ctx, colaborador)

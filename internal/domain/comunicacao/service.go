@@ -18,7 +18,7 @@ func NewModeloComunicacaoService(repository ModeloComunicaRepository) *ModeloCom
 }
 
 func (s *ModeloComunicacaoService) CreateModeloComunicacao(ctx context.Context, nome, tipoComunicacao, assunto, corpo string) (*Comunicacao, error) {
-	exists, err := s.repository.ExistsName(ctx, nome)
+	exists, err := s.repository.ExistsTipo(ctx, tipoComunicacao)
 
 	if err != nil {
 		return nil, err
@@ -60,7 +60,7 @@ func (s *ModeloComunicacaoService) UpdateModeloComunicacao(ctx context.Context, 
 		return ErrorModeloComunicacaoNotFound
 	}
 
-	exists, err := s.repository.ExistsNameExcludingId(ctx, nome, modeloID)
+	exists, err := s.repository.ExistsTipoExcludingId(ctx, tipoComunicacao, modeloID)
 
 	if err != nil {
 		return err

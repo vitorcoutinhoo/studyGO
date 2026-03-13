@@ -140,7 +140,14 @@ func (c *ColaboradorController) GetColaboradoresByFilter(ctx *gin.Context) {
 		return
 	}
 
-	results, err := c.service.GetColaboradorByFilter(ctx, filterDtoToFilterDomain(filter))
+	f, err := filterDtoToFilterDomain(filter)
+
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	results, err := c.service.GetColaboradorByFilter(ctx, f)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -303,10 +310,34 @@ func updateColaboradorDtoToDomain(r *dto.UpdateColaboradorRequest) (*colaborador
 		setor = &zero
 	}
 
+	var n string
+
+	if r.Nome != nil {
+		n = *r.Nome
+	} else {
+		n = ""
+	}
+
+	var e string
+
+	if r.Email != nil {
+		e = *r.Email
+	} else {
+		e = ""
+	}
+
+	var t string
+
+	if r.Telefone != nil {
+		t = *r.Telefone
+	} else {
+		t = ""
+	}
+
 	return &colaborador.Colaborador{
-		Nome:             *r.Nome,
-		Email:            *r.Email,
-		Telefone:         *r.Telefone,
+		Nome:             n,
+		Email:            e,
+		Telefone:         t,
 		Cargo:            *cargo,
 		Setor:            *setor,
 		Foto:             "",
@@ -361,12 +392,26 @@ func colaboradorToResponse(c *colaborador.Colaborador) (*dto.ColaboradorResponse
 	}, nil
 }
 
-func filterDtoToFilterDomain(filterReq dto.GetColaboradoresByFilterRequest) colaborador.ColaboradorFilter {
+func filterDtoToFilterDomain(filterReq dto.GetColaboradoresByFilterRequest) (colaborador.ColaboradorFilter, error) {
+	var data *time.Time
+	var err error
+
+	if filterReq.DataAdmissao != nil {
+		data, err = utils.ParseBrToUsDate(filterReq.DataAdmissao)
+
+		if err != nil {
+			return colaborador.ColaboradorFilter{}, err
+		}
+	} else {
+		data = nil
+	}
+
 	return colaborador.ColaboradorFilter{
 		Nome:         filterReq.Nome,
 		Email:        filterReq.Email,
 		Telefone:     filterReq.Telefone,
 		Cargo:        filterReq.Cargo,
 		Departamento: filterReq.Setor,
-	}
+		DataAdmissao: data,
+	}, nil
 }

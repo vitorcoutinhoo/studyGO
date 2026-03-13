@@ -154,6 +154,7 @@ func (r *ColaboradorRepository) Disable(ctx context.Context, colaboradorId uuid.
 		SET
 			email = 'INATIVO_' || id || '_' || email,
 			ativo = 'N',
+			ativo_plantao = 'N',
 			data_desligamento = CURRENT_DATE,
 			updated_at = NOW()
 		WHERE id = $1
