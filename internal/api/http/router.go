@@ -4,6 +4,7 @@ import (
 	"plantao/internal/api/controller"
 	"plantao/internal/api/middleware"
 	midware "plantao/internal/api/middleware"
+	"plantao/internal/infra/config"
 	"time"
 
 	"github.com/gin-contrib/cors"
@@ -23,14 +24,17 @@ func NewRouter(
 	authController *controller.AuthController,
 	authMidware *midware.AuthMidware,
 	modeloComunicacaoController *controller.ModeloComunicacaoController,
+	cfg *config.Config,
 ) *gin.Engine {
 	router := gin.Default()
 
+	router.Static("/uploads", cfg.FalePath.Path)
+
 	router.Use(cors.New(cors.Config{
-		AllowAllOrigins:  true,
-		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
-		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
-		MaxAge:           12 * time.Hour,
+		AllowAllOrigins: true,
+		AllowMethods:    []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+		AllowHeaders:    []string{"Origin", "Content-Type", "Authorization"},
+		MaxAge:          12 * time.Hour,
 	}))
 
 	router.Use(middleware.RateLimitMiddleware())

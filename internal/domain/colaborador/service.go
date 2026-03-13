@@ -3,6 +3,7 @@ package colaborador
 import (
 	"context"
 	"fmt"
+	"io"
 	"log"
 	"strings"
 
@@ -15,18 +16,20 @@ import (
 type ColaboradorService struct {
 	repository   ColaboradorRepository
 	envioService *comunicacao.EnvioService
+	storageImage FileStorage
 }
 
 // Cria uma nova instância do serviço de colaborador
-func NewColaboradorService(repository ColaboradorRepository, envioService *comunicacao.EnvioService) *ColaboradorService {
+func NewColaboradorService(repository ColaboradorRepository, envioService *comunicacao.EnvioService, storageImage FileStorage) *ColaboradorService {
 	return &ColaboradorService{
 		repository:   repository,
 		envioService: envioService,
+		storageImage: storageImage,
 	}
 } // Fim NewColaboradorService
 
 // Cria um novo colaborador com validações e armazenamento
-func (s *ColaboradorService) CreateColaborador(ctx context.Context, col *Colaborador) (*Colaborador, error) {
+func (s *ColaboradorService) CreateColaborador(ctx context.Context, col *Colaborador, file io.ReadSeeker) (*Colaborador, error) {
 	exists, err := s.repository.ExistsEmail(ctx, col.Email)
 
 	if err != nil {
@@ -52,6 +55,16 @@ func (s *ColaboradorService) CreateColaborador(ctx context.Context, col *Colabor
 
 	if err != nil {
 		return nil, err
+	}
+
+	if file != nil {
+		url, err := s.storageImage.Save(file, colaborador.Foto)
+
+		if err != nil {
+			return nil, err
+		}
+
+		colaborador.Foto = url
 	}
 
 	colaboradorReturn, err := s.repository.Store(ctx, colaborador)
@@ -83,7 +96,7 @@ func (s *ColaboradorService) CreateColaborador(ctx context.Context, col *Colabor
 } // Fim CreateColaborador
 
 // Atualiza um colaborador existente com novas informações
-func (s *ColaboradorService) UpdateColaborador(ctx context.Context, col *Colaborador, colaboradorId string) error {
+func (s *ColaboradorService) UpdateColaborador(ctx context.Context, col *Colaborador, colaboradorId string, file io.ReadSeeker) error {
 	id, err := uuid.Parse(colaboradorId)
 
 	if err != nil {
@@ -127,6 +140,16 @@ func (s *ColaboradorService) UpdateColaborador(ctx context.Context, col *Colabor
 		return err
 	}
 
+	if file != nil {
+		url, err := s.storageImage.Save(file, colaborador.Foto)
+
+		if err != nil {
+			return err
+		}
+
+		colaborador.Foto = url
+	}
+
 	return s.repository.Update(ctx, colaborador)
 } // Fim UpdateColaborador
 
@@ -146,6 +169,20 @@ func (s *ColaboradorService) DisableColaborador(ctx context.Context, colaborador
 
 	if !exists {
 		return ErrorColaboradorNotFound
+	}
+
+	// Buscar colaborador
+	col, err := s.repository.FindById(ctx, id)
+	if err != nil {
+		return fmt.Errorf("erro ao buscar colaborador: %w", err)
+	}
+
+	// Se existir foto, deletar
+	if col.Foto != "" {
+		err = s.storageImage.Delete(col.Foto)
+		if err != nil {
+			return fmt.Errorf("erro ao deletar foto: %w", err)
+		}
 	}
 
 	return s.repository.Disable(ctx, id)

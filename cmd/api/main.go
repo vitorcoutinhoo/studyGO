@@ -16,6 +16,7 @@ func main() {
 		appfx.SecurityModule,
 		appfx.DomainModule,
 		appfx.APIModule,
+		appfx.FileModlule,
 
 		fx.Invoke(middleware.StartRateLimitCleanup),
 
