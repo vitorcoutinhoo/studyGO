@@ -22,6 +22,6 @@ type UsuarioAdminRequestDTO struct {
 }
 
 type LoginRequestDTO struct {
-	Email string `json:"email" validate:"required,email"`
-	Senha string `json:"senha" validate:"required,min=6"`
+	Email *string `json:"email" validate:"required,email"`
+	Senha *string `json:"senha" validate:"required,min=6"`
 }

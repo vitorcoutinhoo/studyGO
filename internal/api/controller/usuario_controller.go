@@ -7,6 +7,7 @@ import (
 	"plantao/internal/domain/usuario"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 type UsuarioController struct {
@@ -47,7 +48,14 @@ func (c *UsuarioController) CreateUsuario(ctx *gin.Context) {
 }
 
 func (c *UsuarioController) UpdateUsuario(ctx *gin.Context) {
-	idUsuario := ctx.Param("id_usuario")
+	idUsuarioRaw, exists := ctx.Get("userId")
+
+	if !exists {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "usuário não autenticado"})
+		return
+	}
+
+	idUsuario := idUsuarioRaw.(uuid.UUID)
 
 	var req dto.UsuarioRequestDTO
 
@@ -56,7 +64,7 @@ func (c *UsuarioController) UpdateUsuario(ctx *gin.Context) {
 		return
 	}
 
-	if err := c.service.UpdateUsuario(ctx, req.Email, req.Senha, idUsuario); err != nil {
+	if err := c.service.UpdateUsuario(ctx, req.Email, req.Senha, idUsuario.String()); err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -64,10 +72,17 @@ func (c *UsuarioController) UpdateUsuario(ctx *gin.Context) {
 	ctx.Status(http.StatusOK)
 }
 
-func (c *UsuarioController) DisableUsuario(ctx *gin.Context) {
-	idUsuario := ctx.Param("id_usuario")
+func (c *UsuarioController) DeleteUsuario(ctx *gin.Context) {
+	idUsuarioRaw, exists := ctx.Get("userId")
 
-	if err := c.service.DisableUsuario(ctx, idUsuario); err != nil {
+	if !exists {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "usuário não autenticado"})
+		return
+	}
+
+	idUsuario := idUsuarioRaw.(uuid.UUID)
+
+	if err := c.service.DeleteUsuario(ctx, idUsuario.String()); err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -76,9 +91,16 @@ func (c *UsuarioController) DisableUsuario(ctx *gin.Context) {
 }
 
 func (c *UsuarioController) GetUsuarioById(ctx *gin.Context) {
-	idUsuario := ctx.Param("id_usuario")
+	idUsuarioRaw, exists := ctx.Get("userId")
 
-	result, err := c.service.GetUsuarioById(ctx, idUsuario)
+	if !exists {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "usuário não autenticado"})
+		return
+	}
+
+	idUsuario := idUsuarioRaw.(uuid.UUID)
+
+	result, err := c.service.GetUsuarioById(ctx, idUsuario.String())
 
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -93,6 +115,30 @@ func (c *UsuarioController) GetUsuarioById(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusOK, resp)
+}
+
+func (c *UsuarioController) GetAll(ctx *gin.Context) {
+	results, err := c.service.GetAll(ctx)
+
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	var usuariosDTO []dto.UsuarioResponseDTO
+
+	for _, result := range *results {
+		uDTO, err := usuarioToResponse(&result)
+
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		usuariosDTO = append(usuariosDTO, *uDTO)
+	}
+
+	ctx.JSON(http.StatusOK, usuariosDTO)
 }
 
 func usuarioToResponse(u *usuario.Usuario) (*dto.UsuarioResponseDTO, error) {

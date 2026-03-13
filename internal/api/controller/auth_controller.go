@@ -26,7 +26,17 @@ func (a *AuthController) Login(ctx *gin.Context) {
 		return
 	}
 
-	token, err := a.authService.Authenticate(ctx, req.Email, req.Senha)
+	if req.Email == nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "email é obrigatório"})
+		return
+	}
+
+	if req.Senha == nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "senha é obrigatória"})
+		return
+	}
+
+	token, err := a.authService.Authenticate(ctx, *req.Email, *req.Senha)
 
 	if err != nil {
 		ctx.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
