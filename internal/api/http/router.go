@@ -88,6 +88,7 @@ func setupColaboradorRoutes(
 		{
 			colaboradorRoutes.POST("", colaboradorController.CreateColaborador)
 			colaboradorRoutes.PATCH("/:id", colaboradorController.UpdateColaborador)
+			colaboradorRoutes.PATCH("/:id/foto", colaboradorController.UploadFotoColaborador)
 			colaboradorRoutes.DELETE("/:id", colaboradorController.DisableColaborador)
 			colaboradorRoutes.GET("/:id", colaboradorController.GetColaboradorById)
 			colaboradorRoutes.GET("", colaboradorController.GetColaboradoresByFilter)

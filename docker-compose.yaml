@@ -1,4 +1,19 @@
 services:
+  app:
+    build: .
+    container_name: plantao-app
+    ports:
+      - "8080:8080"
+    env_file: .env
+    environment:
+      SERVER_HOST: 0.0.0.0
+      DB_URL: postgres://postgres:password@postgres:5432/plantao?sslmode=disable
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./uploads:/app/uploads
+
   postgres:
     image: postgres:16
     container_name: plantao-DB
@@ -13,6 +28,13 @@ services:
 
     volumes:
       - pgdata:/var/lib/postgresql/data
+      - ./seed:/docker-entrypoint-initdb.d
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
 volumes:
   pgdata:

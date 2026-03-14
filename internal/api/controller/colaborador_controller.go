@@ -171,6 +171,25 @@ func (c *ColaboradorController) GetColaboradoresByFilter(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, responses)
 } // Fim GetColaboradoresByFilter
 
+// UploadFotoColaborador lida com o upload da foto de um colaborador.
+func (c *ColaboradorController) UploadFotoColaborador(ctx *gin.Context) {
+	id := ctx.Param("id")
+
+	uploadedFile, header, err := ctx.Request.FormFile("foto")
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "foto não enviada"})
+		return
+	}
+	defer uploadedFile.Close()
+
+	if err := c.service.UpdateColaborador(ctx, &colaborador.Colaborador{Foto: header.Filename}, id, uploadedFile); err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	ctx.Status(http.StatusOK)
+} // Fim UploadFotoColaborador
+
 // DisableColaborador lida com a desativação de um colaborador por ID.
 func (c *ColaboradorController) DisableColaborador(ctx *gin.Context) {
 	id := ctx.Param("id")

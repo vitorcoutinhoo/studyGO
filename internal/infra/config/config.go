@@ -48,11 +48,8 @@ type FileSavePath struct {
 
 // Pra teste, seria mais apropriado carregar de um arquivo ou variáveis de ambiente
 func LoadConfig() (*Config, error) {
-	err := godotenv.Load()
-
-	if err != nil {
-		return nil, fmt.Errorf("erro ao carregar o arquivo .env: %w", err)
-	}
+	// Ignora erro se .env não existe (Docker injeta as variáveis via environment)
+	_ = godotenv.Load()
 
 	expireTime, err := strconv.ParseInt(os.Getenv("EXPIRATION_TIME_MINUTES"), 10, 64)
 

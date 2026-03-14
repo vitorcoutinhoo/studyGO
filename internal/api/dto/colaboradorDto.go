@@ -2,28 +2,28 @@ package dto
 
 // DTO para criar um colaborador novo
 type CreateColaboradorRequest struct {
-	Nome             string  `form:"nome"`
-	Email            string  `form:"email"`
-	Telefone         string  `form:"telefone"`
-	Cargo            string  `form:"cargo"`
-	Setor            string  `form:"setor"`
-	Status           string  `form:"status"`
-	AtivoPlantao     string  `form:"ativo_plantao"`
-	DataAdmissao     string  `form:"data_admissao"`
-	DataDesligamento *string `form:"data_desligamento"`
+	Nome             string  `json:"nome" form:"nome"`
+	Email            string  `json:"email" form:"email"`
+	Telefone         string  `json:"telefone" form:"telefone"`
+	Cargo            string  `json:"cargo" form:"cargo"`
+	Setor            string  `json:"setor" form:"setor"`
+	Status           string  `json:"status" form:"status"`
+	AtivoPlantao     string  `json:"ativo_plantao" form:"ativo_plantao"`
+	DataAdmissao     string  `json:"data_admissao" form:"data_admissao"`
+	DataDesligamento *string `json:"data_desligamento" form:"data_desligamento"`
 }
 
 // DTO para atualizar um colaborador
 type UpdateColaboradorRequest struct {
-	Nome             *string `form:"nome"`
-	Email            *string `form:"email"`
-	Telefone         *string `form:"telefone"`
-	Cargo            *string `form:"cargo"`
-	Setor            *string `form:"setor"`
-	Status           *string `form:"status"`
-	AtivoPlantao     *string `form:"ativo_plantao"`
-	DataAdmissao     *string `form:"data_admissao"`
-	DataDesligamento *string `form:"data_desligamento"`
+	Nome             *string `json:"nome" form:"nome"`
+	Email            *string `json:"email" form:"email"`
+	Telefone         *string `json:"telefone" form:"telefone"`
+	Cargo            *string `json:"cargo" form:"cargo"`
+	Setor            *string `json:"setor" form:"setor"`
+	Status           *string `json:"status" form:"status"`
+	AtivoPlantao     *string `json:"ativo_plantao" form:"ativo_plantao"`
+	DataAdmissao     *string `json:"data_admissao" form:"data_admissao"`
+	DataDesligamento *string `json:"data_desligamento" form:"data_desligamento"`
 }
 
 // Colaborador para retornar dados

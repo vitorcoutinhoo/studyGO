@@ -7,6 +7,7 @@
 ---
 
 ## `POST /usuarios/colaboradores/:id_colaborador`
+
 > Público — cria o acesso de login para um colaborador já cadastrado
 
 **Request:**
@@ -30,8 +31,9 @@
 
 ---
 
-## `GET /authenticated/usuarios/:id_usuario`
-> Autenticado (role: `colaborador`)
+## `GET /authenticated/usuarios`
+
+> Retorna os dados do usuário autenticado (roles: `colaborador`, `gerente`, `admin`)
 
 **Response `200`:**
 ```json
@@ -46,8 +48,9 @@
 
 ---
 
-## `PUT /authenticated/usuarios/:id_usuario`
-> Autenticado (role: `colaborador`)
+## `PUT /authenticated/usuarios`
+
+> Atualiza email e/ou senha do usuário autenticado (roles: `colaborador`, `gerente`, `admin`)
 
 **Request:**
 ```json
@@ -61,7 +64,16 @@
 
 ---
 
-## `DELETE /authenticated/usuarios/:id_usuario`
-> Autenticado (role: `colaborador`)
+## `DELETE /authenticated/usuarios`
+
+> Remove o usuário autenticado (roles: `colaborador`, `gerente`, `admin`)
 
 **Response `204`** (sem body)
+
+---
+
+## `GET /admin/all`
+
+> Lista todos os usuários (role: `admin`)
+
+**Response `200`:** array de usuário
