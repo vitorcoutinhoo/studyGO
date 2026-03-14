@@ -2,9 +2,11 @@ package controller
 
 import (
 	"fmt"
+	"io"
 	"net/http"
 	"plantao/internal/api/dto"
 	"plantao/internal/domain/colaborador"
+	"plantao/internal/infra/config"
 	"plantao/internal/utils"
 	"time"
 
@@ -13,13 +15,15 @@ import (
 
 // ColaboradorController é responsável por lidar com as requisições relacionadas aos colaboradores.
 type ColaboradorController struct {
-	service *colaborador.ColaboradorService
+	service   *colaborador.ColaboradorService
+	urlServer string
 }
 
 // NewColaboradorController cria uma nova instância de ColaboradorController.
-func NewColaboradorController(service *colaborador.ColaboradorService) *ColaboradorController {
+func NewColaboradorController(service *colaborador.ColaboradorService, cfg *config.Config) *ColaboradorController {
 	return &ColaboradorController{
-		service: service,
+		service:   service,
+		urlServer: "http://" + cfg.Server.Host + ":" + cfg.Server.Port,
 	}
 } // Fim NewColaboradorController
 
@@ -27,9 +31,21 @@ func NewColaboradorController(service *colaborador.ColaboradorService) *Colabora
 func (c *ColaboradorController) CreateColaborador(ctx *gin.Context) {
 	var req dto.CreateColaboradorRequest
 
-	if err := ctx.ShouldBindJSON(&req); err != nil {
+	if err := ctx.ShouldBind(&req); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
+	}
+
+	var file io.ReadSeeker
+	filename := ""
+
+	uploadedFile, header, err := ctx.Request.FormFile("foto")
+
+	// Se a foto foi enviada
+	if err == nil {
+		defer uploadedFile.Close()
+		file = uploadedFile
+		filename = header.Filename
 	}
 
 	col, err := createColaboradorDtoToDomain(&req)
@@ -38,7 +54,8 @@ func (c *ColaboradorController) CreateColaborador(ctx *gin.Context) {
 		return
 	}
 
-	result, err := c.service.CreateColaborador(ctx, col)
+	col.Foto = filename
+	result, err := c.service.CreateColaborador(ctx, col, file)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -57,9 +74,21 @@ func (c *ColaboradorController) CreateColaborador(ctx *gin.Context) {
 func (c *ColaboradorController) UpdateColaborador(ctx *gin.Context) {
 	var req dto.UpdateColaboradorRequest
 
-	if err := ctx.ShouldBindJSON(&req); err != nil {
+	if err := ctx.ShouldBind(&req); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
+	}
+
+	var file io.ReadSeeker
+	filename := ""
+
+	uploadedFile, header, err := ctx.Request.FormFile("foto")
+
+	// Se a foto foi enviada
+	if err == nil {
+		defer uploadedFile.Close()
+		file = uploadedFile
+		filename = header.Filename
 	}
 
 	col, err := updateColaboradorDtoToDomain(&req)
@@ -70,7 +99,8 @@ func (c *ColaboradorController) UpdateColaborador(ctx *gin.Context) {
 
 	id := ctx.Param("id")
 
-	if err := c.service.UpdateColaborador(ctx, col, id); err != nil {
+	col.Foto = filename
+	if err := c.service.UpdateColaborador(ctx, col, id, file); err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -94,6 +124,10 @@ func (c *ColaboradorController) GetColaboradorById(ctx *gin.Context) {
 		return
 	}
 
+	if resp.Foto != "" {
+		resp.Foto = c.urlServer + resp.Foto
+	}
+
 	ctx.JSON(http.StatusOK, resp)
 } // Fim GetColaboradorById
 
@@ -106,7 +140,14 @@ func (c *ColaboradorController) GetColaboradoresByFilter(ctx *gin.Context) {
 		return
 	}
 
-	results, err := c.service.GetColaboradorByFilter(ctx, filterDtoToFilterDomain(filter))
+	f, err := filterDtoToFilterDomain(filter)
+
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	results, err := c.service.GetColaboradorByFilter(ctx, f)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -119,6 +160,11 @@ func (c *ColaboradorController) GetColaboradoresByFilter(ctx *gin.Context) {
 			ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
+
+		if resp.Foto != "" {
+			resp.Foto = c.urlServer + resp.Foto
+		}
+
 		responses = append(responses, *resp)
 	}
 
@@ -185,7 +231,7 @@ func createColaboradorDtoToDomain(r *dto.CreateColaboradorRequest) (*colaborador
 		Email:            r.Email,
 		Telefone:         r.Telefone,
 		Setor:            setor,
-		Foto:             r.Foto,
+		Foto:             "",
 		Status:           ativo,
 		AtivoPlantao:     ativoPlantao,
 		DataAdmissao:     dataAdmissao,
@@ -195,9 +241,16 @@ func createColaboradorDtoToDomain(r *dto.CreateColaboradorRequest) (*colaborador
 }
 
 func updateColaboradorDtoToDomain(r *dto.UpdateColaboradorRequest) (*colaborador.Colaborador, error) {
-	dataAdmissao, err := utils.ParseBrToUsDate(r.DataAdmissao)
-	if err != nil {
-		return nil, err
+	var dataAdmissao *time.Time
+	var err error
+
+	if r.DataAdmissao != nil {
+		dataAdmissao, err = utils.ParseBrToUsDate(r.DataAdmissao)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		dataAdmissao = nil
 	}
 
 	var dataDesligamento *time.Time
@@ -209,35 +262,87 @@ func updateColaboradorDtoToDomain(r *dto.UpdateColaboradorRequest) (*colaborador
 		dataDesligamento = dataTemp
 	}
 
-	ativo, err := colaborador.ParseStatusColaborador(*r.Status)
-	if err != nil {
-		return nil, err
+	var ativo *colaborador.StatusColaborador
+	if r.Status != nil {
+		status, err := colaborador.ParseStatusColaborador(*r.Status)
+		if err != nil {
+			return nil, err
+		}
+		ativo = &status
+	} else {
+		zero := colaborador.StatusColaborador(0)
+		ativo = &zero
 	}
 
-	ativoPlantao, err := colaborador.ParseStatusColaborador(*r.AtivoPlantao)
-	if err != nil {
-		return nil, err
+	var ativoPlantao *colaborador.StatusColaborador
+	if r.AtivoPlantao != nil {
+		status, err := colaborador.ParseStatusColaborador(*r.AtivoPlantao)
+		if err != nil {
+			return nil, err
+		}
+		ativoPlantao = &status
+	} else {
+		zero := colaborador.StatusColaborador(0)
+		ativoPlantao = &zero
 	}
 
-	cargo, err := colaborador.ParseCargoColaborador(*r.Cargo)
-	if err != nil {
-		return nil, err
+	var cargo *colaborador.CargoColaborador
+	if r.Cargo != nil {
+		c, err := colaborador.ParseCargoColaborador(*r.Cargo)
+		if err != nil {
+			return nil, err
+		}
+		cargo = &c
+	} else {
+		zero := colaborador.CargoColaborador("")
+		cargo = &zero
 	}
 
-	setor, err := colaborador.ParseSetorColaborador(*r.Setor)
-	if err != nil {
-		return nil, err
+	var setor *colaborador.SetorColaborador
+	if r.Setor != nil {
+		s, err := colaborador.ParseSetorColaborador(*r.Setor)
+		if err != nil {
+			return nil, err
+		}
+		setor = &s
+	} else {
+		zero := colaborador.SetorColaborador("")
+		setor = &zero
+	}
+
+	var n string
+
+	if r.Nome != nil {
+		n = *r.Nome
+	} else {
+		n = ""
+	}
+
+	var e string
+
+	if r.Email != nil {
+		e = *r.Email
+	} else {
+		e = ""
+	}
+
+	var t string
+
+	if r.Telefone != nil {
+		t = *r.Telefone
+	} else {
+		t = ""
 	}
 
 	return &colaborador.Colaborador{
-		Nome:             *r.Nome,
-		Email:            *r.Email,
-		Telefone:         *r.Telefone,
-		Cargo:            cargo,
-		Setor:            setor,
-		Foto:             *r.Foto,
-		Status:           ativo,
-		AtivoPlantao:     ativoPlantao,
+		Nome:             n,
+		Email:            e,
+		Telefone:         t,
+		Cargo:            *cargo,
+		Setor:            *setor,
+		Foto:             "",
+		Status:           *ativo,
+		AtivoPlantao:     *ativoPlantao,
 		DataAdmissao:     dataAdmissao,
 		DataDesligamento: dataDesligamento,
 	}, nil
@@ -287,12 +392,26 @@ func colaboradorToResponse(c *colaborador.Colaborador) (*dto.ColaboradorResponse
 	}, nil
 }
 
-func filterDtoToFilterDomain(filterReq dto.GetColaboradoresByFilterRequest) colaborador.ColaboradorFilter {
+func filterDtoToFilterDomain(filterReq dto.GetColaboradoresByFilterRequest) (colaborador.ColaboradorFilter, error) {
+	var data *time.Time
+	var err error
+
+	if filterReq.DataAdmissao != nil {
+		data, err = utils.ParseBrToUsDate(filterReq.DataAdmissao)
+
+		if err != nil {
+			return colaborador.ColaboradorFilter{}, err
+		}
+	} else {
+		data = nil
+	}
+
 	return colaborador.ColaboradorFilter{
 		Nome:         filterReq.Nome,
 		Email:        filterReq.Email,
 		Telefone:     filterReq.Telefone,
 		Cargo:        filterReq.Cargo,
 		Departamento: filterReq.Setor,
-	}
+		DataAdmissao: data,
+	}, nil
 }

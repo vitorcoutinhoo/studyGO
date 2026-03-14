@@ -121,7 +121,7 @@ func (s *UsuarioService) UpdateUsuario(ctx context.Context, email, senha, usuari
 } // Fim UpdateUsuario
 
 // Desativa um usuário existente, marcando-o como inativo
-func (s *UsuarioService) DisableUsuario(ctx context.Context, usuarioId string) error {
+func (s *UsuarioService) DeleteUsuario(ctx context.Context, usuarioId string) error {
 	usuarioUUID, err := uuid.Parse(usuarioId)
 
 	if err != nil {
@@ -138,7 +138,7 @@ func (s *UsuarioService) DisableUsuario(ctx context.Context, usuarioId string) e
 		return err
 	}
 
-	return s.repository.Disable(ctx, existingUsuario.Id)
+	return s.repository.Delete(ctx, existingUsuario.Id)
 } // Fim DisableUsuario
 
 // Recupera um usuário pelo ID
@@ -170,6 +170,16 @@ func (s *UsuarioService) GetUsuarioByEmail(ctx context.Context, email string) (*
 	}
 
 	return existingUsuario, nil
+}
+
+func (s *UsuarioService) GetAll(ctx context.Context) (*[]Usuario, error) {
+	u, err := s.repository.FindAll(ctx)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return u, nil
 }
 
 // Converte o status do usuário para string

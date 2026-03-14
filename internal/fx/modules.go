@@ -4,8 +4,8 @@ import (
 	"net/http"
 
 	"plantao/internal/api/controller"
-	midware "plantao/internal/api/middleware"
 	apihttp "plantao/internal/api/http"
+	midware "plantao/internal/api/middleware"
 	"plantao/internal/domain/colaborador"
 	"plantao/internal/domain/comunicacao"
 	"plantao/internal/domain/financeiro"
@@ -15,6 +15,7 @@ import (
 	"plantao/internal/infra/mail"
 	pgstore "plantao/internal/infra/persistence/postgres"
 	"plantao/internal/infra/security"
+	"plantao/internal/infra/storage"
 
 	"go.uber.org/fx"
 )
@@ -71,5 +72,11 @@ var APIModule = fx.Module("api",
 		midware.NewAuthMidware,
 		fx.Annotate(apihttp.NewRouter, fx.As(new(http.Handler))),
 		apihttp.NewServer,
+	),
+)
+
+var FileModlule = fx.Module("file",
+	fx.Provide(
+		fx.Annotate(storage.NewLocalStorage, fx.As(new(colaborador.FileStorage))),
 	),
 )

@@ -272,46 +272,47 @@ func (r *ModeloRepository) FindAll(ctx context.Context) ([]*comunicacao.Comunica
 	return modelos, nil
 }
 
-func (r *ModeloRepository) ExistsName(ctx context.Context, nome string) (bool, error) {
+func (r *ModeloRepository) ExistsTipo(ctx context.Context, tipo string) (bool, error) {
 	query := `
 	SELECT EXISTS(
 		SELECT 1
 		FROM modelos_comunicacao
-		WHERE nome = $1 AND ativo = 'Y'
+		WHERE tipo = $1 AND ativo = 'Y'
 	)
 	`
 
 	var exists bool
 
-	err := r.pool.QueryRow(ctx, query, nome).Scan(&exists)
+	err := r.pool.QueryRow(ctx, query, tipo).Scan(&exists)
 
 	if err != nil {
-		return false, fmt.Errorf("erro ao verificar a existência do nome: %w", err)
+		return false, fmt.Errorf("erro ao verificar a existência do tipo de modelo comunicação: %w", err)
 	}
 
 	return exists, nil
 }
 
-func (r *ModeloRepository) ExistsNameExcludingId(
+func (r *ModeloRepository) ExistsTipoExcludingId(
 	ctx context.Context,
-	nome string,
+	tipo string,
 	id uuid.UUID,
 ) (bool, error) {
 	query := `
 	SELECT EXISTS(
 		SELECT 1
 		FROM modelos_comunicacao
-		WHERE nome = $1
-		AND id <> $2 AND ativo = 'Y'
+		WHERE tipo = $1
+		AND id <> $2
+		AND ativo = 'Y'
 	)
 	`
 
 	var exists bool
 
-	err := r.pool.QueryRow(ctx, query, nome, id).Scan(&exists)
+	err := r.pool.QueryRow(ctx, query, tipo, id).Scan(&exists)
 
 	if err != nil {
-		return false, fmt.Errorf("erro ao verificar a existência do nome: %w", err)
+		return false, fmt.Errorf("erro ao verificar a existência do tipo de modelo comunicação: %w", err)
 	}
 
 	return exists, nil

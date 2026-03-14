@@ -2,30 +2,28 @@ package dto
 
 // DTO para criar um colaborador novo
 type CreateColaboradorRequest struct {
-	Nome             string  `json:"nome"`
-	Email            string  `json:"email"`
-	Telefone         string  `json:"telefone"`
-	Cargo            string  `json:"cargo"`
-	Setor            string  `json:"setor"`
-	Foto             string  `json:"foto_url"`
-	Status           string  `json:"status"`
-	AtivoPlantao     string  `json:"ativo_plantao"`
-	DataAdmissao     string  `json:"data_admissao"`
-	DataDesligamento *string `json:"data_desligamento"`
+	Nome             string  `form:"nome"`
+	Email            string  `form:"email"`
+	Telefone         string  `form:"telefone"`
+	Cargo            string  `form:"cargo"`
+	Setor            string  `form:"setor"`
+	Status           string  `form:"status"`
+	AtivoPlantao     string  `form:"ativo_plantao"`
+	DataAdmissao     string  `form:"data_admissao"`
+	DataDesligamento *string `form:"data_desligamento"`
 }
 
 // DTO para atualizar um colaborador
 type UpdateColaboradorRequest struct {
-	Nome             *string `json:"nome"`
-	Email            *string `json:"email"`
-	Telefone         *string `json:"telefone"`
-	Cargo            *string `json:"cargo"`
-	Setor            *string `json:"setor"`
-	Foto             *string `json:"foto_url"`
-	Status           *string `json:"status"`
-	AtivoPlantao     *string `json:"ativo_plantao"`
-	DataAdmissao     *string `json:"data_admissao"`
-	DataDesligamento *string `json:"data_desligamento"`
+	Nome             *string `form:"nome"`
+	Email            *string `form:"email"`
+	Telefone         *string `form:"telefone"`
+	Cargo            *string `form:"cargo"`
+	Setor            *string `form:"setor"`
+	Status           *string `form:"status"`
+	AtivoPlantao     *string `form:"ativo_plantao"`
+	DataAdmissao     *string `form:"data_admissao"`
+	DataDesligamento *string `form:"data_desligamento"`
 }
 
 // Colaborador para retornar dados

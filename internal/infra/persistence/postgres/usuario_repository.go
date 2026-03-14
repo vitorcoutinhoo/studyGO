@@ -92,24 +92,19 @@ func (r *UsuarioRepository) Update(ctx context.Context, u *usuario.Usuario) erro
 	return nil
 }
 
-func (r *UsuarioRepository) Disable(ctx context.Context, usuarioId uuid.UUID) error {
+func (r *UsuarioRepository) Delete(ctx context.Context, usuarioId uuid.UUID) error {
 	query := `
-	UPDATE usuarios_login
-	SET
-		email = 'INATIVO_' || id || '_' || email,
-		ativo = 'N',
-		updated_at = NOW()
-	WHERE id = $1 AND ativo = 'Y'
+		DELETE FROM usuarios_login WHERE id = $1
 	`
 
 	result, err := r.pool.Exec(ctx, query, usuarioId)
 
 	if err != nil {
-		return fmt.Errorf("erro ao desativar usuário: %w", err)
+		return fmt.Errorf("erro ao deletar usuário: %w", err)
 	}
 
 	if result.RowsAffected() == 0 {
-		return fmt.Errorf("ID do usuário não encontrado")
+		return fmt.Errorf("usuário não encontrado")
 	}
 
 	return nil
@@ -199,6 +194,50 @@ func (r *UsuarioRepository) FindByEmail(ctx context.Context, email string) (*usu
 	u.Ativo = sts
 
 	return &u, nil
+}
+
+func (r *UsuarioRepository) FindAll(ctx context.Context) (*[]usuario.Usuario, error) {
+	query := `
+		SELECT id, id_colaborador, email, role, ativo, created_at, updated_at
+		FROM usuarios_login
+	`
+
+	rows, err := r.pool.Query(ctx, query)
+
+	if err != nil {
+		return nil, fmt.Errorf("erro ao buscar usuários: %w", err)
+	}
+
+	defer rows.Close()
+
+	var usuarios []usuario.Usuario
+	var ativoDB string
+
+	for rows.Next() {
+		var u usuario.Usuario
+
+		err := rows.Scan(
+			&u.Id,
+			&u.IdColaborador,
+			&u.Email,
+			&u.Role,
+			&ativoDB,
+			&u.CreatedAt,
+			&u.UpdatedAt,
+		)
+
+		if err != nil {
+			return nil, fmt.Errorf("erro ao ler usuário: %w", err)
+		}
+
+		sts := dbToStatusUsuario(ativoDB)
+
+		u.Ativo = sts
+
+		usuarios = append(usuarios, u)
+	}
+
+	return &usuarios, nil
 }
 
 func (r *UsuarioRepository) ExistsEmail(ctx context.Context, email string) (bool, error) {

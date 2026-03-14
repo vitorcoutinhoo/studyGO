@@ -4,6 +4,7 @@ import (
 	"plantao/internal/api/controller"
 	"plantao/internal/api/middleware"
 	midware "plantao/internal/api/middleware"
+	"plantao/internal/infra/config"
 	"time"
 
 	"github.com/gin-contrib/cors"
@@ -25,14 +26,17 @@ func NewRouter(
 	modeloComunicacaoController *controller.ModeloComunicacaoController,
 	feriadoController *controller.FeriadoController,
 	valorDiaController *controller.ValorDiaController,
+	cfg *config.Config,
 ) *gin.Engine {
 	router := gin.Default()
 
+	router.Static("/uploads", cfg.FalePath.Path)
+
 	router.Use(cors.New(cors.Config{
-		AllowAllOrigins:  true,
-		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
-		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
-		MaxAge:           12 * time.Hour,
+		AllowAllOrigins: true,
+		AllowMethods:    []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+		AllowHeaders:    []string{"Origin", "Content-Type", "Authorization"},
+		MaxAge:          12 * time.Hour,
 	}))
 
 	router.Use(middleware.RateLimitMiddleware())
@@ -133,15 +137,15 @@ func setupUsuarioRoutes(
 		adminRoutes := v1.Group("/admin")
 		adminRoutes.Use(authMidware.AuthenticationMidware(), midware.RoleMidware(ADMIN_ROLE))
 		{
-			//Rotas do administrador
+			adminRoutes.GET("/all", usuarioController.GetAll)
 		}
 
 		usuarioAuthRoutes := v1.Group("/authenticated/usuarios")
-		usuarioAuthRoutes.Use(authMidware.AuthenticationMidware(), midware.RoleMidware(COLABORADOR_ROLE))
+		usuarioAuthRoutes.Use(authMidware.AuthenticationMidware(), midware.RoleMidware(COLABORADOR_ROLE, GERENTE_ROLE, ADMIN_ROLE))
 		{
-			usuarioAuthRoutes.PUT("/:id_usuario", usuarioController.UpdateUsuario)
-			usuarioAuthRoutes.GET("/:id_usuario", usuarioController.GetUsuarioById)
-			usuarioAuthRoutes.DELETE("/:id_usuario", usuarioController.DisableUsuario)
+			usuarioAuthRoutes.PUT("", usuarioController.UpdateUsuario)
+			usuarioAuthRoutes.GET("", usuarioController.GetUsuarioById)
+			usuarioAuthRoutes.DELETE("", usuarioController.DeleteUsuario)
 		}
 
 		usuarioRoutes := v1.Group("/usuarios")

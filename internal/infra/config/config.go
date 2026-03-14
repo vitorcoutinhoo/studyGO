@@ -14,6 +14,7 @@ type Config struct {
 	Database DatabaseConfig
 	JWT      JWTConfig
 	SMTP     SMTPConfig
+	FalePath FileSavePath
 }
 
 // Configurações do servidor, como porta e host
@@ -39,6 +40,10 @@ type SMTPConfig struct {
 	Username string
 	Password string
 	From     string
+}
+
+type FileSavePath struct {
+	Path string
 }
 
 // Pra teste, seria mais apropriado carregar de um arquivo ou variáveis de ambiente
@@ -74,6 +79,9 @@ func LoadConfig() (*Config, error) {
 			Username: os.Getenv("SMTP_USERNAME"),
 			Password: os.Getenv("SMTP_PASSWORD"),
 			From:     os.Getenv("SMTP_FROM"),
+		},
+		FalePath: FileSavePath{
+			Path: os.Getenv("FILE_PATH"),
 		},
 	}, nil
 } // Fim LoadConfig
