@@ -1,0 +1,5 @@
+*.sql
+.env
+*.pem
+bin/
+calendario/

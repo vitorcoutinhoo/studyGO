@@ -1,0 +1,188 @@
+package apihttp
+
+import (
+	"plantao/internal/api/controller"
+	"plantao/internal/api/middleware"
+	midware "plantao/internal/api/middleware"
+	"plantao/internal/infra/config"
+	"time"
+
+	"github.com/gin-contrib/cors"
+	"github.com/gin-gonic/gin"
+)
+
+const (
+	ADMIN_ROLE       = "admin"
+	COLABORADOR_ROLE = "colaborador"
+	GERENTE_ROLE     = "gerente"
+)
+
+func NewRouter(
+	plantaoController *controller.PlantaoController,
+	colaboradorController *controller.ColaboradorController,
+	usuarioController *controller.UsuarioController,
+	authController *controller.AuthController,
+	authMidware *midware.AuthMidware,
+	modeloComunicacaoController *controller.ModeloComunicacaoController,
+	feriadoController *controller.FeriadoController,
+	valorDiaController *controller.ValorDiaController,
+	cfg *config.Config,
+) *gin.Engine {
+	router := gin.Default()
+
+	router.Static("/uploads", cfg.FalePath.Path)
+
+	router.Use(cors.New(cors.Config{
+		AllowAllOrigins: true,
+		AllowMethods:    []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+		AllowHeaders:    []string{"Origin", "Content-Type", "Authorization"},
+		MaxAge:          12 * time.Hour,
+	}))
+
+	router.Use(middleware.RateLimitMiddleware())
+
+	setupPlantaoRoutes(router, plantaoController, authMidware)
+	setupColaboradorRoutes(router, colaboradorController, authMidware)
+	setupUsuarioRoutes(router, usuarioController, authMidware)
+	setupAuthRoutes(router, authController)
+	setupModeloComunicacaoRoutes(router, modeloComunicacaoController, authMidware)
+	setupFeriadoRoutes(router, feriadoController, authMidware)
+	setupValorDiaRoutes(router, valorDiaController, authMidware)
+
+	return router
+}
+
+func setupPlantaoRoutes(
+	router *gin.Engine,
+	plantaoController *controller.PlantaoController,
+	authMidware *midware.AuthMidware,
+) {
+	v1 := router.Group("/api/v1")
+	{
+		plantaoRoutes := v1.Group("/plantoes")
+		plantaoRoutes.Use(authMidware.AuthenticationMidware(), midware.RoleMidware(ADMIN_ROLE, GERENTE_ROLE, COLABORADOR_ROLE))
+		{
+			plantaoRoutes.POST("", plantaoController.CreatePlantao)
+			plantaoRoutes.GET("", plantaoController.GetPlantoes)
+			plantaoRoutes.GET("/:id", plantaoController.GetPlantaoById)
+			plantaoRoutes.DELETE("/:id", plantaoController.DeletePlantao)
+
+			plantaoRoutes.GET("/colaborador/:colaborador_id", plantaoController.GetPlantoesByColaboradorId)
+			plantaoRoutes.GET("/status/:status", plantaoController.GetPlantoesByStatus)
+			plantaoRoutes.GET("/periodo/:start_date/:end_date", plantaoController.GetPlantoesByPeriodo)
+
+			plantaoRoutes.PATCH("/:id/status", plantaoController.UpdateStatusPlantao)
+		}
+	}
+}
+
+func setupColaboradorRoutes(
+	router *gin.Engine,
+	colaboradorController *controller.ColaboradorController,
+	authMidware *midware.AuthMidware,
+) {
+	v1 := router.Group("/api/v1")
+	{
+		colaboradorRoutes := v1.Group("/colaboradores")
+		colaboradorRoutes.Use(authMidware.AuthenticationMidware(), midware.RoleMidware(ADMIN_ROLE, GERENTE_ROLE, COLABORADOR_ROLE))
+		{
+			colaboradorRoutes.POST("", colaboradorController.CreateColaborador)
+			colaboradorRoutes.PATCH("/:id", colaboradorController.UpdateColaborador)
+			colaboradorRoutes.DELETE("/:id", colaboradorController.DisableColaborador)
+			colaboradorRoutes.GET("/:id", colaboradorController.GetColaboradorById)
+			colaboradorRoutes.GET("", colaboradorController.GetColaboradoresByFilter)
+		}
+	}
+}
+
+func setupValorDiaRoutes(
+	router *gin.Engine,
+	valorDiaController *controller.ValorDiaController,
+	authMidware *midware.AuthMidware,
+) {
+	v1 := router.Group("/api/v1")
+	{
+		valorDiaRoutes := v1.Group("/admin/config-valores")
+		valorDiaRoutes.Use(authMidware.AuthenticationMidware(), midware.RoleMidware(ADMIN_ROLE))
+		{
+			valorDiaRoutes.GET("", valorDiaController.GetVigentes)
+			valorDiaRoutes.POST("", valorDiaController.SetValor)
+		}
+	}
+}
+
+func setupFeriadoRoutes(
+	router *gin.Engine,
+	feriadoController *controller.FeriadoController,
+	authMidware *midware.AuthMidware,
+) {
+	v1 := router.Group("/api/v1")
+	{
+		feriadoRoutes := v1.Group("/admin/feriados")
+		feriadoRoutes.Use(authMidware.AuthenticationMidware(), midware.RoleMidware(ADMIN_ROLE))
+		{
+			feriadoRoutes.GET("", feriadoController.GetFeriadosByAno)
+			feriadoRoutes.PATCH("/:id/data", feriadoController.UpdateDataFeriado)
+		}
+	}
+}
+
+func setupUsuarioRoutes(
+	router *gin.Engine,
+	usuarioController *controller.UsuarioController,
+	authMidware *midware.AuthMidware,
+) {
+	v1 := router.Group("/api/v1")
+	{
+		adminRoutes := v1.Group("/admin")
+		adminRoutes.Use(authMidware.AuthenticationMidware(), midware.RoleMidware(ADMIN_ROLE))
+		{
+			adminRoutes.GET("/all", usuarioController.GetAll)
+		}
+
+		usuarioAuthRoutes := v1.Group("/authenticated/usuarios")
+		usuarioAuthRoutes.Use(authMidware.AuthenticationMidware(), midware.RoleMidware(COLABORADOR_ROLE, GERENTE_ROLE, ADMIN_ROLE))
+		{
+			usuarioAuthRoutes.PUT("", usuarioController.UpdateUsuario)
+			usuarioAuthRoutes.GET("", usuarioController.GetUsuarioById)
+			usuarioAuthRoutes.DELETE("", usuarioController.DeleteUsuario)
+		}
+
+		usuarioRoutes := v1.Group("/usuarios")
+		{
+			usuarioRoutes.POST("/colaboradores/:id_colaborador", usuarioController.CreateUsuario)
+		}
+	}
+}
+
+func setupAuthRoutes(
+	router *gin.Engine,
+	authController *controller.AuthController,
+) {
+	v1 := router.Group("/api/v1")
+	{
+		authRoutes := v1.Group("/auth")
+		{
+			authRoutes.POST("/login", authController.Login)
+		}
+	}
+}
+
+func setupModeloComunicacaoRoutes(
+	router *gin.Engine,
+	modeloComunicacaoControler *controller.ModeloComunicacaoController,
+	authMidware *midware.AuthMidware,
+) {
+	v1 := router.Group("/api/v1")
+	{
+		modeloComunicacao := v1.Group("/auth/admin/modelo-comunicacao")
+		modeloComunicacao.Use(authMidware.AuthenticationMidware(), midware.RoleMidware(ADMIN_ROLE))
+		{
+			modeloComunicacao.POST("/", modeloComunicacaoControler.CreateModeloComunicacao)
+			modeloComunicacao.PUT("/:id_modelo", modeloComunicacaoControler.UpdateModeloComunicacao)
+			modeloComunicacao.DELETE("/:id_modelo", modeloComunicacaoControler.DisableModeloComunicacao)
+			modeloComunicacao.GET("/", modeloComunicacaoControler.GetAllModelosComunicacao)
+			modeloComunicacao.GET("/:id_modelo", modeloComunicacaoControler.GetModeloComunicacaoById)
+		}
+	}
+}

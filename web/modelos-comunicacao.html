@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Modelos de Comunicação</title>
+  <style>
+    body { font-family: sans-serif; max-width: 900px; margin: 40px auto; padding: 0 16px; }
+    input, select, textarea, button { padding: 6px; margin-top: 4px; }
+    textarea { width: 100%; box-sizing: border-box; }
+    button { cursor: pointer; }
+    table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; font-size: 13px; }
+    th { background: #f0f0f0; }
+    p.error { color: red; margin-top: 8px; }
+    p.success { color: green; margin-top: 8px; }
+    fieldset { margin-top: 20px; padding: 16px; }
+    .row { display: flex; gap: 12px; flex-wrap: wrap; }
+    .row label { display: flex; flex-direction: column; font-size: 13px; }
+    nav a { margin-right: 12px; }
+  </style>
+</head>
+<body>
+  <nav>
+    <a href="login.html">Login</a>
+    <a href="colaboradores.html">Colaboradores</a>
+    <a href="plantoes.html">Plantões</a>
+    <a href="modelos-comunicacao.html">Modelos</a>
+  </nav>
+
+  <h2>Modelos de Comunicação</h2>
+
+  <div style="background:#f9f9f9;border:1px solid #ddd;padding:10px;margin-bottom:12px">
+    <label style="font-size:13px">Token JWT:
+      <input type="text" id="token-input" placeholder="Cole o token aqui ou faça login" style="width:600px;font-size:11px">
+    </label>
+    <button onclick="salvarToken()" style="margin-left:6px">Usar token</button>
+    <span id="token-status" style="font-size:12px;margin-left:8px;color:#555"></span>
+  </div>
+
+  <!-- Criar -->
+  <fieldset>
+    <legend>Criar Modelo</legend>
+    <div class="row">
+      <label>Nome
+        <select id="nome">
+          <option value="Boas Vindas">Boas Vindas</option>
+          <option value="Novo Plantão">Novo Plantão</option>
+          <option value="Cadastro Atualizado">Cadastro Atualizado</option>
+          <option value="Cadastro Excluido">Cadastro Excluido</option>
+        </select>
+      </label>
+      <label>Tipo
+        <select id="tipo_comunicacao">
+          <option value="EMAIL">Email</option>
+          <option value="SMS">SMS</option>
+        </select>
+      </label>
+    </div>
+    <div style="margin-top:8px">
+      <label style="font-size:13px">Assunto
+        <input type="text" id="assunto" style="width:100%;box-sizing:border-box">
+      </label>
+    </div>
+    <div style="margin-top:8px">
+      <label style="font-size:13px">Corpo
+        <textarea id="corpo" rows="4"></textarea>
+      </label>
+    </div>
+    <button style="margin-top:12px" onclick="criarModelo()">Criar</button>
+    <p id="msg-criar"></p>
+  </fieldset>
+
+  <!-- Listar -->
+  <fieldset>
+    <legend>Modelos Cadastrados</legend>
+    <button onclick="listarModelos()">Buscar todos</button>
+    <p id="msg-listar"></p>
+    <div id="tabela-container"></div>
+  </fieldset>
+
+  <script>
+    const API = 'http://localhost:8080/api/v1';
+
+    function getToken() {
+      const input = document.getElementById('token-input');
+      const fromInput = input && input.value.trim();
+      return fromInput || localStorage.getItem('token') || sessionStorage.getItem('token');
+    }
+
+    function authHeaders() {
+      return {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + getToken()
+      };
+    }
+
+    function salvarToken() {
+      const val = document.getElementById('token-input').value.trim();
+      if (val) {
+        localStorage.setItem('token', val);
+        sessionStorage.setItem('token', val);
+        document.getElementById('token-status').textContent = 'Token salvo!';
+      }
+    }
+
+    window.onload = () => {
+      const t = getToken();
+      if (t) {
+        document.getElementById('token-input').value = t;
+        document.getElementById('token-status').textContent = 'Token carregado do storage.';
+      } else {
+        document.getElementById('token-status').textContent = 'Sem token — faça login primeiro.';
+      }
+      listarModelos();
+    };
+
+    async function criarModelo() {
+      const msg = document.getElementById('msg-criar');
+      const body = {
+        nome: document.getElementById('nome').value,
+        tipo_comunicacao: document.getElementById('tipo_comunicacao').value,
+        assunto: document.getElementById('assunto').value,
+        corpo: document.getElementById('corpo').value,
+      };
+
+      try {
+        const res = await fetch(`${API}/auth/admin/modelo-comunicacao/`, {
+          method: 'POST',
+          headers: authHeaders(),
+          body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          msg.textContent = data.error || JSON.stringify(data);
+          msg.className = 'error';
+        } else {
+          msg.textContent = 'Modelo criado! ID: ' + data.id;
+          msg.className = 'success';
+          listarModelos();
+        }
+      } catch (e) {
+        msg.textContent = 'Erro: ' + e.message;
+        msg.className = 'error';
+      }
+    }
+
+    async function listarModelos() {
+      const msg = document.getElementById('msg-listar');
+      const container = document.getElementById('tabela-container');
+
+      try {
+        const res = await fetch(`${API}/auth/admin/modelo-comunicacao/`, {
+          headers: authHeaders()
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          msg.textContent = data.error || JSON.stringify(data);
+          msg.className = 'error';
+          container.innerHTML = '';
+          return;
+        }
+
+        const lista = Array.isArray(data) ? data : [];
+        msg.textContent = `${lista.length} modelo(s) encontrado(s)`;
+        msg.className = '';
+
+        if (lista.length === 0) {
+          container.innerHTML = '<p>Nenhum modelo cadastrado.</p>';
+          return;
+        }
+
+        const cols = ['id', 'nome', 'tipo_comunicacao', 'assunto', 'ativo'];
+        let html = '<table><thead><tr>' + cols.map(c => `<th>${c}</th>`).join('') + '<th>ações</th></tr></thead><tbody>';
+        lista.forEach(m => {
+          html += '<tr>' + cols.map(k => `<td>${m[k] ?? ''}</td>`).join('');
+          html += `<td><button onclick="desativarModelo('${m.id}')">Desativar</button></td>`;
+          html += '</tr>';
+        });
+        html += '</tbody></table>';
+        container.innerHTML = html;
+      } catch (e) {
+        msg.textContent = 'Erro: ' + e.message;
+        msg.className = 'error';
+      }
+    }
+
+    async function desativarModelo(id) {
+      try {
+        const res = await fetch(`${API}/auth/admin/modelo-comunicacao/${id}`, {
+          method: 'DELETE',
+          headers: authHeaders()
+        });
+        if (res.ok) {
+          listarModelos();
+        } else {
+          const data = await res.json();
+          alert(data.error || 'Erro ao desativar');
+        }
+      } catch (e) {
+        alert('Erro: ' + e.message);
+      }
+    }
+  </script>
+</body>
+</html>

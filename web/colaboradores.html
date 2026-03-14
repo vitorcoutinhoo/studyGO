@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Colaboradores</title>
+  <style>
+    body { font-family: sans-serif; max-width: 900px; margin: 40px auto; padding: 0 16px; }
+    input, select, button { padding: 6px; margin-top: 4px; }
+    button { cursor: pointer; }
+    table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; font-size: 13px; }
+    th { background: #f0f0f0; }
+    #msg { color: red; margin-top: 8px; }
+    .success { color: green; }
+    fieldset { margin-top: 20px; padding: 16px; }
+    .row { display: flex; gap: 12px; flex-wrap: wrap; }
+    .row label { display: flex; flex-direction: column; font-size: 13px; }
+    nav a { margin-right: 12px; }
+  </style>
+</head>
+<body>
+  <nav>
+    <a href="login.html">Login</a>
+    <a href="colaboradores.html">Colaboradores</a>
+    <a href="plantoes.html">Plantões</a>
+    <a href="modelos-comunicacao.html">Modelos</a>
+  </nav>
+
+  <h2>Colaboradores</h2>
+  <div style="background:#f9f9f9;border:1px solid #ddd;padding:10px;margin-bottom:12px">
+    <label style="font-size:13px">Token JWT:
+      <input type="text" id="token-input" placeholder="Cole o token aqui ou faça login" style="width:600px;font-size:11px">
+    </label>
+    <button onclick="salvarToken()" style="margin-left:6px">Usar token</button>
+    <span id="token-status" style="font-size:12px;margin-left:8px;color:#555"></span>
+  </div>
+
+  <!-- Cadastrar -->
+  <fieldset>
+    <legend>Cadastrar Colaborador</legend>
+    <div class="row">
+      <label>Nome <input id="nome" type="text"></label>
+      <label>Email <input id="email" type="email"></label>
+      <label>Telefone <input id="telefone" type="text" placeholder="(XX) XXXXX-XXXX"></label>
+      <label>Data Admissão <input id="data_admissao" type="date"></label>
+    </div>
+    <div class="row" style="margin-top:8px">
+      <label>Cargo
+        <select id="cargo">
+          <option value="Analista">Analista</option>
+          <option value="Gerente">Gerente</option>
+          <option value="Consultor">Consultor</option>
+          <option value="Técnico">Técnico</option>
+          <option value="Desenvolvedor Frontend">Dev Frontend</option>
+          <option value="Desenvolvedor Backend">Dev Backend</option>
+          <option value="Desenvolvedor Fullstack">Dev Fullstack</option>
+          <option value="Outro">Outro</option>
+        </select>
+      </label>
+      <label>Setor
+        <select id="setor">
+          <option value="TI">TI</option>
+          <option value="RH">RH</option>
+          <option value="Financeiro">Financeiro</option>
+          <option value="Suporte">Suporte</option>
+          <option value="Desenvolvimento">Desenvolvimento</option>
+          <option value="Diretoria">Diretoria</option>
+        </select>
+      </label>
+      <label>Status
+        <select id="status">
+          <option value="ativo">Ativo</option>
+          <option value="inativo">Inativo</option>
+        </select>
+      </label>
+      <label>Ativo Plantão
+        <select id="ativo_plantao">
+          <option value="ativo">Sim</option>
+          <option value="inativo">Não</option>
+        </select>
+      </label>
+    </div>
+    <button style="margin-top:12px" onclick="criarColaborador()">Cadastrar</button>
+    <p id="msg-criar"></p>
+  </fieldset>
+
+  <!-- Listar -->
+  <fieldset>
+    <legend>Listar Colaboradores</legend>
+    <button onclick="listarColaboradores()">Buscar todos</button>
+    <p id="msg-listar"></p>
+    <div id="tabela-container"></div>
+  </fieldset>
+
+  <script>
+    const API = 'http://localhost:8080/api/v1';
+
+    function getToken() {
+      const input = document.getElementById('token-input');
+      const fromInput = input && input.value.trim();
+      return fromInput || localStorage.getItem('token') || sessionStorage.getItem('token');
+    }
+
+    function authHeaders() {
+      return {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + getToken()
+      };
+    }
+
+    function salvarToken() {
+      const val = document.getElementById('token-input').value.trim();
+      if (val) {
+        localStorage.setItem('token', val);
+        sessionStorage.setItem('token', val);
+        document.getElementById('token-status').textContent = 'Token salvo!';
+      }
+    }
+
+    window.onload = () => {
+      const t = getToken();
+      if (t) {
+        document.getElementById('token-input').value = t;
+        document.getElementById('token-status').textContent = 'Token carregado do storage.';
+      } else {
+        document.getElementById('token-status').textContent = 'Sem token — cole acima ou faça login.';
+      }
+    };
+
+    async function criarColaborador() {
+      const msg = document.getElementById('msg-criar');
+      const body = {
+        nome: document.getElementById('nome').value,
+        email: document.getElementById('email').value,
+        telefone: document.getElementById('telefone').value,
+        cargo: document.getElementById('cargo').value,
+        setor: document.getElementById('setor').value,
+        status: document.getElementById('status').value,
+        ativo_plantao: document.getElementById('ativo_plantao').value,
+        data_admissao: document.getElementById('data_admissao').value,
+        foto_url: ''
+      };
+
+      try {
+        const res = await fetch(`${API}/colaboradores`, {
+          method: 'POST',
+          headers: authHeaders(),
+          body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          msg.textContent = JSON.stringify(data);
+          msg.className = '';
+        } else {
+          msg.textContent = 'Colaborador criado! ID: ' + (data.id || JSON.stringify(data));
+          msg.className = 'success';
+          listarColaboradores();
+        }
+      } catch (e) {
+        msg.textContent = 'Erro: ' + e.message;
+      }
+    }
+
+    async function listarColaboradores() {
+      const msg = document.getElementById('msg-listar');
+      const container = document.getElementById('tabela-container');
+
+      try {
+        const res = await fetch(`${API}/colaboradores`, {
+          headers: authHeaders()
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          msg.textContent = JSON.stringify(data);
+          container.innerHTML = '';
+          return;
+        }
+
+        const lista = Array.isArray(data) ? data : (data.colaboradores || data.data || [data]);
+        msg.textContent = `${lista.length} colaborador(es) encontrado(s)`;
+
+        if (lista.length === 0) {
+          container.innerHTML = '<p>Nenhum colaborador.</p>';
+          return;
+        }
+
+        const cols = ['id', 'nome', 'email', 'telefone', 'cargo', 'setor', 'status', 'ativo_plantao', 'data_admissao'];
+        let html = '<table><thead><tr>' + cols.map(c => `<th>${c}</th>`).join('') + '</tr></thead><tbody>';
+        lista.forEach(c => {
+          html += '<tr>' + cols.map(k => `<td>${c[k] ?? ''}</td>`).join('') + '</tr>';
+        });
+        html += '</tbody></table>';
+        container.innerHTML = html;
+      } catch (e) {
+        msg.textContent = 'Erro: ' + e.message;
+      }
+    }
+  </script>
+</body>
+</html>
