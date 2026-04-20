@@ -1,6 +1,7 @@
 *.sql
 .env
 *.pem
+.tool-versions
 bin/
 calendario/
 seed/
