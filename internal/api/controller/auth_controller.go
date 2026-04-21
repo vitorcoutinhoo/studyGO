@@ -67,8 +67,8 @@ func (a *AuthController) setAccessTokenCookie(ctx *gin.Context, token string) {
 		int(a.expireTime)*60,
 		"/",
 		"",
-		false, // Secure: só HTTPS
-		true,  // HttpOnly: JS não acessa
+		false, // Secure: Só HTTPS, e só vamos habilitar isso em produção
+		true,  // HttpOnly: Javascript não acessa
 	)
 }
 
