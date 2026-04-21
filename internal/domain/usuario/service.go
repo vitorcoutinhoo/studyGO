@@ -182,6 +182,24 @@ func (s *UsuarioService) GetAll(ctx context.Context) (*[]Usuario, error) {
 	return u, nil
 }
 
+func (s *UsuarioService) ExistsUsuarioById(ctx context.Context, id string) error {
+	usuarioUUID, err := uuid.Parse(id)
+	if err != nil {
+		return fmt.Errorf("UUID do usuário inválido: %v", err)
+	}
+
+	exists, err := s.repository.ExistsId(ctx, usuarioUUID)
+	if err != nil {
+		return err
+	}
+
+	if !exists {
+		return fmt.Errorf("usuário não existe")
+	}
+
+	return nil
+}
+
 // Converte o status do usuário para string
 func StatusUsuarioString(status StatusUsuario) (string, error) {
 	switch status {
