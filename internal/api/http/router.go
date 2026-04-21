@@ -4,6 +4,7 @@ import (
 	"plantao/internal/api/controller"
 	"plantao/internal/api/middleware"
 	midware "plantao/internal/api/middleware"
+	"plantao/internal/domain/log"
 	"plantao/internal/infra/config"
 	"time"
 
@@ -27,6 +28,9 @@ func NewRouter(
 	feriadoController *controller.FeriadoController,
 	valorDiaController *controller.ValorDiaController,
 	cfg *config.Config,
+	log log.Logger,
+	globalLimiter *middleware.RateLimiter,
+	loginLimiter *middleware.RateLimiter,
 ) *gin.Engine {
 	router := gin.Default()
 
@@ -39,12 +43,13 @@ func NewRouter(
 		MaxAge:          12 * time.Hour,
 	}))
 
-	router.Use(middleware.RateLimitMiddleware())
+	router.Use(globalLimiter.Middleware())
+	router.Use(middleware.LoggingMiddleware(log))
 
 	setupPlantaoRoutes(router, plantaoController, authMidware)
 	setupColaboradorRoutes(router, colaboradorController, authMidware)
 	setupUsuarioRoutes(router, usuarioController, authMidware)
-	setupAuthRoutes(router, authController)
+	setupAuthRoutes(router, authController, loginLimiter)
 	setupModeloComunicacaoRoutes(router, modeloComunicacaoController, authMidware)
 	setupFeriadoRoutes(router, feriadoController, authMidware)
 	setupValorDiaRoutes(router, valorDiaController, authMidware)
@@ -60,7 +65,7 @@ func setupPlantaoRoutes(
 	v1 := router.Group("/api/v1")
 	{
 		plantaoRoutes := v1.Group("/plantoes")
-		plantaoRoutes.Use(authMidware.AuthenticationMidware(), midware.RoleMidware(ADMIN_ROLE, GERENTE_ROLE, COLABORADOR_ROLE))
+		plantaoRoutes.Use(authMidware.AuthenticationMiddleware(), midware.RoleMidware(ADMIN_ROLE, GERENTE_ROLE, COLABORADOR_ROLE))
 		{
 			plantaoRoutes.POST("", plantaoController.CreatePlantao)
 			plantaoRoutes.GET("", plantaoController.GetPlantoes)
@@ -84,7 +89,7 @@ func setupColaboradorRoutes(
 	v1 := router.Group("/api/v1")
 	{
 		colaboradorRoutes := v1.Group("/colaboradores")
-		colaboradorRoutes.Use(authMidware.AuthenticationMidware(), midware.RoleMidware(ADMIN_ROLE, GERENTE_ROLE, COLABORADOR_ROLE))
+		colaboradorRoutes.Use(authMidware.AuthenticationMiddleware(), midware.RoleMidware(ADMIN_ROLE, GERENTE_ROLE, COLABORADOR_ROLE))
 		{
 			colaboradorRoutes.POST("", colaboradorController.CreateColaborador)
 			colaboradorRoutes.PATCH("/:id", colaboradorController.UpdateColaborador)
@@ -104,7 +109,7 @@ func setupValorDiaRoutes(
 	v1 := router.Group("/api/v1")
 	{
 		valorDiaRoutes := v1.Group("/admin/config-valores")
-		valorDiaRoutes.Use(authMidware.AuthenticationMidware(), midware.RoleMidware(ADMIN_ROLE))
+		valorDiaRoutes.Use(authMidware.AuthenticationMiddleware(), midware.RoleMidware(ADMIN_ROLE))
 		{
 			valorDiaRoutes.GET("", valorDiaController.GetVigentes)
 			valorDiaRoutes.POST("", valorDiaController.SetValor)
@@ -120,7 +125,7 @@ func setupFeriadoRoutes(
 	v1 := router.Group("/api/v1")
 	{
 		feriadoRoutes := v1.Group("/admin/feriados")
-		feriadoRoutes.Use(authMidware.AuthenticationMidware(), midware.RoleMidware(ADMIN_ROLE))
+		feriadoRoutes.Use(authMidware.AuthenticationMiddleware(), midware.RoleMidware(ADMIN_ROLE))
 		{
 			feriadoRoutes.GET("", feriadoController.GetFeriadosByAno)
 			feriadoRoutes.PATCH("/:id/data", feriadoController.UpdateDataFeriado)
@@ -136,13 +141,13 @@ func setupUsuarioRoutes(
 	v1 := router.Group("/api/v1")
 	{
 		adminRoutes := v1.Group("/admin")
-		adminRoutes.Use(authMidware.AuthenticationMidware(), midware.RoleMidware(ADMIN_ROLE))
+		adminRoutes.Use(authMidware.AuthenticationMiddleware(), midware.RoleMidware(ADMIN_ROLE))
 		{
 			adminRoutes.GET("/all", usuarioController.GetAll)
 		}
 
 		usuarioAuthRoutes := v1.Group("/authenticated/usuarios")
-		usuarioAuthRoutes.Use(authMidware.AuthenticationMidware(), midware.RoleMidware(COLABORADOR_ROLE, GERENTE_ROLE, ADMIN_ROLE))
+		usuarioAuthRoutes.Use(authMidware.AuthenticationMiddleware(), midware.RoleMidware(COLABORADOR_ROLE, GERENTE_ROLE, ADMIN_ROLE))
 		{
 			usuarioAuthRoutes.PUT("", usuarioController.UpdateUsuario)
 			usuarioAuthRoutes.GET("", usuarioController.GetUsuarioById)
@@ -159,12 +164,13 @@ func setupUsuarioRoutes(
 func setupAuthRoutes(
 	router *gin.Engine,
 	authController *controller.AuthController,
+	loginLimiter *middleware.RateLimiter,
 ) {
 	v1 := router.Group("/api/v1")
 	{
 		authRoutes := v1.Group("/auth")
 		{
-			authRoutes.POST("/login", authController.Login)
+			authRoutes.POST("/login", loginLimiter.Middleware(), authController.Login)
 		}
 	}
 }
@@ -177,7 +183,7 @@ func setupModeloComunicacaoRoutes(
 	v1 := router.Group("/api/v1")
 	{
 		modeloComunicacao := v1.Group("/auth/admin/modelo-comunicacao")
-		modeloComunicacao.Use(authMidware.AuthenticationMidware(), midware.RoleMidware(ADMIN_ROLE))
+		modeloComunicacao.Use(authMidware.AuthenticationMiddleware(), midware.RoleMidware(ADMIN_ROLE))
 		{
 			modeloComunicacao.POST("/", modeloComunicacaoControler.CreateModeloComunicacao)
 			modeloComunicacao.PUT("/:id_modelo", modeloComunicacaoControler.UpdateModeloComunicacao)
