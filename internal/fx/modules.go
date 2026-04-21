@@ -5,13 +5,16 @@ import (
 
 	"plantao/internal/api/controller"
 	apihttp "plantao/internal/api/http"
+	"plantao/internal/api/middleware"
 	midware "plantao/internal/api/middleware"
 	"plantao/internal/domain/colaborador"
 	"plantao/internal/domain/comunicacao"
 	"plantao/internal/domain/financeiro"
+	"plantao/internal/domain/log"
 	"plantao/internal/domain/plantao"
 	"plantao/internal/domain/usuario"
 	"plantao/internal/infra/config"
+	"plantao/internal/infra/logger"
 	"plantao/internal/infra/mail"
 	pgstore "plantao/internal/infra/persistence/postgres"
 	"plantao/internal/infra/security"
@@ -70,7 +73,24 @@ var APIModule = fx.Module("api",
 		controller.NewAuthController,
 		controller.NewModeloComunicacaoController,
 		midware.NewAuthMidware,
-		fx.Annotate(apihttp.NewRouter, fx.As(new(http.Handler))),
+		fx.Annotate(
+			apihttp.NewRouter,
+			fx.As(new(http.Handler)),
+			fx.ParamTags(
+				``,
+				``,
+				``,
+				``,
+				``,
+				``,
+				``,
+				``,
+				``,
+				``,
+				`name:"globalLimiter"`,
+				`name:"loginLimiter"`,
+			),
+		),
 		apihttp.NewServer,
 	),
 )
@@ -78,5 +98,24 @@ var APIModule = fx.Module("api",
 var FileModlule = fx.Module("file",
 	fx.Provide(
 		fx.Annotate(storage.NewLocalStorage, fx.As(new(colaborador.FileStorage))),
+	),
+)
+
+var LogglerModule = fx.Module("logger",
+	fx.Provide(
+		fx.Annotate(logger.NewLogger, fx.As(new(log.Logger))),
+	),
+)
+
+var RateLimitModule = fx.Module("ratelimit",
+	fx.Provide(
+		fx.Annotate(
+			middleware.NewGlobalRateLimiter,
+			fx.ResultTags(`name:"globalLimiter"`),
+		),
+		fx.Annotate(
+			middleware.NewLoginRateLimiter,
+			fx.ResultTags(`name:"loginLimiter"`),
+		),
 	),
 )
