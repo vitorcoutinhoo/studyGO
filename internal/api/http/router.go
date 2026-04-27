@@ -31,6 +31,7 @@ func NewRouter(
 	log log.Logger,
 	globalLimiter *middleware.RateLimiter,
 	loginLimiter *middleware.RateLimiter,
+	conviteController *controller.ConviteController,
 ) *gin.Engine {
 	router := gin.Default()
 
@@ -54,6 +55,7 @@ func NewRouter(
 	setupModeloComunicacaoRoutes(router, modeloComunicacaoController, authMidware)
 	setupFeriadoRoutes(router, feriadoController, authMidware)
 	setupValorDiaRoutes(router, valorDiaController, authMidware)
+	setupConviteRoutes(router, conviteController, authMidware)
 
 	return router
 }
@@ -98,6 +100,23 @@ func setupColaboradorRoutes(
 			colaboradorRoutes.DELETE("/:id", colaboradorController.DisableColaborador)
 			colaboradorRoutes.GET("/:id", colaboradorController.GetColaboradorById)
 			colaboradorRoutes.GET("", colaboradorController.GetColaboradoresByFilter)
+		}
+	}
+}
+
+func setupConviteRoutes(
+	router *gin.Engine,
+	conviteController *controller.ConviteController,
+	authMidware *midware.AuthMidware,
+) {
+	v1 := router.Group("/api/v1")
+	{
+		conviteRoutes := v1.Group("/convites")
+		conviteRoutes.Use(authMidware.AuthenticationMiddleware(), middleware.RoleMidware(ADMIN_ROLE))
+		{
+			conviteRoutes.POST("", conviteController.CreateConvite)
+			conviteRoutes.GET("", conviteController.GetAllConvites)
+			conviteRoutes.DELETE("/:token", conviteController.DisableConvite)
 		}
 	}
 }
@@ -157,7 +176,7 @@ func setupUsuarioRoutes(
 
 		usuarioRoutes := v1.Group("/usuarios")
 		{
-			usuarioRoutes.POST("/colaboradores/:id_colaborador", usuarioController.CreateUsuario)
+			usuarioRoutes.POST("/cadastro", usuarioController.CreateUsuarioByToken)
 		}
 	}
 }
