@@ -8,23 +8,26 @@ import (
 	"strings"
 
 	"plantao/internal/domain/comunicacao"
+	"plantao/internal/domain/convite"
 
 	"github.com/google/uuid"
 )
 
 // Serviço para gerenciar colaboradores
 type ColaboradorService struct {
-	repository   ColaboradorRepository
-	envioService *comunicacao.EnvioService
-	storageImage FileStorage
+	repository        ColaboradorRepository
+	envioService      *comunicacao.EnvioService
+	storageImage      FileStorage
+	conviteRepository convite.ConviteRepository
 }
 
 // Cria uma nova instância do serviço de colaborador
-func NewColaboradorService(repository ColaboradorRepository, envioService *comunicacao.EnvioService, storageImage FileStorage) *ColaboradorService {
+func NewColaboradorService(repository ColaboradorRepository, envioService *comunicacao.EnvioService, storageImage FileStorage, conviteRepository convite.ConviteRepository) *ColaboradorService {
 	return &ColaboradorService{
-		repository:   repository,
-		envioService: envioService,
-		storageImage: storageImage,
+		repository:        repository,
+		envioService:      envioService,
+		storageImage:      storageImage,
+		conviteRepository: conviteRepository,
 	}
 } // Fim NewColaboradorService
 
@@ -69,6 +72,11 @@ func (s *ColaboradorService) CreateColaborador(ctx context.Context, col *Colabor
 
 	colaboradorReturn, err := s.repository.Store(ctx, colaborador)
 
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = s.conviteRepository.Store(ctx, colaboradorReturn.Id)
 	if err != nil {
 		return nil, err
 	}
