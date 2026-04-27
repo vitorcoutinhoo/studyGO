@@ -9,6 +9,7 @@ import (
 	midware "plantao/internal/api/middleware"
 	"plantao/internal/domain/colaborador"
 	"plantao/internal/domain/comunicacao"
+	"plantao/internal/domain/convite"
 	"plantao/internal/domain/financeiro"
 	"plantao/internal/domain/log"
 	"plantao/internal/domain/plantao"
@@ -37,6 +38,7 @@ var PostgresModule = fx.Module("postgres",
 		fx.Annotate(pgstore.NewUsuarioRepository, fx.As(new(usuario.UsuarioRepository))),
 		fx.Annotate(pgstore.NewModeloRepository, fx.As(new(comunicacao.ModeloComunicaRepository))),
 		fx.Annotate(pgstore.NewEnvioRepository, fx.As(new(comunicacao.EnvioComunicacaoRepository))),
+		fx.Annotate(pgstore.NewConviteRepository, fx.As(new(convite.ConviteRepository))),
 	),
 )
 
@@ -60,6 +62,7 @@ var DomainModule = fx.Module("domain",
 		usuario.NewAuthService,
 		comunicacao.NewModeloComunicacaoService,
 		comunicacao.NewEnvioService,
+		convite.NewConviteService,
 	),
 )
 
@@ -72,6 +75,7 @@ var APIModule = fx.Module("api",
 		controller.NewUsuarioController,
 		controller.NewAuthController,
 		controller.NewModeloComunicacaoController,
+		controller.NewConviteController,
 		midware.NewAuthMidware,
 		fx.Annotate(
 			apihttp.NewRouter,
@@ -89,6 +93,7 @@ var APIModule = fx.Module("api",
 				``,
 				`name:"globalLimiter"`,
 				`name:"loginLimiter"`,
+				``,
 			),
 		),
 		apihttp.NewServer,
