@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"plantao/internal/domain/colaborador"
+	"plantao/internal/domain/convite"
 
 	"github.com/google/uuid"
 )
@@ -13,61 +14,69 @@ type UsuarioService struct {
 	repository            UsuarioRepository
 	colaboradorRepository colaborador.ColaboradorRepository
 	passwordHasher        PasswordHasher
+	conviteRepository     convite.ConviteRepository
 }
 
 // Cria uma nova instância do serviço de usuário
-func NewUsuarioService(repository UsuarioRepository, colaboradorRepository colaborador.ColaboradorRepository, passwordHasher PasswordHasher) *UsuarioService {
+func NewUsuarioService(repository UsuarioRepository, colaboradorRepository colaborador.ColaboradorRepository, passwordHasher PasswordHasher, conviteRepository convite.ConviteRepository) *UsuarioService {
 	return &UsuarioService{
 		repository:            repository,
 		colaboradorRepository: colaboradorRepository,
 		passwordHasher:        passwordHasher,
+		conviteRepository:     conviteRepository,
 	}
 } // Fim NewUsuarioService
 
-// Cria um novo usuário com validações e armazenamento
-func (s *UsuarioService) CreateUsuario(ctx context.Context, email, senha, colaboradorId string) (*Usuario, error) {
-	colaboradorUUID, err := uuid.Parse(colaboradorId)
-
+// Cria novo usuário utilizando token
+func (s *UsuarioService) CreateUsuarioByToken(ctx context.Context, tokenStr, email, senha string) (*Usuario, error) {
+	token, err := uuid.Parse(tokenStr)
 	if err != nil {
-		return nil, fmt.Errorf("UUID do colaborador inválido: %v", err)
+		return nil, fmt.Errorf("token inválido")
 	}
 
-	exists, err := s.colaboradorRepository.ExistsId(ctx, colaboradorUUID)
-
-	if err != nil {
-		return nil, fmt.Errorf("erro ao verificar existência de ID do colaborador: %w", err)
-	}
-
-	if !exists {
-		return nil, colaborador.ErrorColaboradorNotFound
-	}
-
-	newUsuario, err := NewUsuario(colaboradorUUID, email, senha, RoleColaborador, StatusAtivo)
-
+	convite, err := s.conviteRepository.FindByToken(ctx, token)
 	if err != nil {
 		return nil, err
 	}
 
-	exists, err = s.repository.ExistsEmail(ctx, email)
+	if err := convite.Validate(); err != nil {
+		return nil, err
+	}
 
+	exists, err := s.colaboradorRepository.ExistsId(ctx, convite.IdColaborador)
+	if err != nil || !exists {
+		return nil, colaborador.ErrorColaboradorNotFound
+	}
+
+	exists, err = s.repository.ExistsEmail(ctx, email)
 	if err != nil {
-		return nil, fmt.Errorf("erro ao verificar existência de email: %w", err)
+		return nil, err
 	}
 
 	if exists {
 		return nil, ErrorEmailAlreadyExists
 	}
 
-	hashedPassword, err := s.passwordHasher.HashPassword(senha)
+	newUsuario, err := NewUsuario(convite.IdColaborador, email, senha, RoleColaborador, StatusAtivo)
+	if err != nil {
+		return nil, err
+	}
 
+	hashedPassword, err := s.passwordHasher.HashPassword(senha)
 	if err != nil {
 		return nil, fmt.Errorf("erro ao hashear senha: %w", err)
 	}
-
 	newUsuario.Senha = hashedPassword
 
-	return s.repository.Store(ctx, newUsuario)
-} // Fim CreateUsuario
+	result, err := s.repository.Store(ctx, newUsuario)
+	if err != nil {
+		return nil, err
+	}
+
+	_ = s.conviteRepository.MarkAsUsed(ctx, token)
+
+	return result, nil
+} // Fim CreateUsuarioByToken
 
 // Atualiza um usuário existente com novas informações
 func (s *UsuarioService) UpdateUsuario(ctx context.Context, email, senha, usuarioId string) error {

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"plantao/internal/api/dto"
+	"plantao/internal/domain/convite"
 	"plantao/internal/domain/usuario"
 
 	"github.com/gin-gonic/gin"
@@ -19,30 +20,33 @@ func NewUsuarioController(service *usuario.UsuarioService) *UsuarioController {
 	}
 }
 
-func (c *UsuarioController) CreateUsuario(ctx *gin.Context) {
-	idColaborador := ctx.Param("id_colaborador")
+// No controller
+func (c *UsuarioController) CreateUsuarioByToken(ctx *gin.Context) {
+	tokenStr := ctx.Query("token") // ?token=<uuid>
+	if tokenStr == "" {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "token de criação ausente"})
+		return
+	}
 
 	var req dto.UsuarioRequestDTO
-
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	result, err := c.service.CreateUsuario(ctx, req.Email, req.Senha, idColaborador)
-
+	result, err := c.service.CreateUsuarioByToken(ctx, tokenStr, req.Email, req.Senha)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		status := http.StatusInternalServerError
+		// Erros esperados retornam 400/410
+		switch err {
+		case convite.ErrorConviteNotFound, convite.ErrorConviteUsed, convite.ErrorConviteExpired:
+			status = http.StatusGone // 410 — link expirado/usado
+		}
+		ctx.JSON(status, gin.H{"error": err.Error()})
 		return
 	}
 
-	resp, err := usuarioToResponse(result)
-
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
+	resp, _ := usuarioToResponse(result)
 	ctx.JSON(http.StatusCreated, resp)
 }
 
