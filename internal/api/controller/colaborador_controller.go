@@ -31,7 +31,7 @@ func NewColaboradorController(service *colaborador.ColaboradorService, cfg *conf
 func (c *ColaboradorController) CreateColaborador(ctx *gin.Context) {
 	var req dto.CreateColaboradorRequest
 
-	if err := ctx.ShouldBind(&req); err != nil {
+	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -74,7 +74,7 @@ func (c *ColaboradorController) CreateColaborador(ctx *gin.Context) {
 func (c *ColaboradorController) UpdateColaborador(ctx *gin.Context) {
 	var req dto.UpdateColaboradorRequest
 
-	if err := ctx.ShouldBind(&req); err != nil {
+	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
