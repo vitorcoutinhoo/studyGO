@@ -9,6 +9,7 @@ import (
 
 	"plantao/internal/domain/comunicacao"
 	"plantao/internal/domain/convite"
+	"plantao/internal/infra/config"
 
 	"github.com/google/uuid"
 )
@@ -19,15 +20,17 @@ type ColaboradorService struct {
 	envioService      *comunicacao.EnvioService
 	storageImage      FileStorage
 	conviteRepository convite.ConviteRepository
+	urlServer         string
 }
 
 // Cria uma nova instância do serviço de colaborador
-func NewColaboradorService(repository ColaboradorRepository, envioService *comunicacao.EnvioService, storageImage FileStorage, conviteRepository convite.ConviteRepository) *ColaboradorService {
+func NewColaboradorService(repository ColaboradorRepository, envioService *comunicacao.EnvioService, storageImage FileStorage, conviteRepository convite.ConviteRepository, cfg *config.Config) *ColaboradorService {
 	return &ColaboradorService{
 		repository:        repository,
 		envioService:      envioService,
 		storageImage:      storageImage,
 		conviteRepository: conviteRepository,
+		urlServer:         "http://" + cfg.Server.Host + ":" + cfg.Server.Port + "/api/v1/usuarios/cadastro?token=",
 	}
 } // Fim NewColaboradorService
 
@@ -76,7 +79,7 @@ func (s *ColaboradorService) CreateColaborador(ctx context.Context, col *Colabor
 		return nil, err
 	}
 
-	_, err = s.conviteRepository.Store(ctx, colaboradorReturn.Id)
+	conv, err := s.conviteRepository.Store(ctx, colaboradorReturn.Id)
 	if err != nil {
 		return nil, err
 	}
@@ -85,12 +88,12 @@ func (s *ColaboradorService) CreateColaborador(ctx context.Context, col *Colabor
 		data := map[string]any{
 			string(comunicacao.Nome):  colaboradorReturn.Nome,
 			string(comunicacao.Email): colaboradorReturn.Email,
+			string(comunicacao.Link):  s.urlServer + conv.Token.String(),
 		}
 
 		err := s.envioService.SendEmailComunicacao(
 			context.Background(),
 			comunicacao.ColaboradorCadastrado,
-			colaboradorReturn.Id.String(),
 			colaboradorReturn.Email,
 			data,
 		)
