@@ -43,6 +43,7 @@ const (
 	ValorPago  TagBody = "valorPago"
 	Email      TagBody = "email"
 	DataAtual  TagBody = "dataAtual"
+	Link       TagBody = "link"
 )
 
 var requiredTags = map[TipoComunicacao][]TagBody{
@@ -50,7 +51,7 @@ var requiredTags = map[TipoComunicacao][]TagBody{
 	PlantaoConluido:       {Nome, DataInicio, DataFim},
 	PlantaoAindaAberto:    {Nome, DataInicio, DataFim},
 	PlantaoPago:           {Nome, DataInicio, DataFim, ValorPago},
-	ColaboradorCadastrado: {Nome, Email},
+	ColaboradorCadastrado: {Nome, Email, Link},
 	ColaboradorAtualizado: {Nome, Email},
 	ColaboradorDeletado:   {Nome, DataAtual},
 	UsuarioCadastrado:     {Nome, Email},
