@@ -24,7 +24,6 @@ func NewEnvioService(envioRepository EnvioComunicacaoRepository, emailRepository
 func (s *EnvioService) SendEmailComunicacao(
 	ctx context.Context,
 	tipoComunicacao TipoComunicacao,
-	idColaborador string,
 	destinatario string,
 	data map[string]any,
 ) error {
