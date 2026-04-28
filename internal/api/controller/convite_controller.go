@@ -3,6 +3,7 @@ package controller
 import (
 	"net/http"
 	"plantao/internal/api/dto"
+	"plantao/internal/domain/colaborador"
 	"plantao/internal/domain/convite"
 	"plantao/internal/utils"
 
@@ -10,11 +11,15 @@ import (
 )
 
 type ConviteController struct {
-	service *convite.ConviteService
+	service            *convite.ConviteService
+	colaboradorService *colaborador.ColaboradorService
 }
 
-func NewConviteController(service *convite.ConviteService) *ConviteController {
-	return &ConviteController{service: service}
+func NewConviteController(service *convite.ConviteService, colaboradorService *colaborador.ColaboradorService) *ConviteController {
+	return &ConviteController{
+		service:            service,
+		colaboradorService: colaboradorService,
+	}
 }
 
 func (c *ConviteController) CreateConvite(ctx *gin.Context) {
@@ -24,7 +29,18 @@ func (c *ConviteController) CreateConvite(ctx *gin.Context) {
 		return
 	}
 
-	if err := c.service.CreateConvite(ctx, req.IdColaborador); err != nil {
+	cl, err := c.colaboradorService.GetColaboradorById(ctx, req.IdColaborador)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if cl == nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "colaborador não encontrado"})
+		return
+	}
+
+	if err := c.service.CreateConvite(ctx, req.IdColaborador, req.ColaboradorNome, req.ColaboradorEmail); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
