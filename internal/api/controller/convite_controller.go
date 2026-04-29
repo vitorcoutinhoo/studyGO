@@ -2,6 +2,7 @@ package controller
 
 import (
 	"net/http"
+	"plantao/internal/api/apierr"
 	"plantao/internal/api/dto"
 	"plantao/internal/domain/colaborador"
 	"plantao/internal/domain/convite"
@@ -25,33 +26,33 @@ func NewConviteController(service *convite.ConviteService, colaboradorService *c
 func (c *ConviteController) CreateConvite(ctx *gin.Context) {
 	var req dto.ConviteRequestDTO
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		ctx.JSON(http.StatusBadRequest, apierr.ErrorResponse{Code: "BAD_REQUEST", Message: err.Error()})
 		return
 	}
 
 	cl, err := c.colaboradorService.GetColaboradorById(ctx, req.IdColaborador)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		apierr.Respond(ctx, err)
 		return
 	}
 
 	if cl == nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "colaborador não encontrado"})
+		ctx.JSON(http.StatusNotFound, apierr.ErrorResponse{Code: "NOT_FOUND", Message: "colaborador não encontrado"})
 		return
 	}
 
 	if err := c.service.CreateConvite(ctx, req.IdColaborador, req.ColaboradorNome, req.ColaboradorEmail); err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		apierr.Respond(ctx, err)
 		return
 	}
 
-	ctx.Status(http.StatusOK)
+	ctx.Status(http.StatusCreated)
 }
 
 func (c *ConviteController) GetAllConvites(ctx *gin.Context) {
 	convites, err := c.service.GetAllConvites(ctx)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		apierr.Respond(ctx, err)
 		return
 	}
 
@@ -60,15 +61,13 @@ func (c *ConviteController) GetAllConvites(ctx *gin.Context) {
 		expData, _ := utils.ParseUsToBrDate(&convites[i].ExpiraEm, nil)
 		createdAt, _ := utils.ParseUsToBrDate(&convites[i].CreatedAt, nil)
 
-		conviteDto := dto.ConviteResponseDTO{
+		cvt = append(cvt, dto.ConviteResponseDTO{
 			Token:         convites[i].Token.String(),
 			IdColaborador: convites[i].IdColaborador.String(),
 			ExpiraEm:      expData,
 			Usado:         convites[i].Usado,
 			CreatedAt:     createdAt,
-		}
-
-		cvt = append(cvt, conviteDto)
+		})
 	}
 
 	ctx.JSON(http.StatusOK, cvt)
@@ -78,7 +77,7 @@ func (c *ConviteController) DisableConvite(ctx *gin.Context) {
 	token := ctx.Param("token")
 
 	if err := c.service.DisableConvite(ctx, token); err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		apierr.Respond(ctx, err)
 		return
 	}
 

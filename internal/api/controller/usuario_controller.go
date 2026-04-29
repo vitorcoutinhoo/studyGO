@@ -3,6 +3,7 @@ package controller
 import (
 	"fmt"
 	"net/http"
+	"plantao/internal/api/apierr"
 	"plantao/internal/api/dto"
 	"plantao/internal/domain/convite"
 	"plantao/internal/domain/usuario"
@@ -20,29 +21,27 @@ func NewUsuarioController(service *usuario.UsuarioService) *UsuarioController {
 	}
 }
 
-// No controller
 func (c *UsuarioController) CreateUsuarioByToken(ctx *gin.Context) {
-	tokenStr := ctx.Query("token") // ?token=<uuid>
+	tokenStr := ctx.Query("token")
 	if tokenStr == "" {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "token de criação ausente"})
+		ctx.JSON(http.StatusBadRequest, apierr.ErrorResponse{Code: "BAD_REQUEST", Message: "token de criação ausente"})
 		return
 	}
 
 	var req dto.UsuarioRequestDTO
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		ctx.JSON(http.StatusBadRequest, apierr.ErrorResponse{Code: "BAD_REQUEST", Message: err.Error()})
 		return
 	}
 
 	result, err := c.service.CreateUsuarioByToken(ctx, tokenStr, req.Email, req.Senha)
 	if err != nil {
-		status := http.StatusInternalServerError
-		// Erros esperados retornam 400/410
 		switch err {
 		case convite.ErrorConviteNotFound, convite.ErrorConviteUsed, convite.ErrorConviteExpired:
-			status = http.StatusGone // 410 — link expirado/usado
+			ctx.JSON(http.StatusGone, apierr.ErrorResponse{Code: "GONE", Message: err.Error()})
+		default:
+			apierr.Respond(ctx, err)
 		}
-		ctx.JSON(status, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -52,21 +51,19 @@ func (c *UsuarioController) CreateUsuarioByToken(ctx *gin.Context) {
 
 func (c *UsuarioController) UpdateUsuario(ctx *gin.Context) {
 	idUsuarioRaw, exists := ctx.Get("userId")
-
 	if !exists {
-		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "usuário não autenticado"})
+		ctx.JSON(http.StatusUnauthorized, apierr.ErrorResponse{Code: "UNAUTHORIZED", Message: "usuário não autenticado"})
 		return
 	}
 
 	var req dto.UsuarioRequestDTO
-
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		ctx.JSON(http.StatusBadRequest, apierr.ErrorResponse{Code: "BAD_REQUEST", Message: err.Error()})
 		return
 	}
 
 	if err := c.service.UpdateUsuario(ctx, req.Email, req.Senha, idUsuarioRaw.(string)); err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		apierr.Respond(ctx, err)
 		return
 	}
 
@@ -75,14 +72,13 @@ func (c *UsuarioController) UpdateUsuario(ctx *gin.Context) {
 
 func (c *UsuarioController) DeleteUsuario(ctx *gin.Context) {
 	idUsuarioRaw, exists := ctx.Get("userId")
-
 	if !exists {
-		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "usuário não autenticado"})
+		ctx.JSON(http.StatusUnauthorized, apierr.ErrorResponse{Code: "UNAUTHORIZED", Message: "usuário não autenticado"})
 		return
 	}
 
 	if err := c.service.DeleteUsuario(ctx, idUsuarioRaw.(string)); err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		apierr.Respond(ctx, err)
 		return
 	}
 
@@ -91,23 +87,20 @@ func (c *UsuarioController) DeleteUsuario(ctx *gin.Context) {
 
 func (c *UsuarioController) GetUsuarioById(ctx *gin.Context) {
 	idUsuarioRaw, exists := ctx.Get("userId")
-
 	if !exists {
-		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "usuário não autenticado"})
+		ctx.JSON(http.StatusUnauthorized, apierr.ErrorResponse{Code: "UNAUTHORIZED", Message: "usuário não autenticado"})
 		return
 	}
 
 	result, err := c.service.GetUsuarioById(ctx, idUsuarioRaw.(string))
-
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		apierr.Respond(ctx, err)
 		return
 	}
 
 	resp, err := usuarioToResponse(result)
-
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		apierr.Respond(ctx, err)
 		return
 	}
 
@@ -116,22 +109,18 @@ func (c *UsuarioController) GetUsuarioById(ctx *gin.Context) {
 
 func (c *UsuarioController) GetAll(ctx *gin.Context) {
 	results, err := c.service.GetAll(ctx)
-
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		apierr.Respond(ctx, err)
 		return
 	}
 
 	var usuariosDTO []dto.UsuarioResponseDTO
-
 	for _, result := range *results {
 		uDTO, err := usuarioToResponse(&result)
-
 		if err != nil {
-			ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			apierr.Respond(ctx, err)
 			return
 		}
-
 		usuariosDTO = append(usuariosDTO, *uDTO)
 	}
 
@@ -144,7 +133,6 @@ func usuarioToResponse(u *usuario.Usuario) (*dto.UsuarioResponseDTO, error) {
 	}
 
 	ativo, err := usuario.StatusUsuarioString(u.Ativo)
-
 	if err != nil {
 		return nil, err
 	}

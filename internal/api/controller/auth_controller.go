@@ -2,6 +2,7 @@ package controller
 
 import (
 	"net/http"
+	"plantao/internal/api/apierr"
 	"plantao/internal/api/dto"
 	"plantao/internal/domain/usuario"
 	"plantao/internal/infra/config"
@@ -25,24 +26,13 @@ func (a *AuthController) Login(ctx *gin.Context) {
 	var req dto.LoginRequestDTO
 
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	if req.Email == nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "email é obrigatório"})
-		return
-	}
-
-	if req.Senha == nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "senha é obrigatória"})
+		ctx.JSON(http.StatusBadRequest, apierr.ErrorResponse{Code: "BAD_REQUEST", Message: err.Error()})
 		return
 	}
 
 	usuarioLogado, token, err := a.authService.Authenticate(ctx, *req.Email, *req.Senha)
-
 	if err != nil {
-		ctx.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		apierr.Respond(ctx, err)
 		return
 	}
 
@@ -67,8 +57,8 @@ func (a *AuthController) setAccessTokenCookie(ctx *gin.Context, token string) {
 		int(a.expireTime)*60,
 		"/",
 		"",
-		false, // Secure: Só HTTPS, e só vamos habilitar isso em produção
-		true,  // HttpOnly: Javascript não acessa
+		false, // Secure: habilitar em produção (HTTPS)
+		true,  // HttpOnly
 	)
 }
 
@@ -76,6 +66,5 @@ func convertStatusUsuario(sts usuario.StatusUsuario) string {
 	if sts == usuario.StatusAtivo {
 		return "ativo"
 	}
-
 	return "inativo"
 }

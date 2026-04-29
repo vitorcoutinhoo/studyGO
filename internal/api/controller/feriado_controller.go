@@ -2,6 +2,7 @@ package controller
 
 import (
 	"net/http"
+	"plantao/internal/api/apierr"
 	"plantao/internal/api/dto"
 	"plantao/internal/domain/financeiro"
 	"strconv"
@@ -27,13 +28,13 @@ func (c *FeriadoController) GetFeriadosByAno(ctx *gin.Context) {
 
 	ano, err := strconv.Atoi(anoStr)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "ano inválido"})
+		ctx.JSON(http.StatusBadRequest, apierr.ErrorResponse{Code: "BAD_REQUEST", Message: "ano inválido"})
 		return
 	}
 
 	feriados, err := c.service.GetFeriadosByAno(ctx.Request.Context(), ano)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		apierr.Respond(ctx, err)
 		return
 	}
 
@@ -54,25 +55,25 @@ func (c *FeriadoController) UpdateDataFeriado(ctx *gin.Context) {
 	idStr := ctx.Param("id")
 	id, err := uuid.Parse(idStr)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "id inválido"})
+		ctx.JSON(http.StatusBadRequest, apierr.ErrorResponse{Code: "BAD_REQUEST", Message: "id inválido"})
 		return
 	}
 
 	var req dto.UpdateDataFeriadoRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		ctx.JSON(http.StatusBadRequest, apierr.ErrorResponse{Code: "BAD_REQUEST", Message: err.Error()})
 		return
 	}
 
 	novaData, err := time.Parse("2006-01-02", req.NovaData)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "nova_data inválida, use o formato YYYY-MM-DD"})
+		ctx.JSON(http.StatusBadRequest, apierr.ErrorResponse{Code: "BAD_REQUEST", Message: "nova_data inválida, use o formato YYYY-MM-DD"})
 		return
 	}
 
 	feriado, err := c.service.UpdateDataFeriado(ctx.Request.Context(), id, novaData)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		apierr.Respond(ctx, err)
 		return
 	}
 
