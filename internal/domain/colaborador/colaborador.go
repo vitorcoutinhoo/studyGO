@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"plantao/internal/domain/shared"
 )
 
 // Constante para o status do colaborador
@@ -54,8 +55,7 @@ type Colaborador struct {
 	AtivoPlantao     StatusColaborador
 	DataAdmissao     *time.Time
 	DataDesligamento *time.Time
-	CreatedAt        *time.Time
-	UpdatedAt        *time.Time
+	shared.Auditoria
 }
 
 // Erros específicos do domínio Colaborador

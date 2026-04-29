@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
-	"time"
 
 	"github.com/google/uuid"
 	"golang.org/x/net/html"
+	"plantao/internal/domain/shared"
 )
 
 type StatusModeloComunicacao int
@@ -67,8 +67,7 @@ type Comunicacao struct {
 	Assunto         string
 	Corpo           string
 	Ativo           StatusModeloComunicacao
-	CreatedAt       *time.Time
-	UpdatedAt       *time.Time
+	shared.Auditoria
 }
 
 var (

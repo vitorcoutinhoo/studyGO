@@ -211,14 +211,14 @@ func createColaboradorDtoToDomain(r *dto.CreateColaboradorRequest) (*colaborador
 		r.AtivoPlantao = "ativo"
 	}
 
-	dataAdmissao, err := utils.ParseBrToUsDate(&r.DataAdmissao)
+	dataAdmissao, err := utils.ParseBrToUsDate(&r.DataAdmissao, nil)
 	if err != nil {
 		return nil, err
 	}
 
 	var dataDesligamento *time.Time
 	if r.DataDesligamento != nil {
-		dataTemp, err := utils.ParseBrToUsDate(r.DataDesligamento)
+		dataTemp, err := utils.ParseBrToUsDate(r.DataDesligamento, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -264,7 +264,7 @@ func updateColaboradorDtoToDomain(r *dto.UpdateColaboradorRequest) (*colaborador
 	var err error
 
 	if r.DataAdmissao != nil {
-		dataAdmissao, err = utils.ParseBrToUsDate(r.DataAdmissao)
+		dataAdmissao, err = utils.ParseBrToUsDate(r.DataAdmissao, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -274,7 +274,7 @@ func updateColaboradorDtoToDomain(r *dto.UpdateColaboradorRequest) (*colaborador
 
 	var dataDesligamento *time.Time
 	if r.DataDesligamento != nil {
-		dataTemp, err := utils.ParseBrToUsDate(r.DataDesligamento)
+		dataTemp, err := utils.ParseBrToUsDate(r.DataDesligamento, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -382,14 +382,14 @@ func colaboradorToResponse(c *colaborador.Colaborador) (*dto.ColaboradorResponse
 		return nil, err
 	}
 
-	dataAdmissao, err := utils.ParseUsToBrDate(c.DataAdmissao)
+	dataAdmissao, err := utils.ParseUsToBrDate(c.DataAdmissao, nil)
 	if err != nil {
 		return nil, err
 	}
 
 	var dataDesligamento string
 	if c.DataDesligamento != nil {
-		dataTemp, err := utils.ParseUsToBrDate(c.DataDesligamento)
+		dataTemp, err := utils.ParseUsToBrDate(c.DataDesligamento, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -416,7 +416,7 @@ func filterDtoToFilterDomain(filterReq dto.GetColaboradoresByFilterRequest) (col
 	var err error
 
 	if filterReq.DataAdmissao != nil {
-		data, err = utils.ParseBrToUsDate(filterReq.DataAdmissao)
+		data, err = utils.ParseBrToUsDate(filterReq.DataAdmissao, nil)
 
 		if err != nil {
 			return colaborador.ColaboradorFilter{}, err

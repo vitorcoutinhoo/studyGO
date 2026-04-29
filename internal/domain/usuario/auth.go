@@ -48,7 +48,6 @@ func (s *AuthService) Authenticate(ctx context.Context, email, senha string) (*U
 		Senha:         "",
 		Role:          user.Role,
 		Ativo:         user.Ativo,
-		CreatedAt:     user.CreatedAt,
-		UpdatedAt:     user.UpdatedAt,
+		Auditoria:     user.Auditoria,
 	}, &token, nil
 }

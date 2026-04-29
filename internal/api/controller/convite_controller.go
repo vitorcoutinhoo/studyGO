@@ -57,8 +57,8 @@ func (c *ConviteController) GetAllConvites(ctx *gin.Context) {
 
 	cvt := make([]dto.ConviteResponseDTO, 0, len(convites))
 	for i := range convites {
-		expData, _ := utils.ParseUsToBrDate(&convites[i].ExpiraEm)
-		createdAt, _ := utils.ParseUsToBrDate(&convites[i].CreatedAt)
+		expData, _ := utils.ParseUsToBrDate(&convites[i].ExpiraEm, nil)
+		createdAt, _ := utils.ParseUsToBrDate(&convites[i].CreatedAt, nil)
 
 		conviteDto := dto.ConviteResponseDTO{
 			Token:         convites[i].Token.String(),

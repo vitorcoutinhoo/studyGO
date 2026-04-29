@@ -3,9 +3,9 @@ package usuario
 import (
 	"errors"
 	"strings"
-	"time"
 
 	"github.com/google/uuid"
+	"plantao/internal/domain/shared"
 )
 
 type StatusUsuario int
@@ -30,8 +30,7 @@ type Usuario struct {
 	Senha         string
 	Role          Role
 	Ativo         StatusUsuario
-	CreatedAt     *time.Time
-	UpdatedAt     *time.Time
+	shared.Auditoria
 }
 
 var (

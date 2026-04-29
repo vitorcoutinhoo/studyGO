@@ -20,8 +20,7 @@ type Plantao struct {
 	Status        StatusPlantao
 	ValorTotal    float64
 	Observacoes   *string
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
+	shared.Auditoria
 }
 
 func NewPlantao(colaboradorId string, periodo *shared.Periodo) (*Plantao, error) {
@@ -31,13 +30,13 @@ func NewPlantao(colaboradorId string, periodo *shared.Periodo) (*Plantao, error)
 		return nil, err
 	}
 
+	now := time.Now()
 	return &Plantao{
 		Id:            uuid.NewString(),
 		ColaboradorId: colaboradorId,
 		Periodo:       newPeriodo,
 		Status:        StatusPlantaoAgendado,
-		CreatedAt:     time.Now(),
-		UpdatedAt:     time.Now(),
+		Auditoria:     shared.Auditoria{CreatedAt: now, UpdatedAt: now},
 	}, nil
 }
 
