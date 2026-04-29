@@ -1,9 +1,9 @@
 package dto
 
 type ConviteRequestDTO struct {
-	IdColaborador    string `json:"id_colaborador"`
-	ColaboradorEmail string `json:"colaborador_email"`
-	ColaboradorNome  string `json:"colaborador_nome"`
+	IdColaborador    string `json:"id_colaborador"    binding:"required,uuid"`
+	ColaboradorEmail string `json:"colaborador_email" binding:"required,email,max=100"`
+	ColaboradorNome  string `json:"colaborador_nome"  binding:"required,min=2,max=100"`
 }
 
 type ConviteResponseDTO struct {

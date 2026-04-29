@@ -1,8 +1,8 @@
 package dto
 
 type UsuarioRequestDTO struct {
-	Email string `json:"email" validate:"required,email"`
-	Senha string `json:"senha" validate:"required,min=6"`
+	Email string `json:"email" binding:"required,email,max=100"`
+	Senha string `json:"senha" binding:"required,min=6,max=72"`
 }
 
 type UsuarioResponseDTO struct {
@@ -14,14 +14,14 @@ type UsuarioResponseDTO struct {
 }
 
 type UsuarioAdminRequestDTO struct {
-	ColaboradorEmail string `json:"colaborador_email" validate:"required,email"`
-	Email            string `json:"email" validate:"required,email"`
-	Senha            string `json:"senha" validate:"required,min=6"`
-	Role             string `json:"role" validate:"required,oneof=admin user"`
+	ColaboradorEmail string `json:"colaborador_email" binding:"required,email,max=100"`
+	Email            string `json:"email"             binding:"required,email,max=100"`
+	Senha            string `json:"senha"             binding:"required,min=6,max=72"`
+	Role             string `json:"role"              binding:"required,oneof=admin gerente colaborador"`
 	Ativo            string `json:"ativo"`
 }
 
 type LoginRequestDTO struct {
-	Email *string `json:"email" validate:"required,email"`
-	Senha *string `json:"senha" validate:"required,min=6"`
+	Email *string `json:"email" binding:"required,email,max=100"`
+	Senha *string `json:"senha" binding:"required,min=6,max=72"`
 }
