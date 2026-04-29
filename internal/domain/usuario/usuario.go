@@ -2,7 +2,7 @@ package usuario
 
 import (
 	"errors"
-	"strings"
+	"regexp"
 
 	"github.com/google/uuid"
 	"plantao/internal/domain/shared"
@@ -98,8 +98,10 @@ func (u *Usuario) UpdateUsuario(email, senha string, ativo *StatusUsuario) error
 	return nil
 }
 
+var emailRegex = regexp.MustCompile(`^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$`)
+
 func isEmailValid(email string) bool {
-	return len(email) <= 30 && strings.Contains(email, "@")
+	return len(email) <= 100 && emailRegex.MatchString(email)
 }
 
 func isRoleValid(role Role) bool {
