@@ -428,6 +428,7 @@ func filterDtoToFilterDomain(filterReq dto.GetColaboradoresByFilterRequest) (col
 		Email:        filterReq.Email,
 		Telefone:     filterReq.Telefone,
 		Cargo:        filterReq.Cargo,
+		Departamento: filterReq.Setor,
 		DataAdmissao: data,
 	}, nil
 }

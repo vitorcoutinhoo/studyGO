@@ -1,4 +1,4 @@
-package seed
+package main
 
 import (
 	"context"

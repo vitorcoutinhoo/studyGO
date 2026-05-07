@@ -206,9 +206,10 @@ func validateEmailBodyTag(tipoComunicacao TipoComunicacao, body string) error {
 
 	if len(missingTags) > 0 {
 		return fmt.Errorf(
-			"tags obrigatórias ausentes para o tipo '%s': %s",
+			"tags obrigatórias ausentes para o tipo '%s': %s: %w",
 			tipoComunicacao,
 			strings.Join(missingTags, ", "),
+			ErrorInvalidCorpo,
 		)
 	}
 
@@ -235,9 +236,10 @@ func validateEmailBodyTag(tipoComunicacao TipoComunicacao, body string) error {
 
 	if len(extraTags) > 0 {
 		return fmt.Errorf(
-			"tags não permitidas para o tipo '%s': %s",
+			"tags não permitidas para o tipo '%s': %s: %w",
 			tipoComunicacao,
 			strings.Join(extraTags, ", "),
+			ErrorInvalidCorpo,
 		)
 	}
 
@@ -251,11 +253,11 @@ func isValidHTML(htmlBody string) error {
 
 	_, err := html.Parse(strings.NewReader(htmlBody))
 	if err != nil {
-		return errors.New("HTML inválido no corpo do email")
+		return fmt.Errorf("HTML inválido no corpo do email: %w", ErrorInvalidCorpo)
 	}
 
 	if strings.Contains(strings.ToLower(htmlBody), "<script") {
-		return errors.New("scripts não são permitidos no email")
+		return fmt.Errorf("scripts não são permitidos no email: %w", ErrorInvalidCorpo)
 	}
 
 	return nil

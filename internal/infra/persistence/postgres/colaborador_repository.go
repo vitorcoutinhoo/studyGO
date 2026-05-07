@@ -180,7 +180,7 @@ func (r *ColaboradorRepository) FindById(ctx context.Context, colaboradorId uuid
 	query := `
 		SELECT id, nome, email, telefone, cargo, departamento, foto_url, ativo, ativo_plantao, data_admissao, data_desligamento, created_at, updated_at
 		FROM colaboradores
-		WHERE id = $1 AND ativo = 'Y'
+		WHERE id = $1
 	`
 
 	row := r.pool.QueryRow(ctx, query, colaboradorId)
@@ -266,7 +266,6 @@ func (r *ColaboradorRepository) FindByEmail(ctx context.Context, email string) (
 
 // Busca colaboradores no banco de dados com base em filtros opcionais.
 // Permite filtrar por nome, email, telefone, cargo, departamento e data de admissão.
-// Vai trazer apenas cloaboradores ativos
 func (r *ColaboradorRepository) FindByFilter(ctx context.Context, filter colaborador.ColaboradorFilter) ([]colaborador.Colaborador, error) {
 	query := `
 		SELECT id, nome, email, telefone, cargo, departamento, foto_url, ativo, ativo_plantao, data_admissao, data_desligamento, created_at, updated_at
@@ -276,8 +275,6 @@ func (r *ColaboradorRepository) FindByFilter(ctx context.Context, filter colabor
 	var conditions []string
 	var args []any
 	argPos := 1
-
-	conditions = append(conditions, "ativo = 'Y'")
 
 	if filter.Nome != nil {
 		conditions = append(conditions, fmt.Sprintf("nome ILIKE $%d", argPos))
