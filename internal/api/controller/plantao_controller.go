@@ -30,15 +30,15 @@ func (p *PlantaoController) CreatePlantao(ctx *gin.Context) {
 		return
 	}
 
-	inicio, err := time.Parse("2006-01-02", req.Periodo.Inicio)
+	inicio, err := parseDateTime(req.Periodo.Inicio)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, apierr.ErrorResponse{Code: "BAD_REQUEST", Message: "data de início inválida"})
+		ctx.JSON(http.StatusBadRequest, apierr.ErrorResponse{Code: "BAD_REQUEST", Message: "data de início inválida, use YYYY-MM-DD ou YYYY-MM-DDTHH:MM:SSZ"})
 		return
 	}
 
-	fim, err := time.Parse("2006-01-02", req.Periodo.Fim)
+	fim, err := parseDateTime(req.Periodo.Fim)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, apierr.ErrorResponse{Code: "BAD_REQUEST", Message: "data de fim inválida"})
+		ctx.JSON(http.StatusBadRequest, apierr.ErrorResponse{Code: "BAD_REQUEST", Message: "data de fim inválida, use YYYY-MM-DD ou YYYY-MM-DDTHH:MM:SSZ"})
 		return
 	}
 
@@ -188,6 +188,13 @@ func (p *PlantaoController) DeletePlantao(ctx *gin.Context) {
 	}
 
 	ctx.Status(http.StatusNoContent)
+}
+
+func parseDateTime(s string) (time.Time, error) {
+	if t, err := time.Parse(time.RFC3339, s); err == nil {
+		return t, nil
+	}
+	return time.Parse("2006-01-02", s)
 }
 
 func toPlantaoResponse(pl *plantao.Plantao) *dto.CreatePlantaoResponse {

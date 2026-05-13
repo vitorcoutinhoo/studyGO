@@ -7,12 +7,15 @@ import (
 	apihttp "plantao/internal/api/http"
 	"plantao/internal/api/middleware"
 	midware "plantao/internal/api/middleware"
+	"plantao/internal/domain/cargo"
 	"plantao/internal/domain/colaborador"
 	"plantao/internal/domain/comunicacao"
 	"plantao/internal/domain/convite"
 	"plantao/internal/domain/financeiro"
 	"plantao/internal/domain/log"
 	"plantao/internal/domain/plantao"
+	"plantao/internal/domain/role"
+	"plantao/internal/domain/setor"
 	"plantao/internal/domain/usuario"
 	"plantao/internal/infra/config"
 	"plantao/internal/infra/logger"
@@ -39,6 +42,9 @@ var PostgresModule = fx.Module("postgres",
 		fx.Annotate(pgstore.NewModeloRepository, fx.As(new(comunicacao.ModeloComunicaRepository))),
 		fx.Annotate(pgstore.NewEnvioRepository, fx.As(new(comunicacao.EnvioComunicacaoRepository))),
 		fx.Annotate(pgstore.NewConviteRepository, fx.As(new(convite.ConviteRepository))),
+		fx.Annotate(pgstore.NewCargoRepository, fx.As(new(cargo.CargoRepository))),
+		fx.Annotate(pgstore.NewSetorRepository, fx.As(new(setor.SetorRepository))),
+		fx.Annotate(pgstore.NewRoleRepository, fx.As(new(role.RoleRepository))),
 	),
 )
 
@@ -63,6 +69,9 @@ var DomainModule = fx.Module("domain",
 		comunicacao.NewModeloComunicacaoService,
 		comunicacao.NewEnvioService,
 		convite.NewConviteService,
+		cargo.NewCargoService,
+		setor.NewSetorService,
+		role.NewRoleService,
 	),
 )
 
@@ -76,6 +85,9 @@ var APIModule = fx.Module("api",
 		controller.NewAuthController,
 		controller.NewModeloComunicacaoController,
 		controller.NewConviteController,
+		controller.NewCargoController,
+		controller.NewSetorController,
+		controller.NewRoleController,
 		midware.NewAuthMidware,
 		fx.Annotate(
 			apihttp.NewRouter,
@@ -93,6 +105,9 @@ var APIModule = fx.Module("api",
 				``,
 				`name:"globalLimiter"`,
 				`name:"loginLimiter"`,
+				``,
+				``,
+				``,
 				``,
 			),
 		),

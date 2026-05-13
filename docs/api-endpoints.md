@@ -18,6 +18,9 @@
 - [Feriados](#feriados)
 - [Config Valores](#config-valores)
 - [Modelos de Comunicação](#modelos-de-comunicação)
+- [Cargos](#cargos)
+- [Setores](#setores)
+- [Roles](#roles)
 
 ---
 
@@ -615,13 +618,114 @@ Desativa um modelo.
 
 ---
 
+## Cargos
+
+### GET `/api/v1/cargos`
+Lista todos os cargos ativos.
+
+**Auth:** `ADMIN`, `GERENTE`, `COLABORADOR`
+
+**Response `200`:**
+```json
+[
+  { "id": "uuid", "nome": "Desenvolvedor Backend" }
+]
+```
+
+---
+
+### POST `/api/v1/admin/cargos`
+Cria um novo cargo.
+
+**Auth:** `ADMIN`
+
+**Request:**
+```json
+{ "nome": "Arquiteto de Software" }
+```
+
+**Response `201`:**
+```json
+{ "id": "uuid", "nome": "Arquiteto de Software" }
+```
+
+---
+
+### DELETE `/api/v1/admin/cargos/:id`
+Desativa um cargo.
+
+**Auth:** `ADMIN`
+
+**Response `204`:** sem body
+
+---
+
+## Setores
+
+### GET `/api/v1/setores`
+Lista todos os setores ativos.
+
+**Auth:** `ADMIN`, `GERENTE`, `COLABORADOR`
+
+**Response `200`:**
+```json
+[
+  { "id": "uuid", "nome": "TI" }
+]
+```
+
+---
+
+### POST `/api/v1/admin/setores`
+Cria um novo setor.
+
+**Auth:** `ADMIN`
+
+**Request:**
+```json
+{ "nome": "Jurídico" }
+```
+
+**Response `201`:**
+```json
+{ "id": "uuid", "nome": "Jurídico" }
+```
+
+---
+
+### DELETE `/api/v1/admin/setores/:id`
+Desativa um setor.
+
+**Auth:** `ADMIN`
+
+**Response `204`:** sem body
+
+---
+
+## Roles
+
+### GET `/api/v1/roles`
+Lista todas as roles disponíveis. Público.
+
+**Response `200`:**
+```json
+[
+  { "id": "uuid", "nome": "admin" },
+  { "id": "uuid", "nome": "gerente" },
+  { "id": "uuid", "nome": "colaborador" }
+]
+```
+
+---
+
 ## Códigos de Erro
 
 Todos os erros seguem o formato:
 
 ```json
 {
-  "error": "mensagem descritiva do erro"
+  "code": "NOT_FOUND",
+  "message": "mensagem descritiva do erro"
 }
 ```
 

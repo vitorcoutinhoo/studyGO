@@ -32,6 +32,9 @@ func NewRouter(
 	globalLimiter *middleware.RateLimiter,
 	loginLimiter *middleware.RateLimiter,
 	conviteController *controller.ConviteController,
+	cargoController *controller.CargoController,
+	setorController *controller.SetorController,
+	roleController *controller.RoleController,
 ) *gin.Engine {
 	router := gin.Default()
 
@@ -56,6 +59,9 @@ func NewRouter(
 	setupFeriadoRoutes(router, feriadoController, authMidware)
 	setupValorDiaRoutes(router, valorDiaController, authMidware)
 	setupConviteRoutes(router, conviteController, authMidware)
+	setupCargoRoutes(router, cargoController, authMidware)
+	setupSetorRoutes(router, setorController, authMidware)
+	setupRoleRoutes(router, roleController)
 
 	return router
 }
@@ -164,6 +170,7 @@ func setupUsuarioRoutes(
 		adminRoutes.Use(authMidware.AuthenticationMiddleware(), midware.RoleMidware(ADMIN_ROLE))
 		{
 			adminRoutes.GET("/all", usuarioController.GetAll)
+			adminRoutes.PATCH("/usuarios/:id/role", usuarioController.UpdateRole)
 		}
 
 		usuarioAuthRoutes := v1.Group("/authenticated/usuarios")
@@ -192,6 +199,52 @@ func setupAuthRoutes(
 		{
 			authRoutes.POST("/login", loginLimiter.Middleware(), authController.Login)
 		}
+	}
+}
+
+func setupCargoRoutes(
+	router *gin.Engine,
+	cargoController *controller.CargoController,
+	authMidware *midware.AuthMidware,
+) {
+	v1 := router.Group("/api/v1")
+	{
+		v1.GET("/cargos", authMidware.AuthenticationMiddleware(), midware.RoleMidware(ADMIN_ROLE, GERENTE_ROLE, COLABORADOR_ROLE), cargoController.GetAll)
+
+		adminCargos := v1.Group("/admin/cargos")
+		adminCargos.Use(authMidware.AuthenticationMiddleware(), midware.RoleMidware(ADMIN_ROLE))
+		{
+			adminCargos.POST("", cargoController.Create)
+			adminCargos.DELETE("/:id", cargoController.Delete)
+		}
+	}
+}
+
+func setupSetorRoutes(
+	router *gin.Engine,
+	setorController *controller.SetorController,
+	authMidware *midware.AuthMidware,
+) {
+	v1 := router.Group("/api/v1")
+	{
+		v1.GET("/setores", authMidware.AuthenticationMiddleware(), midware.RoleMidware(ADMIN_ROLE, GERENTE_ROLE, COLABORADOR_ROLE), setorController.GetAll)
+
+		adminSetores := v1.Group("/admin/setores")
+		adminSetores.Use(authMidware.AuthenticationMiddleware(), midware.RoleMidware(ADMIN_ROLE))
+		{
+			adminSetores.POST("", setorController.Create)
+			adminSetores.DELETE("/:id", setorController.Delete)
+		}
+	}
+}
+
+func setupRoleRoutes(
+	router *gin.Engine,
+	roleController *controller.RoleController,
+) {
+	v1 := router.Group("/api/v1")
+	{
+		v1.GET("/roles", roleController.GetAll)
 	}
 }
 

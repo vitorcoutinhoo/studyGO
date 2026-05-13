@@ -28,13 +28,13 @@ func (c *UsuarioController) CreateUsuarioByToken(ctx *gin.Context) {
 		return
 	}
 
-	var req dto.UsuarioRequestDTO
+	var req dto.CadastroByTokenRequestDTO
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.JSON(http.StatusBadRequest, apierr.ErrorResponse{Code: "BAD_REQUEST", Message: err.Error()})
 		return
 	}
 
-	result, err := c.service.CreateUsuarioByToken(ctx, tokenStr, req.Email, req.Senha)
+	result, err := c.service.CreateUsuarioByToken(ctx, tokenStr, req.Senha)
 	if err != nil {
 		switch err {
 		case convite.ErrorConviteNotFound, convite.ErrorConviteUsed, convite.ErrorConviteExpired:
@@ -125,6 +125,26 @@ func (c *UsuarioController) GetAll(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusOK, usuariosDTO)
+}
+
+func (c *UsuarioController) UpdateRole(ctx *gin.Context) {
+	id := ctx.Param("id")
+
+	var req struct {
+		Role string `json:"role" binding:"required,oneof=admin gerente colaborador"`
+	}
+
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, apierr.ErrorResponse{Code: "BAD_REQUEST", Message: err.Error()})
+		return
+	}
+
+	if err := c.service.UpdateRole(ctx, id, usuario.Role(req.Role)); err != nil {
+		apierr.Respond(ctx, err)
+		return
+	}
+
+	ctx.Status(http.StatusNoContent)
 }
 
 func usuarioToResponse(u *usuario.Usuario) (*dto.UsuarioResponseDTO, error) {

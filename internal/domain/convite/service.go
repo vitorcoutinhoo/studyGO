@@ -20,7 +20,7 @@ func NewConviteService(respository ConviteRepository, envioService *comunicacao.
 	return &ConviteService{
 		respository:  respository,
 		envioService: envioService,
-		urlServer:    "http://" + cfg.Server.Host + ":" + cfg.Server.Port + "/api/v1/usuarios/cadastro?token=",
+		urlServer:    cfg.Frontend.URL + "/cadastro?token=",
 	}
 }
 
@@ -46,6 +46,7 @@ func (s *ConviteService) CreateConvite(ctx context.Context, colaboradorId, colab
 			context.Background(),
 			comunicacao.ColaboradorCadastrado,
 			colaboradorEmail,
+			id,
 			data,
 		)
 

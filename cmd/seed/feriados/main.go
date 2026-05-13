@@ -12,9 +12,10 @@ import (
 )
 
 type feriadoAPI struct {
-	Data string `json:"data"` // DD/MM/YYYY
-	Nome string `json:"nome"`
-	Tipo string `json:"tipo"` // NACIONAL | ESTADUAL | MUNICIPAL | FACULTATIVO
+	Name        string `json:"name"`
+	Date        string `json:"date"`
+	Type        string `json:"type"`
+	Description string `json:"description"`
 }
 
 type apiResponse struct {
@@ -28,17 +29,18 @@ func main() {
 	}
 
 	apiKey := os.Getenv("FERIADOS_API_KEY")
-	ibge := os.Getenv("IBGE_CODE")
+	estado := os.Getenv("ESTADO")
+	cidade := os.Getenv("CIDADE")
 	databaseURL := os.Getenv("DATABASE_URL")
 
-	if apiKey == "" || ibge == "" || databaseURL == "" {
-		fmt.Println("Variáveis de ambiente obrigatórias: FERIADOS_API_KEY, IBGE_CODE, DATABASE_URL")
+	if apiKey == "" || databaseURL == "" {
+		fmt.Println("Variáveis de ambiente obrigatórias: FERIADOS_API_KEY, DATABASE_URL")
 		os.Exit(1)
 	}
 
-	fmt.Printf("Buscando feriados de %d para o município %s...\n", ano, ibge)
+	fmt.Printf("Buscando feriados de %d para %s/%s...\n", ano, cidade, estado)
 
-	feriados, err := buscarFeriados(apiKey, ibge, ano)
+	feriados, err := buscarFeriados(apiKey, estado, cidade, ano)
 	if err != nil {
 		fmt.Println("Erro ao buscar feriados:", err)
 		os.Exit(1)
@@ -55,37 +57,47 @@ func main() {
 
 	inseridos := 0
 	for _, f := range feriados {
-		// API retorna DD/MM/YYYY
-		data, err := time.Parse("02/01/2006", f.Data)
+		data, err := time.Parse(time.RFC3339, f.Date)
 		if err != nil {
-			fmt.Printf("Data inválida ignorada: %s\n", f.Data)
+			fmt.Printf("Data inválida ignorada: %s\n", f.Date)
 			continue
+		}
+
+		descricao := f.Description
+		if descricao == "" {
+			descricao = f.Type
 		}
 
 		_, err = pool.Exec(context.Background(),
 			`INSERT INTO feriados (data, nome, descricao) VALUES ($1, $2, $3) ON CONFLICT (data) DO NOTHING`,
-			data, f.Nome, f.Tipo,
+			data, f.Name, descricao,
 		)
 		if err != nil {
-			fmt.Printf("Erro ao inserir %s (%s): %v\n", f.Data, f.Nome, err)
+			fmt.Printf("Erro ao inserir %s (%s): %v\n", f.Date, f.Name, err)
 			continue
 		}
 
-		fmt.Printf("[%-11s] %s - %s\n", f.Tipo, f.Data, f.Nome)
+		fmt.Printf("[%-10s] %s - %s\n", f.Type, data.Format("02/01/2006"), f.Name)
 		inseridos++
 	}
 
 	fmt.Printf("\n%d/%d feriados de %d inseridos com sucesso.\n", inseridos, len(feriados), ano)
 }
 
-func buscarFeriados(apiKey, ibge string, ano int) ([]feriadoAPI, error) {
-	url := fmt.Sprintf("https://feriadosapi.com/api/v1/feriados/cidade/%s?ano=%d&facultativos=true", ibge, ano)
+func buscarFeriados(apiKey, estado, cidade string, ano int) ([]feriadoAPI, error) {
+	url := fmt.Sprintf("https://api.feriados.dev/v1/holidays?year=%d", ano)
+	if estado != "" {
+		url += "&state=" + estado
+	}
+	if cidade != "" {
+		url += "&city=" + cidade
+	}
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("Authorization", "Bearer "+apiKey)
+	req.Header.Set("X-API-Key", apiKey)
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {

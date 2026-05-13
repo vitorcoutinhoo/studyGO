@@ -6,11 +6,13 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"plantao/internal/domain/cargo"
 	"plantao/internal/domain/colaborador"
 	"plantao/internal/domain/comunicacao"
 	"plantao/internal/domain/convite"
 	"plantao/internal/domain/financeiro"
 	"plantao/internal/domain/plantao"
+	"plantao/internal/domain/setor"
 	"plantao/internal/domain/shared"
 	"plantao/internal/domain/usuario"
 )
@@ -28,12 +30,14 @@ func Respond(ctx *gin.Context, err error) {
 func classify(err error) (int, ErrorResponse) {
 	// 404 — não encontrado
 	if isAny(err,
+		cargo.ErrorCargoNotFound,
 		colaborador.ErrorColaboradorNotFound,
 		comunicacao.ErrorModeloComunicacaoNotFound,
 		convite.ErrorConviteNotFound,
 		financeiro.ErrorFeriadoNotFound,
 		financeiro.ErrorValorDiaNotFound,
 		plantao.ErrorPlantaoNotFinded,
+		setor.ErrorSetorNotFound,
 		usuario.ErrorUserNotFound,
 	) {
 		return http.StatusNotFound, ErrorResponse{Code: "NOT_FOUND", Message: err.Error()}
@@ -41,9 +45,11 @@ func classify(err error) (int, ErrorResponse) {
 
 	// 409 — conflito
 	if isAny(err,
+		cargo.ErrorCargoAlreadyExists,
 		colaborador.ErrorEmailAlreadyExists,
 		colaborador.ErrorInvalidEmail,
 		comunicacao.ErrorModeloComunicacaoAlreadyExists,
+		setor.ErrorSetorAlreadyExists,
 		usuario.ErrorEmailAlreadyExists,
 		usuario.ErrorEmailexists,
 		plantao.ErrorExistingPlantao,
@@ -61,6 +67,7 @@ func classify(err error) (int, ErrorResponse) {
 
 	// 422 — regra de negócio / validação de domínio
 	if isAny(err,
+		cargo.ErrorCargoNomeInvalido,
 		colaborador.ErrorInvalidTelefone,
 		colaborador.ErrorInvalidStatus,
 		colaborador.ErrorInvalidCargo,
@@ -82,6 +89,7 @@ func classify(err error) (int, ErrorResponse) {
 		usuario.ErrorInvalidEmail,
 		usuario.ErrorPasswordShort,
 		usuario.ErrorInvalidRole,
+		setor.ErrorSetorNomeInvalido,
 		usuario.ErrorInvalidStatus,
 	) {
 		return http.StatusUnprocessableEntity, ErrorResponse{Code: "VALIDATION_ERROR", Message: err.Error()}

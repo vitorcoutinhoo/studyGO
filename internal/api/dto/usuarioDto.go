@@ -5,6 +5,10 @@ type UsuarioRequestDTO struct {
 	Senha string `json:"senha" binding:"required,min=6,max=72"`
 }
 
+type CadastroByTokenRequestDTO struct {
+	Senha string `json:"senha" binding:"required,min=6,max=72"`
+}
+
 type UsuarioResponseDTO struct {
 	Id            string `json:"id"`
 	IdColaborador string `json:"id_colaborador"`

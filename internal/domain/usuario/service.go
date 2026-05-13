@@ -28,27 +28,27 @@ func NewUsuarioService(repository UsuarioRepository, colaboradorRepository colab
 } // Fim NewUsuarioService
 
 // Cria novo usuário utilizando token
-func (s *UsuarioService) CreateUsuarioByToken(ctx context.Context, tokenStr, email, senha string) (*Usuario, error) {
+func (s *UsuarioService) CreateUsuarioByToken(ctx context.Context, tokenStr, senha string) (*Usuario, error) {
 	token, err := uuid.Parse(tokenStr)
 	if err != nil {
 		return nil, fmt.Errorf("token inválido")
 	}
 
-	convite, err := s.conviteRepository.FindByToken(ctx, token)
+	conv, err := s.conviteRepository.FindByToken(ctx, token)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := convite.Validate(); err != nil {
+	if err := conv.Validate(); err != nil {
 		return nil, err
 	}
 
-	exists, err := s.colaboradorRepository.ExistsId(ctx, convite.IdColaborador)
-	if err != nil || !exists {
+	col, err := s.colaboradorRepository.FindById(ctx, conv.IdColaborador)
+	if err != nil || col == nil {
 		return nil, colaborador.ErrorColaboradorNotFound
 	}
 
-	exists, err = s.repository.ExistsEmail(ctx, email)
+	exists, err := s.repository.ExistsEmail(ctx, col.Email)
 	if err != nil {
 		return nil, err
 	}
@@ -57,7 +57,7 @@ func (s *UsuarioService) CreateUsuarioByToken(ctx context.Context, tokenStr, ema
 		return nil, ErrorEmailAlreadyExists
 	}
 
-	newUsuario, err := NewUsuario(convite.IdColaborador, email, senha, RoleColaborador, StatusAtivo)
+	newUsuario, err := NewUsuario(conv.IdColaborador, col.Email, senha, RoleColaborador, StatusAtivo)
 	if err != nil {
 		return nil, err
 	}
@@ -189,6 +189,25 @@ func (s *UsuarioService) GetAll(ctx context.Context) (*[]Usuario, error) {
 	}
 
 	return u, nil
+}
+
+func (s *UsuarioService) UpdateRole(ctx context.Context, usuarioId string, novaRole Role) error {
+	id, err := uuid.Parse(usuarioId)
+	if err != nil {
+		return fmt.Errorf("UUID do usuário inválido: %v", err)
+	}
+
+	u, err := s.repository.FindById(ctx, id)
+	if err != nil || u == nil {
+		return ErrorUserNotFound
+	}
+
+	if !isRoleValid(novaRole) {
+		return ErrorInvalidRole
+	}
+
+	u.Role = novaRole
+	return s.repository.Update(ctx, u)
 }
 
 func (s *UsuarioService) ExistsUsuarioById(ctx context.Context, id string) error {

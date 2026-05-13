@@ -30,7 +30,7 @@ func NewColaboradorService(repository ColaboradorRepository, envioService *comun
 		envioService:      envioService,
 		storageImage:      storageImage,
 		conviteRepository: conviteRepository,
-		urlServer:         "http://" + cfg.Server.Host + ":" + cfg.Server.Port + "/api/v1/usuarios/cadastro?token=",
+		urlServer:         cfg.Frontend.URL + "/cadastro?token=",
 	}
 } // Fim NewColaboradorService
 
@@ -95,6 +95,7 @@ func (s *ColaboradorService) CreateColaborador(ctx context.Context, col *Colabor
 			context.Background(),
 			comunicacao.ColaboradorCadastrado,
 			colaboradorReturn.Email,
+			colaboradorReturn.Id,
 			data,
 		)
 

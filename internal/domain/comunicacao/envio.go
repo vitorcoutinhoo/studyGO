@@ -17,6 +17,7 @@ const (
 type Envio struct {
 	Id              uuid.UUID
 	IdModelo        uuid.UUID
+	IdColaborador   uuid.UUID
 	TipoComunicacao TipoComunicacao
 	Destinatario    string
 	Status          StatusEnvio
@@ -29,7 +30,7 @@ var (
 	ErrorInvalidStatusEnvio  = errors.New("Status de envio invalido!")
 )
 
-func NewEnvio(idModelo uuid.UUID, tipoComunicacao TipoComunicacao, destinatario, erroLog string, status StatusEnvio) (*Envio, error) {
+func NewEnvio(idModelo, idColaborador uuid.UUID, tipoComunicacao TipoComunicacao, destinatario, erroLog string, status StatusEnvio) (*Envio, error) {
 	if len(destinatario) < 1 {
 		return nil, ErrorInvalidDestinatario
 	}
@@ -40,6 +41,7 @@ func NewEnvio(idModelo uuid.UUID, tipoComunicacao TipoComunicacao, destinatario,
 
 	return &Envio{
 		IdModelo:        idModelo,
+		IdColaborador:   idColaborador,
 		TipoComunicacao: tipoComunicacao,
 		Destinatario:    destinatario,
 		Status:          status,

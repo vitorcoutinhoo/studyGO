@@ -5,6 +5,8 @@ import (
 	"context"
 	"fmt"
 	"html/template"
+
+	"github.com/google/uuid"
 )
 
 type EnvioService struct {
@@ -25,6 +27,7 @@ func (s *EnvioService) SendEmailComunicacao(
 	ctx context.Context,
 	tipoComunicacao TipoComunicacao,
 	destinatario string,
+	idColaborador uuid.UUID,
 	data map[string]any,
 ) error {
 	modelo, err := s.modeloRepository.FindByTipo(ctx, string(tipoComunicacao))
@@ -55,6 +58,7 @@ func (s *EnvioService) SendEmailComunicacao(
 
 	newEnvio, err := NewEnvio(
 		modelo.Id,
+		idColaborador,
 		tipoComunicacao,
 		destinatario,
 		emailLog,

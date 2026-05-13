@@ -67,9 +67,10 @@ func (r *UsuarioRepository) Update(ctx context.Context, u *usuario.Usuario) erro
 	SET
 		email = $1,
 		senha_hash = $2,
-		ativo = $3,
+		role = $3,
+		ativo = $4,
 		updated_at = NOW()
-	WHERE id = $4 AND ativo = 'Y'
+	WHERE id = $5 AND ativo = 'Y'
 	`
 
 	result, err := r.pool.Exec(
@@ -77,6 +78,7 @@ func (r *UsuarioRepository) Update(ctx context.Context, u *usuario.Usuario) erro
 		query,
 		u.Email,
 		u.Senha,
+		string(u.Role),
 		statusToDBUsuario(u.Ativo),
 		u.Id,
 	)

@@ -15,6 +15,7 @@ type Config struct {
 	JWT      JWTConfig
 	SMTP     SMTPConfig
 	FalePath FileSavePath
+	Frontend FrontendConfig
 }
 
 // Configurações do servidor, como porta e host
@@ -44,6 +45,10 @@ type SMTPConfig struct {
 
 type FileSavePath struct {
 	Path string
+}
+
+type FrontendConfig struct {
+	URL string
 }
 
 // Pra teste, seria mais apropriado carregar de um arquivo ou variáveis de ambiente
@@ -79,6 +84,9 @@ func LoadConfig() (*Config, error) {
 		},
 		FalePath: FileSavePath{
 			Path: os.Getenv("FILE_PATH"),
+		},
+		Frontend: FrontendConfig{
+			URL: os.Getenv("FRONTEND_URL"),
 		},
 	}, nil
 } // Fim LoadConfig
