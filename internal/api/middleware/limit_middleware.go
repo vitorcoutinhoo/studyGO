@@ -44,7 +44,7 @@ func NewGlobalRateLimiter() *RateLimiter {
 }
 
 func NewLoginRateLimiter() *RateLimiter {
-	return NewRateLimiter(3, 1*time.Minute)
+	return NewRateLimiter(20, 1*time.Minute)
 }
 
 func (rl *RateLimiter) Middleware() gin.HandlerFunc {
