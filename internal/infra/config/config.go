@@ -16,6 +16,7 @@ type Config struct {
 	SMTP     SMTPConfig
 	FalePath FileSavePath
 	Frontend FrontendConfig
+	Public   PublicConfig
 }
 
 // Configurações do servidor, como porta e host
@@ -48,6 +49,10 @@ type FileSavePath struct {
 }
 
 type FrontendConfig struct {
+	URL string
+}
+
+type PublicConfig struct {
 	URL string
 }
 
@@ -87,6 +92,9 @@ func LoadConfig() (*Config, error) {
 		},
 		Frontend: FrontendConfig{
 			URL: os.Getenv("FRONTEND_URL"),
+		},
+		Public: PublicConfig{
+			URL: os.Getenv("PUBLIC_URL"),
 		},
 	}, nil
 } // Fim LoadConfig
