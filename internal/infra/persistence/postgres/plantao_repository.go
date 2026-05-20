@@ -139,13 +139,13 @@ func (r *PlantaoRepository) Find(
 	// Filtro por período
 	if filtro != nil && filtro.Periodo != nil {
 		query += fmt.Sprintf(
-			" AND data_inicio >= $%d AND data_fim <= $%d",
+			" AND data_inicio <= $%d AND data_fim >= $%d",
 			arg,
 			arg+1,
 		)
 		args = append(args,
-			filtro.Periodo.Inicio,
 			filtro.Periodo.Fim,
+			filtro.Periodo.Inicio,
 		)
 		arg += 2
 	}
