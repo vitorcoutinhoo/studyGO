@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"time"
 
 	"github.com/google/uuid"
@@ -12,9 +13,10 @@ import (
 )
 
 var (
-	ErrorTipoDiaInvalido  = errors.New("Tipo de dia inválido!")
-	ErrorValorDiaInvalido = errors.New("Valor deve ser maior que zero!")
-	ErrorValorDiaNotFound = errors.New("Configuração de valor não encontrada!")
+	ErrorTipoDiaInvalido      = errors.New("Tipo de dia inválido!")
+	ErrorValorDiaInvalido     = errors.New("Valor deve ser maior que zero!")
+	ErrorValorDiaNotFound     = errors.New("Configuração de valor não encontrada!")
+	ErrorValorDiaForaVigencia = errors.New("Configuração de valor fora da vigência!")
 )
 
 type TipoDia string
@@ -40,14 +42,19 @@ type ValorDia struct {
 }
 
 type DiaCalculado struct {
-	Data    time.Time
-	TipoDia TipoDia
-	Valor   float64
+	Data          time.Time
+	TipoDia       TipoDia
+	ValorCentavos int64
 }
 
 type ResultadoCalculo struct {
-	ValorTotal float64
-	Dias       []DiaCalculado
+	ValorTotalCentavos int64
+	Dias               []DiaCalculado
+}
+
+type CalculoFonte interface {
+	FindFeriados(ctx context.Context, inicio, fim time.Time) (map[string]bool, error)
+	FindValorDiaCentavos(ctx context.Context, tipoDia TipoDia, data time.Time) (int64, error)
 }
 
 type ValorDiaRepository interface {
@@ -129,56 +136,70 @@ func (s *ConfigValorDiaService) SetValor(ctx context.Context, tipoDia TipoDia, v
 // ---- CalculoService ----
 
 type CalculoService struct {
-	feriadoRepo  FeriadoRepository
-	valorDiaRepo ValorDiaRepository
-	log          log.Logger
+	log log.Logger
 }
 
-func NewCalculoService(feriadoRepo FeriadoRepository, valorDiaRepo ValorDiaRepository, log log.Logger) *CalculoService {
-	return &CalculoService{
-		feriadoRepo:  feriadoRepo,
-		valorDiaRepo: valorDiaRepo,
-		log:          log,
-	}
+func NewCalculoService(log log.Logger) *CalculoService {
+	return &CalculoService{log: log}
 }
 
-func (s *CalculoService) Calcular(ctx context.Context, periodo *shared.Periodo) (*ResultadoCalculo, error) {
+func (s *CalculoService) Calcular(ctx context.Context, periodo *shared.Periodo, fonte CalculoFonte, loc *time.Location) (*ResultadoCalculo, error) {
 	s.log.Info("iniciando cálculo financeiro do período", "inicio", periodo.Inicio, "fim", periodo.Fim)
 
-	feriados, err := s.feriadoRepo.FindByPeriodo(ctx, periodo.Inicio, periodo.Fim)
+	if periodo == nil || fonte == nil {
+		return nil, shared.ErrorPeriodoInvalido
+	}
+	if loc == nil {
+		loc = time.UTC
+	}
+
+	inicio := normalizeDateInLocation(periodo.Inicio, loc)
+	fim := normalizeDateInLocation(periodo.Fim, loc)
+	if fim.Before(inicio) {
+		return nil, shared.ErrorEndBeforeStart
+	}
+
+	feriados, err := fonte.FindFeriados(ctx, inicio, fim)
 	if err != nil {
-		s.log.Error("erro ao buscar feriados para cálculo financeiro", "inicio", periodo.Inicio, "fim", periodo.Fim, "error", err)
+		s.log.Error("erro ao buscar feriados para cálculo financeiro", "inicio", inicio, "fim", fim, "error", err)
 		return nil, fmt.Errorf("erro ao buscar feriados: %w", err)
 	}
 
-	valores, err := s.valorDiaRepo.FindVigenteByData(ctx, periodo.Inicio)
-	if err != nil {
-		s.log.Error("erro ao buscar valores vigentes para cálculo financeiro", "data_base", periodo.Inicio, "error", err)
-		return nil, fmt.Errorf("erro ao buscar valores: %w", err)
-	}
-
-	dias := Dias(periodo, feriados)
-
 	var resultado ResultadoCalculo
-	for _, dia := range dias {
+	for data := inicio; !data.After(fim); data = data.AddDate(0, 0, 1) {
+		dia := Dia{
+			Data:      data,
+			DiaSemana: DiaDaSemana(data.Weekday()),
+			EhFeriado: feriados[data.Format("2006-01-02")],
+		}
 		tipoDia := determinaTipoDia(dia)
-
-		valor, ok := valores[tipoDia]
-		if !ok {
-			s.log.Warn("valor não configurado para tipo de dia no cálculo financeiro", "tipo_dia", tipoDia, "data", dia.Data)
-			return nil, fmt.Errorf("valor não configurado para o tipo de dia: %s", tipoDia)
+		valorCentavos, err := fonte.FindValorDiaCentavos(ctx, tipoDia, data)
+		if err != nil {
+			s.log.Warn("valor não configurado para data do cálculo financeiro", "tipo_dia", tipoDia, "data", data, "error", err)
+			return nil, err
+		}
+		if valorCentavos <= 0 {
+			return nil, ErrorValorDiaInvalido
+		}
+		if resultado.ValorTotalCentavos > math.MaxInt64-valorCentavos {
+			return nil, ErrorValorDiaInvalido
 		}
 
 		resultado.Dias = append(resultado.Dias, DiaCalculado{
-			Data:    dia.Data,
-			TipoDia: tipoDia,
-			Valor:   valor,
+			Data:          dia.Data,
+			TipoDia:       tipoDia,
+			ValorCentavos: valorCentavos,
 		})
-		resultado.ValorTotal += valor
+		resultado.ValorTotalCentavos += valorCentavos
 	}
 
-	s.log.Info("cálculo financeiro concluído com sucesso", "inicio", periodo.Inicio, "fim", periodo.Fim, "quantidade_dias", len(resultado.Dias), "valor_total", resultado.ValorTotal)
+	s.log.Info("cálculo financeiro concluído com sucesso", "inicio", inicio, "fim", fim, "quantidade_dias", len(resultado.Dias), "valor_total_centavos", resultado.ValorTotalCentavos)
 	return &resultado, nil
+}
+
+func normalizeDateInLocation(t time.Time, loc *time.Location) time.Time {
+	local := t.In(loc)
+	return time.Date(local.Year(), local.Month(), local.Day(), 0, 0, 0, 0, loc)
 }
 
 func determinaTipoDia(dia Dia) TipoDia {
