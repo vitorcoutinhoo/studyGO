@@ -2,12 +2,19 @@ package postgres
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"strconv"
+	"time"
+
+	"plantao/internal/domain/financeiro"
 	"plantao/internal/domain/plantao"
 	"plantao/internal/domain/shared"
-	"strconv"
+	"plantao/internal/domain/usuario"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -103,6 +110,9 @@ func (r *PlantaoRepository) FindById(ctx context.Context, plantaoId string) (*pl
 		&p.UpdatedAt,
 	)
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, plantao.ErrorPlantaoNotFinded
+		}
 		return nil, fmt.Errorf("failed to scan plantao: %w", err)
 	}
 
@@ -208,31 +218,279 @@ func (r *PlantaoRepository) Find(
 	return plantoes, nil
 }
 
-func (r *PlantaoRepository) StoreDetalhesAndUpdateValorTotal(ctx context.Context, plantaoId string, valorTotal float64, observacoes *string, detalhes []plantao.PlantaoDetalhe) error {
-	tx, err := r.pool.Begin(ctx)
+func (r *PlantaoRepository) WithTransaction(ctx context.Context, fn func(plantao.PlantaoTransaction) error) error {
+	tx, err := r.pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.Serializable})
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
-	defer tx.Rollback(ctx)
+	defer func() { _ = tx.Rollback(ctx) }()
 
-	for _, d := range detalhes {
-		_, err := tx.Exec(ctx,
-			`INSERT INTO plantoes_detalhes (id, id_plantao, data, tipo_dia, valor)
-			 VALUES ($1, $2, $3, $4, $5)`,
-			uuid.NewString(), d.IdPlantao, d.Data, d.TipoDia, d.Valor,
-		)
-		if err != nil {
-			return fmt.Errorf("failed to store plantao detalhe: %w", err)
+	if err := fn(&plantaoTransaction{tx: tx}); err != nil {
+		return translateTransactionError(err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return translateTransactionError(err)
+	}
+	return nil
+}
+
+func translateTransactionError(err error) error {
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) {
+		switch pgErr.Code {
+		case "55P03", "40001", "40P01":
+			return plantao.ErrorConflitoConcorrencia
 		}
 	}
+	return err
+}
 
-	_, err = tx.Exec(ctx,
-		`UPDATE plantoes SET valor_total = $2, observacoes = $3, updated_at = NOW() WHERE id = $1`,
-		plantaoId, valorTotal, observacoes,
+type plantaoTransaction struct {
+	tx pgx.Tx
+}
+
+func (t *plantaoTransaction) LockPlantao(ctx context.Context, plantaoID string) (*plantao.Plantao, error) {
+	const query = `
+		SELECT id, id_colaborador, data_inicio, data_fim, status, valor_total, observacoes, created_at, updated_at
+		FROM plantoes
+		WHERE id = $1
+		FOR UPDATE NOWAIT
+	`
+	var p plantao.Plantao
+	var status string
+	p.Periodo = &shared.Periodo{}
+	err := t.tx.QueryRow(ctx, query, plantaoID).Scan(
+		&p.Id, &p.ColaboradorId, &p.Periodo.Inicio, &p.Periodo.Fim, &status,
+		&p.ValorTotal, &p.Observacoes, &p.CreatedAt, &p.UpdatedAt,
 	)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, plantao.ErrorPlantaoNotFinded
+	}
 	if err != nil {
-		return fmt.Errorf("failed to update valor_total: %w", err)
+		return nil, err
+	}
+	statusInt, err := strconv.Atoi(status)
+	if err != nil {
+		return nil, plantao.ErrorInvalidStatusPlantao
+	}
+	p.Status = plantao.StatusPlantao(statusInt)
+	return &p, nil
+}
+
+func (t *plantaoTransaction) FindActor(ctx context.Context, usuarioID string) (*plantao.Actor, error) {
+	const query = `
+		SELECT id, id_colaborador, role
+		FROM usuarios_login
+		WHERE id = $1 AND ativo = 'Y'
+		FOR SHARE
+	`
+	var actor plantao.Actor
+	err := t.tx.QueryRow(ctx, query, usuarioID).Scan(&actor.UsuarioID, &actor.ColaboradorID, &actor.Role)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, usuario.ErrorUserNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &actor, nil
+}
+
+func (t *plantaoTransaction) ColaboradorExists(ctx context.Context, colaboradorID string) (bool, error) {
+	var exists bool
+	err := t.tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM colaboradores WHERE id = $1)`, colaboradorID).Scan(&exists)
+	return exists, err
+}
+
+func (t *plantaoTransaction) CountDetalhes(ctx context.Context, plantaoID string) (int, error) {
+	var total int
+	err := t.tx.QueryRow(ctx, `SELECT COUNT(*) FROM plantoes_detalhes WHERE id_plantao = $1`, plantaoID).Scan(&total)
+	return total, err
+}
+
+func (t *plantaoTransaction) CountPagamentos(ctx context.Context, plantaoID string) (int, error) {
+	var total int
+	err := t.tx.QueryRow(ctx, `SELECT COUNT(*) FROM pagamentos WHERE id_plantao = $1`, plantaoID).Scan(&total)
+	return total, err
+}
+
+func (t *plantaoTransaction) FindFeriados(ctx context.Context, inicio, fim time.Time) (map[string]bool, error) {
+	rows, err := t.tx.Query(ctx, `SELECT data FROM feriados WHERE data BETWEEN $1 AND $2`, inicio, fim)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	result := make(map[string]bool)
+	for rows.Next() {
+		var data time.Time
+		if err := rows.Scan(&data); err != nil {
+			return nil, err
+		}
+		result[data.Format("2006-01-02")] = true
+	}
+	return result, rows.Err()
+}
+
+func (t *plantaoTransaction) FindValorDiaCentavos(ctx context.Context, tipoDia financeiro.TipoDia, data time.Time) (int64, error) {
+	const query = `
+		SELECT
+			CASE
+				WHEN valor > 0 AND valor = ROUND(valor, 2) THEN (valor * 100)::bigint
+				ELSE NULL
+			END,
+			vigencia_inicio,
+			vigencia_fim
+		FROM config_valores_dia
+		WHERE tipo_dia = $1
+		FOR SHARE
+	`
+	var centavos *int64
+	var inicio time.Time
+	var fim *time.Time
+	err := t.tx.QueryRow(ctx, query, tipoDia).Scan(&centavos, &inicio, &fim)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return 0, financeiro.ErrorValorDiaNotFound
+	}
+	if err != nil {
+		return 0, err
 	}
 
-	return tx.Commit(ctx)
+	dataCivil := data.Format("2006-01-02")
+	if dataCivil < inicio.Format("2006-01-02") || (fim != nil && dataCivil > fim.Format("2006-01-02")) {
+		return 0, financeiro.ErrorValorDiaForaVigencia
+	}
+	if centavos == nil || *centavos <= 0 {
+		return 0, financeiro.ErrorValorDiaInvalido
+	}
+	return *centavos, nil
+}
+
+func (t *plantaoTransaction) InsertDetalhes(ctx context.Context, plantaoID string, detalhes []plantao.PlantaoDetalhe) error {
+	for _, detalhe := range detalhes {
+		tag, err := t.tx.Exec(ctx, `
+			INSERT INTO plantoes_detalhes (id, id_plantao, data, tipo_dia, valor)
+			VALUES ($1, $2, $3, $4, $5::numeric / 100)
+		`, uuid.NewString(), plantaoID, detalhe.Data, detalhe.TipoDia, detalhe.ValorCentavos)
+		if err != nil {
+			return err
+		}
+		if tag.RowsAffected() != 1 {
+			return plantao.ErrorDetalhesInconsistentes
+		}
+	}
+	return nil
+}
+
+func (t *plantaoTransaction) ClosePlantao(ctx context.Context, plantaoID string, valorTotalCentavos int64, observacoes *string) error {
+	tag, err := t.tx.Exec(ctx, `
+		UPDATE plantoes
+		SET status = $2, valor_total = $3::numeric / 100, observacoes = $4, updated_at = NOW()
+		WHERE id = $1 AND status = $5
+	`, plantaoID, strconv.Itoa(int(plantao.StatusPlantaoConcluido)), valorTotalCentavos, observacoes, strconv.Itoa(int(plantao.StatusPlantaoEmAndamento)))
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() != 1 {
+		return plantao.ErrorConflitoConcorrencia
+	}
+	return nil
+}
+
+func (t *plantaoTransaction) UpdateStatus(ctx context.Context, plantaoID string, status plantao.StatusPlantao) error {
+	tag, err := t.tx.Exec(ctx, `UPDATE plantoes SET status = $2, updated_at = NOW() WHERE id = $1`, plantaoID, strconv.Itoa(int(status)))
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() != 1 {
+		return plantao.ErrorPlantaoNotFinded
+	}
+	return nil
+}
+
+func (t *plantaoTransaction) InsertHistorico(ctx context.Context, plantaoID string, statusAntigo, statusNovo plantao.StatusPlantao, usuarioID string, observacoes *string) error {
+	tag, err := t.tx.Exec(ctx, `
+		INSERT INTO status_plantao (id, id_plantao, status_antigo, status_novo, id_usuario, observacoes)
+		VALUES ($1, $2, $3, $4, $5, $6)
+	`, uuid.NewString(), plantaoID, strconv.Itoa(int(statusAntigo)), strconv.Itoa(int(statusNovo)), usuarioID, observacoes)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() != 1 {
+		return plantao.ErrorConflitoConcorrencia
+	}
+	return nil
+}
+
+func (t *plantaoTransaction) InsertPagamentoPendente(ctx context.Context, plantaoID, colaboradorID string, valorTotalCentavos int64) error {
+	tag, err := t.tx.Exec(ctx, `
+		INSERT INTO pagamentos (id, id_plantao, id_colaborador, valor_total, status)
+		VALUES ($1, $2, $3, $4::numeric / 100, 'pendente')
+	`, uuid.NewString(), plantaoID, colaboradorID, valorTotalCentavos)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() != 1 {
+		return plantao.ErrorPagamentoExistente
+	}
+	return nil
+}
+
+func (t *plantaoTransaction) FindPagamento(ctx context.Context, plantaoID string) (*plantao.Pagamento, error) {
+	rows, err := t.tx.Query(ctx, `
+		SELECT id, id_plantao, id_colaborador, (valor_total * 100)::bigint, status
+		FROM pagamentos
+		WHERE id_plantao = $1
+		FOR UPDATE
+	`, plantaoID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var pagamentos []plantao.Pagamento
+	for rows.Next() {
+		var p plantao.Pagamento
+		if err := rows.Scan(&p.ID, &p.PlantaoID, &p.ColaboradorID, &p.ValorTotalCentavos, &p.Status); err != nil {
+			return nil, err
+		}
+		pagamentos = append(pagamentos, p)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	if len(pagamentos) == 0 {
+		return nil, plantao.ErrorPagamentoNotFound
+	}
+	if len(pagamentos) != 1 {
+		return nil, plantao.ErrorPagamentoInconsistente
+	}
+	return &pagamentos[0], nil
+}
+
+func (t *plantaoTransaction) SummarizeDetalhes(ctx context.Context, plantaoID string) (*plantao.DetalhesResumo, error) {
+	var resumo plantao.DetalhesResumo
+	err := t.tx.QueryRow(ctx, `
+		SELECT COUNT(*), COUNT(DISTINCT data), COALESCE((SUM(valor) * 100)::bigint, 0)
+		FROM plantoes_detalhes
+		WHERE id_plantao = $1
+	`, plantaoID).Scan(&resumo.Quantidade, &resumo.DatasDistintas, &resumo.ValorTotalCentavos)
+	if err != nil {
+		return nil, err
+	}
+	return &resumo, nil
+}
+
+func (t *plantaoTransaction) PayPagamento(ctx context.Context, pagamentoID string, dataPagamento time.Time, observacoes *string) error {
+	tag, err := t.tx.Exec(ctx, `
+		UPDATE pagamentos
+		SET status = 'pago', data_pagamento = $2, observacoes = $3, updated_at = NOW()
+		WHERE id = $1 AND status = 'pendente'
+	`, pagamentoID, dataPagamento, observacoes)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() != 1 {
+		return plantao.ErrorPlantaoJaPago
+	}
+	return nil
 }
