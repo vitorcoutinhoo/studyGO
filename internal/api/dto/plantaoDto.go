@@ -20,6 +20,10 @@ type UpdateStatusPlantaoRequest struct {
 	Observacoes *string `json:"observacoes"`
 }
 
+type PagamentoPlantaoRequest struct {
+	Observacoes *string `json:"observacoes"`
+}
+
 type CreatePlantaoResponse struct {
 	Id            string                `json:"id"`
 	ColaboradorId string                `json:"colaborador_id"`
