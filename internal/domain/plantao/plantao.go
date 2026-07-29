@@ -9,8 +9,20 @@ import (
 )
 
 var (
-	ErrorExistingPlantao  = errors.New("Plantao already exists!")
-	ErrorPlantaoNotFinded = errors.New("Plantao not found!")
+	ErrorExistingPlantao              = errors.New("Plantao already exists!")
+	ErrorPlantaoNotFinded             = errors.New("Plantao not found!")
+	ErrorColaboradorNotFound          = errors.New("Colaborador do plantão não encontrado!")
+	ErrorUsuarioSemPermissao          = errors.New("Usuário sem permissão para esta operação!")
+	ErrorPlantaoJaFechado             = errors.New("Plantão já fechado!")
+	ErrorPlantaoJaPago                = errors.New("Plantão já pago!")
+	ErrorDetalhesExistentes           = errors.New("Plantão já possui detalhes calculados!")
+	ErrorPagamentoExistente           = errors.New("Plantão já possui pagamento!")
+	ErrorPagamentoNotFound            = errors.New("Pagamento do plantão não encontrado!")
+	ErrorPagamentoInconsistente       = errors.New("Pagamento inconsistente com o plantão!")
+	ErrorDetalhesInconsistentes       = errors.New("Detalhes calculados inconsistentes com o plantão!")
+	ErrorConflitoConcorrencia         = errors.New("Conflito de concorrência ao processar o plantão!")
+	ErrorValorTotalInvalido           = errors.New("Valor total do plantão inválido!")
+	ErrorOperacaoPagamentoObrigatoria = errors.New("Status pago exige a operação de pagamento!")
 )
 
 type Plantao struct {
