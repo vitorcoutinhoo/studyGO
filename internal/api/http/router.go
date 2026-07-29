@@ -86,6 +86,7 @@ func setupPlantaoRoutes(
 			plantaoRoutes.GET("/periodo/:start_date/:end_date", plantaoController.GetPlantoesByPeriodo)
 
 			plantaoRoutes.PATCH("/:id/status", plantaoController.UpdateStatusPlantao)
+			plantaoRoutes.POST("/:id/pagamento", midware.RoleMidware(ADMIN_ROLE, GERENTE_ROLE), plantaoController.PagarPlantao)
 		}
 	}
 }
