@@ -37,6 +37,8 @@ func classify(err error) (int, ErrorResponse) {
 		financeiro.ErrorFeriadoNotFound,
 		financeiro.ErrorValorDiaNotFound,
 		plantao.ErrorPlantaoNotFinded,
+		plantao.ErrorColaboradorNotFound,
+		plantao.ErrorPagamentoNotFound,
 		setor.ErrorSetorNotFound,
 		usuario.ErrorUserNotFound,
 	) {
@@ -53,6 +55,13 @@ func classify(err error) (int, ErrorResponse) {
 		usuario.ErrorEmailAlreadyExists,
 		usuario.ErrorEmailexists,
 		plantao.ErrorExistingPlantao,
+		plantao.ErrorPlantaoJaFechado,
+		plantao.ErrorPlantaoJaPago,
+		plantao.ErrorDetalhesExistentes,
+		plantao.ErrorPagamentoExistente,
+		plantao.ErrorPagamentoInconsistente,
+		plantao.ErrorDetalhesInconsistentes,
+		plantao.ErrorConflitoConcorrencia,
 	) {
 		return http.StatusConflict, ErrorResponse{Code: "CONFLICT", Message: err.Error()}
 	}
@@ -82,8 +91,11 @@ func classify(err error) (int, ErrorResponse) {
 		financeiro.ErrorFeriadoNotMunicipal,
 		financeiro.ErrorTipoDiaInvalido,
 		financeiro.ErrorValorDiaInvalido,
+		financeiro.ErrorValorDiaForaVigencia,
 		plantao.ErrorInvalidStatusPlantao,
 		plantao.ErrorInvalidTransitionStatus,
+		plantao.ErrorValorTotalInvalido,
+		plantao.ErrorOperacaoPagamentoObrigatoria,
 		shared.ErrorEndBeforeStart,
 		shared.ErrorPeriodoInvalido,
 		usuario.ErrorInvalidEmail,
@@ -98,6 +110,10 @@ func classify(err error) (int, ErrorResponse) {
 	// 401
 	if errors.Is(err, usuario.ErrInvalidCredentials) {
 		return http.StatusUnauthorized, ErrorResponse{Code: "UNAUTHORIZED", Message: err.Error()}
+	}
+
+	if errors.Is(err, plantao.ErrorUsuarioSemPermissao) {
+		return http.StatusForbidden, ErrorResponse{Code: "FORBIDDEN", Message: err.Error()}
 	}
 
 	// 500 — erro interno inesperado
