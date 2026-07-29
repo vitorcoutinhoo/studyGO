@@ -6,6 +6,7 @@ import (
 	"plantao/internal/api/dto"
 	"plantao/internal/domain/plantao"
 	"plantao/internal/domain/shared"
+	"plantao/internal/utils"
 	"strconv"
 	"time"
 
@@ -70,13 +71,51 @@ func (p *PlantaoController) UpdateStatusPlantao(ctx *gin.Context) {
 	}
 
 	plantaoId := ctx.Param("id")
-	_, err = p.service.UpdatePlantaoStatus(ctx.Request.Context(), plantaoId, plantao.StatusPlantao(status), req.Observacoes)
+	userID, ok := authenticatedUserID(ctx)
+	if !ok {
+		return
+	}
+	_, err = p.service.UpdatePlantaoStatus(ctx.Request.Context(), plantaoId, userID, plantao.StatusPlantao(status), req.Observacoes)
 	if err != nil {
 		apierr.Respond(ctx, err)
 		return
 	}
 
 	ctx.Status(http.StatusNoContent)
+}
+
+func (p *PlantaoController) PagarPlantao(ctx *gin.Context) {
+	var req dto.PagamentoPlantaoRequest
+	if ctx.Request.ContentLength != 0 {
+		if err := ctx.ShouldBindJSON(&req); err != nil {
+			ctx.JSON(http.StatusBadRequest, apierr.ErrorResponse{Code: "BAD_REQUEST", Message: err.Error()})
+			return
+		}
+	}
+
+	userID, ok := authenticatedUserID(ctx)
+	if !ok {
+		return
+	}
+	if err := p.service.PagarPlantao(ctx.Request.Context(), ctx.Param("id"), userID, req.Observacoes); err != nil {
+		apierr.Respond(ctx, err)
+		return
+	}
+	ctx.Status(http.StatusNoContent)
+}
+
+func authenticatedUserID(ctx *gin.Context) (string, bool) {
+	raw, exists := ctx.Get("userId")
+	if !exists {
+		ctx.JSON(http.StatusUnauthorized, apierr.ErrorResponse{Code: "UNAUTHORIZED", Message: "usuário não autenticado"})
+		return "", false
+	}
+	userID, ok := raw.(string)
+	if !ok || userID == "" {
+		ctx.JSON(http.StatusUnauthorized, apierr.ErrorResponse{Code: "UNAUTHORIZED", Message: "identidade autenticada inválida"})
+		return "", false
+	}
+	return userID, true
 }
 
 func (p *PlantaoController) GetPlantaoById(ctx *gin.Context) {
@@ -194,7 +233,7 @@ func parseDateTime(s string) (time.Time, error) {
 	if t, err := time.Parse(time.RFC3339, s); err == nil {
 		return t, nil
 	}
-	return time.Parse("2006-01-02", s)
+	return time.ParseInLocation("2006-01-02", s, utils.BrasilLocation())
 }
 
 func toPlantaoResponse(pl *plantao.Plantao) *dto.CreatePlantaoResponse {
