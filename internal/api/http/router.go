@@ -140,6 +140,8 @@ func setupValorDiaRoutes(
 		{
 			valorDiaRoutes.GET("", valorDiaController.GetVigentes)
 			valorDiaRoutes.POST("", valorDiaController.SetValor)
+			valorDiaRoutes.PATCH("", valorDiaController.UpdateValorVigente)
+			valorDiaRoutes.PATCH("/:tipo_dia", valorDiaController.UpdateValorVigente)
 		}
 	}
 }
