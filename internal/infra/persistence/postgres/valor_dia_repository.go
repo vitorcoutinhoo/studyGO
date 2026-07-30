@@ -2,12 +2,15 @@ package postgres
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
 	"plantao/internal/domain/financeiro"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -112,4 +115,104 @@ func (r *ValorDiaRepository) CloseVigencia(ctx context.Context, id uuid.UUID, vi
 		return fmt.Errorf("failed to close vigencia: %w", err)
 	}
 	return nil
+}
+
+func (r *ValorDiaRepository) WithTransaction(ctx context.Context, fn func(financeiro.ValorDiaTransaction) error) error {
+	tx, err := r.pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.Serializable})
+	if err != nil {
+		return fmt.Errorf("failed to begin valor dia transaction: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	if err := fn(&valorDiaTransaction{tx: tx}); err != nil {
+		return translateValorDiaTransactionError(err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return translateValorDiaTransactionError(err)
+	}
+	return nil
+}
+
+func translateValorDiaTransactionError(err error) error {
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) {
+		switch pgErr.Code {
+		case "55P03", "40001", "40P01":
+			return financeiro.ErrorConflitoValorDia
+		}
+	}
+	return err
+}
+
+type valorDiaTransaction struct {
+	tx pgx.Tx
+}
+
+func (t *valorDiaTransaction) LockByTipoDia(ctx context.Context, tipoDia financeiro.TipoDia) (*financeiro.ValorDia, error) {
+	const query = `
+		SELECT id, tipo_dia, valor, descricao, vigencia_inicio, vigencia_fim, created_at, updated_at
+		FROM config_valores_dia
+		WHERE tipo_dia = $1
+		FOR UPDATE NOWAIT
+	`
+	var valor financeiro.ValorDia
+	err := t.tx.QueryRow(ctx, query, tipoDia).Scan(
+		&valor.Id,
+		&valor.TipoDia,
+		&valor.Valor,
+		&valor.Descricao,
+		&valor.VigenciaInicio,
+		&valor.VigenciaFim,
+		&valor.CreatedAt,
+		&valor.UpdatedAt,
+	)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, financeiro.ErrorValorDiaNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &valor, nil
+}
+
+func (t *valorDiaTransaction) Update(ctx context.Context, valor *financeiro.ValorDia) (*financeiro.ValorDia, error) {
+	tag, err := t.tx.Exec(ctx, `
+		UPDATE config_valores_dia
+		SET valor = $2,
+		    descricao = $3,
+		    vigencia_inicio = $4,
+		    vigencia_fim = $5,
+		    updated_at = NOW()
+		WHERE id = $1 AND tipo_dia = $6
+	`, valor.Id, valor.Valor, valor.Descricao, valor.VigenciaInicio, valor.VigenciaFim, valor.TipoDia)
+	if err != nil {
+		return nil, err
+	}
+	if tag.RowsAffected() != 1 {
+		return nil, financeiro.ErrorConflitoValorDia
+	}
+
+	const query = `
+		SELECT id, tipo_dia, valor, descricao, vigencia_inicio, vigencia_fim, created_at, updated_at
+		FROM config_valores_dia
+		WHERE id = $1
+	`
+	var atualizado financeiro.ValorDia
+	err = t.tx.QueryRow(ctx, query, valor.Id).Scan(
+		&atualizado.Id,
+		&atualizado.TipoDia,
+		&atualizado.Valor,
+		&atualizado.Descricao,
+		&atualizado.VigenciaInicio,
+		&atualizado.VigenciaFim,
+		&atualizado.CreatedAt,
+		&atualizado.UpdatedAt,
+	)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, financeiro.ErrorConflitoValorDia
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &atualizado, nil
 }
