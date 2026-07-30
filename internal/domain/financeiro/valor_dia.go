@@ -17,6 +17,12 @@ var (
 	ErrorValorDiaInvalido     = errors.New("Valor deve ser maior que zero!")
 	ErrorValorDiaNotFound     = errors.New("Configuração de valor não encontrada!")
 	ErrorValorDiaForaVigencia = errors.New("Configuração de valor fora da vigência!")
+	ErrorValorDiaNaoVigente   = errors.New("Configuração de valor não está vigente!")
+	ErrorVigenciaInvalida     = errors.New("Período de vigência inválido!")
+	ErrorPrecisaoValorDia     = errors.New("Valor deve possuir no máximo duas casas decimais!")
+	ErrorLimiteValorDia       = errors.New("Valor excede o limite monetário suportado!")
+	ErrorAtualizacaoVazia     = errors.New("Informe ao menos um campo para atualização!")
+	ErrorConflitoValorDia     = errors.New("Conflito de concorrência ao atualizar configuração de valor!")
 )
 
 type TipoDia string
@@ -37,8 +43,20 @@ type ValorDia struct {
 	Id             uuid.UUID
 	TipoDia        TipoDia
 	Valor          float64
+	Descricao      *string
 	VigenciaInicio time.Time
 	VigenciaFim    *time.Time
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+}
+
+type AtualizacaoValorDia struct {
+	Valor                *float64
+	DescricaoInformada   bool
+	Descricao            *string
+	VigenciaInicio       *time.Time
+	VigenciaFimInformada bool
+	VigenciaFim          *time.Time
 }
 
 type DiaCalculado struct {
@@ -63,15 +81,32 @@ type ValorDiaRepository interface {
 	FindVigenteByData(ctx context.Context, data time.Time) (map[TipoDia]float64, error)
 	Store(ctx context.Context, valorDia *ValorDia) error
 	CloseVigencia(ctx context.Context, id uuid.UUID, vigenciaFim time.Time) error
+	WithTransaction(ctx context.Context, fn func(ValorDiaTransaction) error) error
+}
+
+type ValorDiaTransaction interface {
+	LockByTipoDia(ctx context.Context, tipoDia TipoDia) (*ValorDia, error)
+	Update(ctx context.Context, valorDia *ValorDia) (*ValorDia, error)
 }
 
 type ConfigValorDiaService struct {
 	repository ValorDiaRepository
 	log        log.Logger
+	location   *time.Location
+	now        func() time.Time
 }
 
 func NewConfigValorDiaService(repository ValorDiaRepository, log log.Logger) *ConfigValorDiaService {
-	return &ConfigValorDiaService{repository: repository, log: log}
+	location, err := time.LoadLocation("America/Sao_Paulo")
+	if err != nil {
+		location = time.UTC
+	}
+	return &ConfigValorDiaService{
+		repository: repository,
+		log:        log,
+		location:   location,
+		now:        time.Now,
+	}
 }
 
 func (s *ConfigValorDiaService) GetVigentes(ctx context.Context) ([]ValorDia, error) {
@@ -131,6 +166,99 @@ func (s *ConfigValorDiaService) SetValor(ctx context.Context, tipoDia TipoDia, v
 
 	s.log.Info("configuração de valor criada com sucesso", "id_valor_dia", novo.Id, "tipo_dia", novo.TipoDia)
 	return novo, nil
+}
+
+func (s *ConfigValorDiaService) UpdateVigente(ctx context.Context, tipoDia TipoDia, atualizacao *AtualizacaoValorDia) (*ValorDia, error) {
+	s.log.Info("iniciando atualização de configuração vigente", "tipo_dia", tipoDia)
+
+	if !tiposDiaValidos[tipoDia] {
+		return nil, ErrorTipoDiaInvalido
+	}
+	if atualizacao == nil || !atualizacao.temCampos() {
+		return nil, ErrorAtualizacaoVazia
+	}
+	if atualizacao.Valor != nil {
+		if err := validarValorMonetario(*atualizacao.Valor); err != nil {
+			return nil, err
+		}
+	}
+
+	agora := s.now().In(s.location)
+	hoje := time.Date(agora.Year(), agora.Month(), agora.Day(), 0, 0, 0, 0, time.UTC)
+	var resultado *ValorDia
+
+	err := s.repository.WithTransaction(ctx, func(tx ValorDiaTransaction) error {
+		vigente, err := tx.LockByTipoDia(ctx, tipoDia)
+		if err != nil {
+			return err
+		}
+		if !valorDiaVigenteEm(vigente, hoje) {
+			return ErrorValorDiaNaoVigente
+		}
+
+		if atualizacao.Valor != nil {
+			vigente.Valor = *atualizacao.Valor
+		}
+		if atualizacao.DescricaoInformada {
+			vigente.Descricao = atualizacao.Descricao
+		}
+		if atualizacao.VigenciaInicio != nil {
+			data := normalizeDate(*atualizacao.VigenciaInicio)
+			vigente.VigenciaInicio = data
+		}
+		if atualizacao.VigenciaFimInformada {
+			if atualizacao.VigenciaFim == nil {
+				vigente.VigenciaFim = nil
+			} else {
+				data := normalizeDate(*atualizacao.VigenciaFim)
+				vigente.VigenciaFim = &data
+			}
+		}
+
+		if vigente.VigenciaFim != nil && vigente.VigenciaFim.Before(vigente.VigenciaInicio) {
+			return ErrorVigenciaInvalida
+		}
+		if !valorDiaVigenteEm(vigente, hoje) {
+			return ErrorValorDiaNaoVigente
+		}
+
+		resultado, err = tx.Update(ctx, vigente)
+		return err
+	})
+	if err != nil {
+		s.log.Warn("falha ao atualizar configuração vigente", "tipo_dia", tipoDia, "error", err)
+		return nil, err
+	}
+
+	s.log.Info("configuração vigente atualizada", "tipo_dia", tipoDia, "id_valor_dia", resultado.Id)
+	return resultado, nil
+}
+
+func (a *AtualizacaoValorDia) temCampos() bool {
+	return a.Valor != nil ||
+		a.DescricaoInformada ||
+		a.VigenciaInicio != nil ||
+		a.VigenciaFimInformada
+}
+
+func validarValorMonetario(valor float64) error {
+	if valor <= 0 || math.IsNaN(valor) || math.IsInf(valor, 0) {
+		return ErrorValorDiaInvalido
+	}
+	if valor > 99_999_999.99 {
+		return ErrorLimiteValorDia
+	}
+	if math.Abs(valor*100-math.Round(valor*100)) > 0.0000001 {
+		return ErrorPrecisaoValorDia
+	}
+	return nil
+}
+
+func valorDiaVigenteEm(valorDia *ValorDia, data time.Time) bool {
+	if valorDia == nil || valorDia.VigenciaInicio.After(data) {
+		return false
+	}
+	return valorDia.VigenciaFim == nil || !valorDia.VigenciaFim.Before(data)
 }
 
 // ---- CalculoService ----
