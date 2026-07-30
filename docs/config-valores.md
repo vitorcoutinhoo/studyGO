@@ -2,13 +2,19 @@
 
 **Base URL:** `http://{host}/api/v1`
 
-**Autenticação:** Bearer Token via header `Authorization: Bearer <token>`
+**Autenticação:** cookie `access_token`
 
 > Todos os endpoints exigem autenticação (role: `admin`)
 
 **Tipos de dia:** `UTIL`, `SABADO`, `DOMINGO`, `FERIADO`
 
 **Sistema de vigência:** cada novo valor fecha automaticamente o anterior no dia anterior à nova `vigencia_inicio`.
+
+> A estrutura atual possui `UNIQUE(tipo_dia)`, portanto aceita somente uma linha
+> por tipo. O fluxo existente de criação de uma nova vigência tenta encerrar a
+> linha anterior e inserir outra do mesmo tipo, o que não permite histórico real
+> enquanto essa restrição existir. O endpoint de atualização abaixo modifica a
+> linha vigente sem alterar o schema.
 
 ---
 
@@ -48,6 +54,51 @@
   }
 ]
 ```
+
+---
+
+## `PATCH /admin/config-valores/:tipo_dia`
+
+Atualiza parcialmente a configuração que está vigente na data civil atual de
+`America/Sao_Paulo`. A rota aceita exclusivamente a role `admin`.
+
+O `tipo_dia` deve ser informado na URL usando um dos valores `UTIL`, `SABADO`,
+`DOMINGO` ou `FERIADO`. Campos omitidos são preservados. Em campos anuláveis,
+`null` remove o valor.
+
+**Request:**
+
+```json
+{
+  "valor": 175.50,
+  "descricao": "Valor para dias úteis",
+  "vigencia_inicio": "2026-05-01",
+  "vigencia_fim": null
+}
+```
+
+**Response `200`:**
+
+```json
+{
+  "id": "uuid",
+  "tipo_dia": "UTIL",
+  "valor": 175.50,
+  "descricao": "Valor para dias úteis",
+  "vigencia_inicio": "2026-05-01T00:00:00Z",
+  "vigencia_fim": null,
+  "updated_at": "2026-07-30T12:00:00Z"
+}
+```
+
+Regras:
+
+- a configuração precisa estar vigente antes e depois da alteração;
+- `vigencia_fim` não pode ser anterior a `vigencia_inicio`;
+- o valor deve ser positivo e possuir no máximo duas casas decimais;
+- requisições concorrentes para o mesmo tipo retornam `409 Conflict`;
+- um corpo vazio ou a ausência de `tipo_dia` retorna `400 Bad Request`;
+- gerente e colaborador recebem `403 Forbidden`.
 
 ---
 
