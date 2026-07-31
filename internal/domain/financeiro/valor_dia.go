@@ -17,7 +17,6 @@ var (
 	ErrorValorDiaInvalido     = errors.New("Valor deve ser maior que zero!")
 	ErrorValorDiaNotFound     = errors.New("Configuração de valor não encontrada!")
 	ErrorValorDiaForaVigencia = errors.New("Configuração de valor fora da vigência!")
-	ErrorValorDiaNaoVigente   = errors.New("Configuração de valor não está vigente!")
 	ErrorVigenciaInvalida     = errors.New("Período de vigência inválido!")
 	ErrorPrecisaoValorDia     = errors.New("Valor deve possuir no máximo duas casas decimais!")
 	ErrorLimiteValorDia       = errors.New("Valor excede o limite monetário suportado!")
@@ -92,20 +91,12 @@ type ValorDiaTransaction interface {
 type ConfigValorDiaService struct {
 	repository ValorDiaRepository
 	log        log.Logger
-	location   *time.Location
-	now        func() time.Time
 }
 
 func NewConfigValorDiaService(repository ValorDiaRepository, log log.Logger) *ConfigValorDiaService {
-	location, err := time.LoadLocation("America/Sao_Paulo")
-	if err != nil {
-		location = time.UTC
-	}
 	return &ConfigValorDiaService{
 		repository: repository,
 		log:        log,
-		location:   location,
-		now:        time.Now,
 	}
 }
 
@@ -169,7 +160,7 @@ func (s *ConfigValorDiaService) SetValor(ctx context.Context, tipoDia TipoDia, v
 }
 
 func (s *ConfigValorDiaService) UpdateVigente(ctx context.Context, tipoDia TipoDia, atualizacao *AtualizacaoValorDia) (*ValorDia, error) {
-	s.log.Info("iniciando atualização de configuração vigente", "tipo_dia", tipoDia)
+	s.log.Info("iniciando atualização de configuração de valor", "tipo_dia", tipoDia)
 
 	if !tiposDiaValidos[tipoDia] {
 		return nil, ErrorTipoDiaInvalido
@@ -183,54 +174,46 @@ func (s *ConfigValorDiaService) UpdateVigente(ctx context.Context, tipoDia TipoD
 		}
 	}
 
-	agora := s.now().In(s.location)
-	hoje := time.Date(agora.Year(), agora.Month(), agora.Day(), 0, 0, 0, 0, time.UTC)
 	var resultado *ValorDia
 
 	err := s.repository.WithTransaction(ctx, func(tx ValorDiaTransaction) error {
-		vigente, err := tx.LockByTipoDia(ctx, tipoDia)
+		configuracao, err := tx.LockByTipoDia(ctx, tipoDia)
 		if err != nil {
 			return err
 		}
-		if !valorDiaVigenteEm(vigente, hoje) {
-			return ErrorValorDiaNaoVigente
-		}
 
 		if atualizacao.Valor != nil {
-			vigente.Valor = *atualizacao.Valor
+			configuracao.Valor = *atualizacao.Valor
 		}
 		if atualizacao.DescricaoInformada {
-			vigente.Descricao = atualizacao.Descricao
+			configuracao.Descricao = atualizacao.Descricao
 		}
 		if atualizacao.VigenciaInicio != nil {
 			data := normalizeDate(*atualizacao.VigenciaInicio)
-			vigente.VigenciaInicio = data
+			configuracao.VigenciaInicio = data
 		}
 		if atualizacao.VigenciaFimInformada {
 			if atualizacao.VigenciaFim == nil {
-				vigente.VigenciaFim = nil
+				configuracao.VigenciaFim = nil
 			} else {
 				data := normalizeDate(*atualizacao.VigenciaFim)
-				vigente.VigenciaFim = &data
+				configuracao.VigenciaFim = &data
 			}
 		}
 
-		if vigente.VigenciaFim != nil && vigente.VigenciaFim.Before(vigente.VigenciaInicio) {
+		if configuracao.VigenciaFim != nil && configuracao.VigenciaFim.Before(configuracao.VigenciaInicio) {
 			return ErrorVigenciaInvalida
 		}
-		if !valorDiaVigenteEm(vigente, hoje) {
-			return ErrorValorDiaNaoVigente
-		}
 
-		resultado, err = tx.Update(ctx, vigente)
+		resultado, err = tx.Update(ctx, configuracao)
 		return err
 	})
 	if err != nil {
-		s.log.Warn("falha ao atualizar configuração vigente", "tipo_dia", tipoDia, "error", err)
+		s.log.Warn("falha ao atualizar configuração de valor", "tipo_dia", tipoDia, "error", err)
 		return nil, err
 	}
 
-	s.log.Info("configuração vigente atualizada", "tipo_dia", tipoDia, "id_valor_dia", resultado.Id)
+	s.log.Info("configuração de valor atualizada", "tipo_dia", tipoDia, "id_valor_dia", resultado.Id)
 	return resultado, nil
 }
 
@@ -252,13 +235,6 @@ func validarValorMonetario(valor float64) error {
 		return ErrorPrecisaoValorDia
 	}
 	return nil
-}
-
-func valorDiaVigenteEm(valorDia *ValorDia, data time.Time) bool {
-	if valorDia == nil || valorDia.VigenciaInicio.After(data) {
-		return false
-	}
-	return valorDia.VigenciaFim == nil || !valorDia.VigenciaFim.Before(data)
 }
 
 // ---- CalculoService ----
