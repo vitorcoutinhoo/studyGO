@@ -83,11 +83,7 @@ func configVigenteTeste() *ValorDia {
 }
 
 func serviceValorDiaTeste(repo ValorDiaRepository) *ConfigValorDiaService {
-	service := NewConfigValorDiaService(repo, noopLogger{})
-	service.now = func() time.Time {
-		return time.Date(2026, 7, 30, 12, 0, 0, 0, service.location)
-	}
-	return service
+	return NewConfigValorDiaService(repo, noopLogger{})
 }
 
 func TestUpdateVigenteAtualizaParcialmente(t *testing.T) {
@@ -131,11 +127,13 @@ func TestUpdateVigentePermiteLimparCamposAnulaveis(t *testing.T) {
 func TestUpdateVigenteAtualizaDescricaoEVigencias(t *testing.T) {
 	repo := &valorDiaRepositoryFake{atual: configVigenteTeste()}
 	service := serviceValorDiaTeste(repo)
+	valor := 300.00
 	descricao := "novo valor para dia útil"
-	inicio := time.Date(2026, 6, 1, 15, 0, 0, 0, time.FixedZone("offset", -3*60*60))
+	inicio := time.Date(2026, 8, 30, 15, 0, 0, 0, time.FixedZone("offset", -3*60*60))
 	fim := time.Date(2026, 12, 31, 15, 0, 0, 0, time.FixedZone("offset", -3*60*60))
 
 	resultado, err := service.UpdateVigente(context.Background(), TipoDiaUtil, &AtualizacaoValorDia{
+		Valor:                &valor,
 		DescricaoInformada:   true,
 		Descricao:            &descricao,
 		VigenciaInicio:       &inicio,
@@ -145,22 +143,69 @@ func TestUpdateVigenteAtualizaDescricaoEVigencias(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if resultado.Descricao == nil || *resultado.Descricao != descricao ||
-		resultado.VigenciaInicio.Format("2006-01-02") != "2026-06-01" ||
+	if resultado.Valor != valor || resultado.Descricao == nil || *resultado.Descricao != descricao ||
+		resultado.VigenciaInicio.Format("2006-01-02") != "2026-08-30" ||
 		resultado.VigenciaFim == nil || resultado.VigenciaFim.Format("2006-01-02") != "2026-12-31" {
-		t.Fatalf("descrição/vigências incorretas: %+v", resultado)
+		t.Fatalf("campos atualizados incorretamente: %+v", resultado)
 	}
 }
 
-func TestUpdateVigenteValidaEntradaEVigencia(t *testing.T) {
+func TestUpdateVigentePermiteAlterarConfiguracaoFuturaOuEncerrada(t *testing.T) {
+	novoValor := 225.50
+	descricao := "configuração corrigida"
+	novoInicio := time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC)
+	novoFim := time.Date(2027, 1, 31, 0, 0, 0, 0, time.UTC)
+
+	tests := []struct {
+		nome   string
+		inicio time.Time
+		fim    *time.Time
+	}{
+		{
+			nome:   "configuração futura",
+			inicio: time.Date(2026, 9, 1, 0, 0, 0, 0, time.UTC),
+		},
+		{
+			nome:   "configuração encerrada",
+			inicio: time.Date(2026, 5, 1, 0, 0, 0, 0, time.UTC),
+			fim: func() *time.Time {
+				data := time.Date(2026, 6, 30, 0, 0, 0, 0, time.UTC)
+				return &data
+			}(),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.nome, func(t *testing.T) {
+			configuracao := configVigenteTeste()
+			configuracao.VigenciaInicio = tt.inicio
+			configuracao.VigenciaFim = tt.fim
+			repo := &valorDiaRepositoryFake{atual: configuracao}
+
+			resultado, err := serviceValorDiaTeste(repo).UpdateVigente(context.Background(), TipoDiaUtil, &AtualizacaoValorDia{
+				Valor:                &novoValor,
+				DescricaoInformada:   true,
+				Descricao:            &descricao,
+				VigenciaInicio:       &novoInicio,
+				VigenciaFimInformada: true,
+				VigenciaFim:          &novoFim,
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !repo.committed || resultado.Valor != novoValor || resultado.Descricao == nil || *resultado.Descricao != descricao ||
+				!resultado.VigenciaInicio.Equal(novoInicio) || resultado.VigenciaFim == nil || !resultado.VigenciaFim.Equal(novoFim) {
+				t.Fatalf("configuração não foi atualizada: %+v", resultado)
+			}
+		})
+	}
+}
+
+func TestUpdateVigenteValidaEntradaEIntervalo(t *testing.T) {
 	zero := 0.0
 	negativo := -1.0
 	precisaoInvalida := 10.001
-	inicioFuturo := time.Date(2026, 8, 1, 0, 0, 0, 0, time.UTC)
 	fimAnterior := time.Date(2026, 4, 1, 0, 0, 0, 0, time.UTC)
-	configEncerrada := configVigenteTeste()
-	configFim := time.Date(2026, 7, 29, 0, 0, 0, 0, time.UTC)
-	configEncerrada.VigenciaFim = &configFim
 
 	tests := []struct {
 		nome        string
@@ -175,8 +220,6 @@ func TestUpdateVigenteValidaEntradaEVigencia(t *testing.T) {
 		{"valor negativo", TipoDiaUtil, configVigenteTeste(), &AtualizacaoValorDia{Valor: &negativo}, ErrorValorDiaInvalido},
 		{"precisão inválida", TipoDiaUtil, configVigenteTeste(), &AtualizacaoValorDia{Valor: &precisaoInvalida}, ErrorPrecisaoValorDia},
 		{"configuração ausente", TipoDiaUtil, nil, &AtualizacaoValorDia{DescricaoInformada: true}, ErrorValorDiaNotFound},
-		{"configuração não vigente", TipoDiaUtil, configEncerrada, &AtualizacaoValorDia{DescricaoInformada: true}, ErrorValorDiaNaoVigente},
-		{"início futuro", TipoDiaUtil, configVigenteTeste(), &AtualizacaoValorDia{VigenciaInicio: &inicioFuturo}, ErrorValorDiaNaoVigente},
 		{"fim anterior ao início", TipoDiaUtil, configVigenteTeste(), &AtualizacaoValorDia{VigenciaFimInformada: true, VigenciaFim: &fimAnterior}, ErrorVigenciaInvalida},
 	}
 
