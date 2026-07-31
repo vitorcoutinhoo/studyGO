@@ -73,15 +73,49 @@ func (r *PlantaoRepository) Update(ctx context.Context, plantao *plantao.Plantao
 	return nil
 }
 
-func (r *PlantaoRepository) Delete(ctx context.Context, plantaoId string) error {
-	query := `
-		DELETE FROM plantoes
-		WHERE id = $1
-	`
+func (r *PlantaoRepository) Delete(
+	ctx context.Context,
+	plantaoID string,
+) error {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
 
-	_, err := r.pool.Exec(ctx, query, plantaoId)
+	defer func() {
+		_ = tx.Rollback(ctx)
+	}()
+
+	queries := []string{
+		`DELETE FROM status_plantao WHERE id_plantao = $1`,
+		`DELETE FROM pagamentos WHERE id_plantao = $1`,
+		`DELETE FROM plantoes_detalhes WHERE id_plantao = $1`,
+	}
+
+	for _, query := range queries {
+		if _, err := tx.Exec(ctx, query, plantaoID); err != nil {
+			return fmt.Errorf(
+				"failed to delete plantao dependencies: %w",
+				err,
+			)
+		}
+	}
+
+	result, err := tx.Exec(
+		ctx,
+		`DELETE FROM plantoes WHERE id = $1`,
+		plantaoID,
+	)
 	if err != nil {
 		return fmt.Errorf("failed to delete plantao: %w", err)
+	}
+
+	if result.RowsAffected() == 0 {
+		return fmt.Errorf("plantao not found")
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
 	return nil
@@ -491,6 +525,90 @@ func (t *plantaoTransaction) PayPagamento(ctx context.Context, pagamentoID strin
 	}
 	if tag.RowsAffected() != 1 {
 		return plantao.ErrorPlantaoJaPago
+	}
+	return nil
+}
+
+func (t *plantaoTransaction) LockPlantoesAgendadosAte(ctx context.Context, instante time.Time, limite int) ([]*plantao.Plantao, error) {
+	rows, err := t.tx.Query(ctx, `
+		SELECT id, id_colaborador, data_inicio, data_fim, status, valor_total, observacoes, created_at, updated_at
+		FROM plantoes
+		WHERE status = $1 AND data_inicio <= $2
+		ORDER BY data_inicio, id
+		LIMIT $3
+		FOR UPDATE SKIP LOCKED
+	`, strconv.Itoa(int(plantao.StatusPlantaoAgendado)), instante, limite)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	plantoes := make([]*plantao.Plantao, 0)
+	for rows.Next() {
+		var p plantao.Plantao
+		var status string
+		p.Periodo = &shared.Periodo{}
+		if err := rows.Scan(
+			&p.Id,
+			&p.ColaboradorId,
+			&p.Periodo.Inicio,
+			&p.Periodo.Fim,
+			&status,
+			&p.ValorTotal,
+			&p.Observacoes,
+			&p.CreatedAt,
+			&p.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		statusInt, err := strconv.Atoi(status)
+		if err != nil {
+			return nil, plantao.ErrorInvalidStatusPlantao
+		}
+		p.Status = plantao.StatusPlantao(statusInt)
+		plantoes = append(plantoes, &p)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return plantoes, nil
+}
+
+func (t *plantaoTransaction) StartPlantao(ctx context.Context, plantaoID string) error {
+	tag, err := t.tx.Exec(ctx, `
+		UPDATE plantoes
+		SET status = $2, updated_at = NOW()
+		WHERE id = $1 AND status = $3
+	`,
+		plantaoID,
+		strconv.Itoa(int(plantao.StatusPlantaoEmAndamento)),
+		strconv.Itoa(int(plantao.StatusPlantaoAgendado)),
+	)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() != 1 {
+		return plantao.ErrorConflitoConcorrencia
+	}
+	return nil
+}
+
+func (t *plantaoTransaction) InsertHistoricoAutomatico(ctx context.Context, plantaoID string, statusAntigo, statusNovo plantao.StatusPlantao, observacoes string) error {
+	tag, err := t.tx.Exec(ctx, `
+		INSERT INTO status_plantao (id, id_plantao, status_antigo, status_novo, id_usuario, observacoes)
+		VALUES ($1, $2, $3, $4, NULL, $5)
+	`,
+		uuid.NewString(),
+		plantaoID,
+		strconv.Itoa(int(statusAntigo)),
+		strconv.Itoa(int(statusNovo)),
+		observacoes,
+	)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() != 1 {
+		return plantao.ErrorConflitoConcorrencia
 	}
 	return nil
 }
