@@ -19,6 +19,20 @@
 > transação. O status `4` não pode ser informado diretamente: ele é aplicado
 > somente pelo endpoint de pagamento.
 
+## Início automático
+
+Ao iniciar a API, um worker interno procura imediatamente plantões `agendados`
+cujo instante de início já foi alcançado e os move para `em andamento`. Depois
+disso, a verificação é repetida a cada 5 minutos; portanto, em operação normal,
+a transição pode ocorrer com atraso aproximado de até 5 minutos.
+
+Status e histórico são gravados na mesma transação. O histórico identifica a
+alteração como automática e não possui usuário (`id_usuario = NULL`). Os lotes
+são pequenos e usam bloqueio com `SKIP LOCKED`, permitindo múltiplas instâncias
+da API sem processar o mesmo plantão simultaneamente. Plantões ignorados por
+bloqueios concorrentes ou acumulados durante uma indisponibilidade são
+reconsiderados nos ciclos seguintes.
+
 ---
 
 ## `POST /plantoes`
