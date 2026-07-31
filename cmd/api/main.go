@@ -6,6 +6,7 @@ import (
 	"plantao/internal/api/middleware"
 	"plantao/internal/domain/log"
 	appfx "plantao/internal/fx"
+	"plantao/internal/worker"
 
 	"go.uber.org/fx"
 )
@@ -22,6 +23,8 @@ func main() {
 		appfx.RateLimitModule,
 
 		fx.Invoke(middleware.StartRateLimitCleanup),
+		fx.Provide(worker.NewPlantaoStatusWorker),
+		fx.Invoke(worker.RegisterPlantaoStatusWorker),
 
 		fx.Invoke(func(lc fx.Lifecycle, server *apihttp.Server, log log.Logger) {
 			lc.Append(fx.Hook{
