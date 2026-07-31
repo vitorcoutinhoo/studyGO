@@ -33,6 +33,9 @@ type PlantaoTransaction interface {
 	FindPagamento(ctx context.Context, plantaoID string) (*Pagamento, error)
 	SummarizeDetalhes(ctx context.Context, plantaoID string) (*DetalhesResumo, error)
 	PayPagamento(ctx context.Context, pagamentoID string, dataPagamento time.Time, observacoes *string) error
+	LockPlantoesAgendadosAte(ctx context.Context, instante time.Time, limite int) ([]*Plantao, error)
+	StartPlantao(ctx context.Context, plantaoID string) error
+	InsertHistoricoAutomatico(ctx context.Context, plantaoID string, statusAntigo, statusNovo StatusPlantao, observacoes string) error
 }
 
 type Actor struct {
