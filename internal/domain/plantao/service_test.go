@@ -3,6 +3,7 @@ package plantao
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -44,20 +45,26 @@ func (r *repositoryFake) WithTransaction(_ context.Context, fn func(PlantaoTrans
 }
 
 type transactionFake struct {
-	plantao              *Plantao
-	actor                *Actor
-	colaboradoresExistem bool
-	detalhesCount        int
-	pagamentosCount      int
-	feriados             map[string]bool
-	valores              map[financeiro.TipoDia]int64
-	pagamento            *Pagamento
-	resumo               *DetalhesResumo
-	detalhesInseridos    []PlantaoDetalhe
-	statusAtualizado     *StatusPlantao
-	historicos           int
-	pagamentoCriado      bool
-	pagamentoPago        bool
+	plantao                *Plantao
+	actor                  *Actor
+	colaboradoresExistem   bool
+	detalhesCount          int
+	pagamentosCount        int
+	feriados               map[string]bool
+	valores                map[financeiro.TipoDia]int64
+	pagamento              *Pagamento
+	resumo                 *DetalhesResumo
+	detalhesInseridos      []PlantaoDetalhe
+	statusAtualizado       *StatusPlantao
+	historicos             int
+	pagamentoCriado        bool
+	pagamentoPago          bool
+	plantoesAgendados      []*Plantao
+	instanteRecebido       time.Time
+	consultasAgendados     int
+	plantaoIniciado        []string
+	historicosAutomaticos  int
+	historicoAutomaticoErr error
 }
 
 func (t *transactionFake) LockPlantao(context.Context, string) (*Plantao, error) {
@@ -117,6 +124,28 @@ func (t *transactionFake) SummarizeDetalhes(context.Context, string) (*DetalhesR
 }
 func (t *transactionFake) PayPagamento(context.Context, string, time.Time, *string) error {
 	t.pagamentoPago = true
+	return nil
+}
+func (t *transactionFake) LockPlantoesAgendadosAte(_ context.Context, instante time.Time, limite int) ([]*Plantao, error) {
+	t.instanteRecebido = instante
+	t.consultasAgendados++
+	quantidade := len(t.plantoesAgendados)
+	if quantidade > limite {
+		quantidade = limite
+	}
+	resultado := t.plantoesAgendados[:quantidade]
+	t.plantoesAgendados = t.plantoesAgendados[quantidade:]
+	return resultado, nil
+}
+func (t *transactionFake) StartPlantao(_ context.Context, plantaoID string) error {
+	t.plantaoIniciado = append(t.plantaoIniciado, plantaoID)
+	return nil
+}
+func (t *transactionFake) InsertHistoricoAutomatico(context.Context, string, StatusPlantao, StatusPlantao, string) error {
+	if t.historicoAutomaticoErr != nil {
+		return t.historicoAutomaticoErr
+	}
+	t.historicosAutomaticos++
 	return nil
 }
 
@@ -233,5 +262,76 @@ func TestPagarPlantaoRejeitaColaboradorEInconsistencia(t *testing.T) {
 	}
 	if repo.committed || repo.tx.pagamentoPago {
 		t.Fatal("pagamento inconsistente deixou efeitos persistentes")
+	}
+}
+
+func TestIniciarPlantoesAgendadosAtualizaStatusEHistorico(t *testing.T) {
+	service, repo := novoServicoFake(StatusPlantaoAgendado, roleAdmin, "colaborador-1")
+	instante := time.Date(2026, 7, 31, 12, 0, 0, 0, time.UTC)
+	service.now = func() time.Time { return instante }
+	primeiro := plantaoDeTeste(StatusPlantaoAgendado)
+	primeiro.Id = "plantao-automatico-1"
+	segundo := plantaoDeTeste(StatusPlantaoAgendado)
+	segundo.Id = "plantao-automatico-2"
+	repo.tx.plantoesAgendados = []*Plantao{primeiro, segundo}
+
+	quantidade, err := service.IniciarPlantoesAgendados(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if quantidade != 2 || !repo.committed || repo.tx.historicosAutomaticos != 2 {
+		t.Fatalf("quantidade/commit/históricos = %d/%v/%d", quantidade, repo.committed, repo.tx.historicosAutomaticos)
+	}
+	if len(repo.tx.plantaoIniciado) != 2 || primeiro.Status != StatusPlantaoEmAndamento || segundo.Status != StatusPlantaoEmAndamento {
+		t.Fatalf("plantões não foram iniciados: %+v", repo.tx.plantaoIniciado)
+	}
+	if !repo.tx.instanteRecebido.Equal(instante) {
+		t.Fatalf("instante recebido = %s, esperado %s", repo.tx.instanteRecebido, instante)
+	}
+}
+
+func TestIniciarPlantoesAgendadosProcessaLotesSucessivos(t *testing.T) {
+	service, repo := novoServicoFake(StatusPlantaoAgendado, roleAdmin, "colaborador-1")
+	repo.tx.plantoesAgendados = make([]*Plantao, loteInicioAutomatico+1)
+	for i := range repo.tx.plantoesAgendados {
+		p := plantaoDeTeste(StatusPlantaoAgendado)
+		p.Id = fmt.Sprintf("plantao-automatico-%d", i)
+		repo.tx.plantoesAgendados[i] = p
+	}
+
+	quantidade, err := service.IniciarPlantoesAgendados(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if quantidade != loteInicioAutomatico+1 || repo.tx.consultasAgendados != 2 {
+		t.Fatalf("quantidade/consultas = %d/%d", quantidade, repo.tx.consultasAgendados)
+	}
+}
+
+func TestIniciarPlantoesAgendadosRejeitaStatusInesperado(t *testing.T) {
+	service, repo := novoServicoFake(StatusPlantaoAgendado, roleAdmin, "colaborador-1")
+	repo.tx.plantoesAgendados = []*Plantao{plantaoDeTeste(StatusPlantaoCancelado)}
+
+	_, err := service.IniciarPlantoesAgendados(context.Background())
+	if !errors.Is(err, ErrorInvalidTransitionStatus) {
+		t.Fatalf("erro = %v, esperado transição inválida", err)
+	}
+	if repo.committed || len(repo.tx.plantaoIniciado) != 0 || repo.tx.historicosAutomaticos != 0 {
+		t.Fatal("status inesperado deixou alterações")
+	}
+}
+
+func TestIniciarPlantoesAgendadosFazRollbackSeHistoricoFalhar(t *testing.T) {
+	service, repo := novoServicoFake(StatusPlantaoAgendado, roleAdmin, "colaborador-1")
+	sentinel := errors.New("falha no histórico")
+	repo.tx.plantoesAgendados = []*Plantao{plantaoDeTeste(StatusPlantaoAgendado)}
+	repo.tx.historicoAutomaticoErr = sentinel
+
+	quantidade, err := service.IniciarPlantoesAgendados(context.Background())
+	if !errors.Is(err, sentinel) || quantidade != 0 {
+		t.Fatalf("quantidade/erro = %d/%v", quantidade, err)
+	}
+	if repo.committed {
+		t.Fatal("transação com falha foi confirmada")
 	}
 }
