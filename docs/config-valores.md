@@ -14,7 +14,8 @@
 > por tipo. O fluxo existente de criação de uma nova vigência tenta encerrar a
 > linha anterior e inserir outra do mesmo tipo, o que não permite histórico real
 > enquanto essa restrição existir. O endpoint de atualização abaixo modifica a
-> linha vigente sem alterar o schema.
+> única linha existente do tipo, esteja ela vigente, futura ou encerrada, sem
+> alterar o schema.
 
 ---
 
@@ -59,8 +60,9 @@
 
 ## `PATCH /admin/config-valores/:tipo_dia`
 
-Atualiza parcialmente a configuração que está vigente na data civil atual de
-`America/Sao_Paulo`. A rota aceita exclusivamente a role `admin`.
+Atualiza parcialmente a configuração existente do tipo de dia, mesmo quando sua
+vigência ainda não começou ou já terminou. A rota aceita exclusivamente a role
+`admin`.
 
 O `tipo_dia` deve ser informado na URL usando um dos valores `UTIL`, `SABADO`,
 `DOMINGO` ou `FERIADO`. Campos omitidos são preservados. Em campos anuláveis,
@@ -93,7 +95,8 @@ O `tipo_dia` deve ser informado na URL usando um dos valores `UTIL`, `SABADO`,
 
 Regras:
 
-- a configuração precisa estar vigente antes e depois da alteração;
+- todos os campos atualizáveis podem ser modificados em configurações vigentes,
+  futuras ou encerradas;
 - `vigencia_fim` não pode ser anterior a `vigencia_inicio`;
 - o valor deve ser positivo e possuir no máximo duas casas decimais;
 - requisições concorrentes para o mesmo tipo retornam `409 Conflict`;
