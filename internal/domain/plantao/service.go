@@ -14,8 +14,10 @@ const (
 	roleGerente     = "gerente"
 	roleColaborador = "colaborador"
 
-	statusPagamentoPendente = "pendente"
-	maxPagamentoCentavos    = int64(9_999_999_999)
+	statusPagamentoPendente    = "pendente"
+	maxPagamentoCentavos       = int64(9_999_999_999)
+	loteInicioAutomatico       = 100
+	observacaoInicioAutomatico = "Status alterado automaticamente pelo sistema"
 )
 
 type PlantaoService struct {
@@ -24,6 +26,54 @@ type PlantaoService struct {
 	log            log.Logger
 	location       *time.Location
 	now            func() time.Time
+}
+
+func (s *PlantaoService) IniciarPlantoesAgendados(ctx context.Context) (int, error) {
+	instante := s.now()
+	totalAtualizado := 0
+
+	for {
+		atualizadosNoLote := 0
+		err := s.repository.WithTransaction(ctx, func(tx PlantaoTransaction) error {
+			plantoes, err := tx.LockPlantoesAgendadosAte(ctx, instante, loteInicioAutomatico)
+			if err != nil {
+				return err
+			}
+
+			for _, p := range plantoes {
+				statusAnterior := p.Status
+				if err := p.UpdateStatus(StatusPlantaoEmAndamento); err != nil {
+					return err
+				}
+				if err := tx.StartPlantao(ctx, p.Id); err != nil {
+					return err
+				}
+				if err := tx.InsertHistoricoAutomatico(
+					ctx,
+					p.Id,
+					statusAnterior,
+					StatusPlantaoEmAndamento,
+					observacaoInicioAutomatico,
+				); err != nil {
+					return err
+				}
+				atualizadosNoLote++
+			}
+			return nil
+		})
+		if err != nil {
+			s.log.Error("erro ao iniciar plantões automaticamente", "quantidade_processada", totalAtualizado, "error", err)
+			return totalAtualizado, err
+		}
+
+		totalAtualizado += atualizadosNoLote
+		if atualizadosNoLote < loteInicioAutomatico {
+			if totalAtualizado > 0 {
+				s.log.Info("plantões iniciados automaticamente", "quantidade", totalAtualizado, "instante_limite", instante)
+			}
+			return totalAtualizado, nil
+		}
+	}
 }
 
 func NewPlantaoService(repository PlantaoRepository, calculoService *financeiro.CalculoService, log log.Logger) *PlantaoService {
