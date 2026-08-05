@@ -252,6 +252,125 @@ func (r *PlantaoRepository) Find(
 	return plantoes, nil
 }
 
+func (r *PlantaoRepository) FindRelatorio(ctx context.Context, filtro *plantao.RelatorioFiltro) ([]plantao.RelatorioItem, error) {
+	query := `
+		WITH plantoes_filtrados AS (
+			SELECT c.id AS colaborador_id, p.id AS plantao_id, p.status,
+			       p.data_inicio, p.data_fim, c.nome AS nome_colaborador,
+			       p.valor_total AS valor_total_persistido, p.observacoes
+		FROM plantoes p
+		JOIN colaboradores c ON p.id_colaborador = c.id
+		WHERE (p.data_inicio AT TIME ZONE 'America/Sao_Paulo')::date <= $2::date
+		  AND (p.data_fim AT TIME ZONE 'America/Sao_Paulo')::date >= $1::date
+	`
+	args := []any{filtro.DataInicio, filtro.DataFim}
+	arg := 3
+
+	if filtro.ColaboradorID != "" {
+		query += fmt.Sprintf(" AND p.id_colaborador = $%d", arg)
+		args = append(args, filtro.ColaboradorID)
+		arg++
+	}
+	if filtro.Status != nil {
+		query += fmt.Sprintf(" AND p.status = $%d", arg)
+		args = append(args, strconv.Itoa(int(*filtro.Status)))
+	}
+
+	query += `
+		),
+		dias_plantao AS (
+			SELECT pf.*, dia.data::date AS data
+			FROM plantoes_filtrados pf
+		CROSS JOIN LATERAL generate_series(
+			(pf.data_inicio AT TIME ZONE 'America/Sao_Paulo')::date::timestamp,
+			(pf.data_fim AT TIME ZONE 'America/Sao_Paulo')::date::timestamp,
+			INTERVAL '1 day'
+		) AS dia(data)
+		),
+		valores_dia AS (
+			SELECT d.*, pd.id AS detalhe_id, COALESCE(pd.valor, cv.valor) AS valor_dia
+			FROM dias_plantao d
+		LEFT JOIN plantoes_detalhes pd
+			ON pd.id_plantao = d.plantao_id AND pd.data = d.data
+		LEFT JOIN feriados f ON f.data = d.data
+		CROSS JOIN LATERAL (
+			SELECT CASE
+				WHEN f.id IS NOT NULL THEN 'FERIADO'
+				WHEN EXTRACT(DOW FROM d.data) = 6 THEN 'SABADO'
+				WHEN EXTRACT(DOW FROM d.data) = 0 THEN 'DOMINGO'
+				ELSE 'UTIL'
+			END AS tipo_dia
+		) tipo
+		LEFT JOIN config_valores_dia cv
+			ON cv.tipo_dia = tipo.tipo_dia
+		),
+		relatorio AS (
+			SELECT v.*,
+			       CASE
+				   WHEN COALESCE(v.valor_total_persistido, 0) = 0 THEN
+				       CASE
+					   WHEN COUNT(v.valor_dia) OVER (PARTITION BY v.plantao_id) =
+					        COUNT(*) OVER (PARTITION BY v.plantao_id)
+					   THEN SUM(v.valor_dia) OVER (PARTITION BY v.plantao_id)
+					   ELSE NULL
+				       END
+				   ELSE v.valor_total_persistido
+			       END AS valor_total_relatorio
+			FROM valores_dia v
+		)
+		SELECT colaborador_id, plantao_id, status, data_inicio, data_fim, data,
+		       nome_colaborador, valor_total_relatorio, valor_dia, observacoes
+		FROM relatorio
+		WHERE data BETWEEN $1::date AND $2::date
+		ORDER BY data, nome_colaborador, plantao_id, detalhe_id
+	`
+
+	rows, err := r.pool.Query(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query plantao report: %w", err)
+	}
+	defer rows.Close()
+
+	items := make([]plantao.RelatorioItem, 0)
+	for rows.Next() {
+		var item plantao.RelatorioItem
+		var status string
+		var valorTotal *float64
+		var valor *float64
+		if err := rows.Scan(
+			&item.ColaboradorID,
+			&item.PlantaoID,
+			&status,
+			&item.DataInicio,
+			&item.DataFim,
+			&item.Data,
+			&item.NomeColaborador,
+			&valorTotal,
+			&valor,
+			&item.Observacoes,
+		); err != nil {
+			return nil, fmt.Errorf("failed to scan plantao report: %w", err)
+		}
+		if valorTotal == nil || valor == nil {
+			return nil, financeiro.ErrorValorDiaNotFound
+		}
+		item.ValorTotal = *valorTotal
+		item.Valor = *valor
+
+		statusInt, err := strconv.Atoi(status)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse plantao report status: %w", err)
+		}
+		item.Status = plantao.StatusPlantao(statusInt)
+		items = append(items, item)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("failed to read plantao report: %w", err)
+	}
+
+	return items, nil
+}
+
 func (r *PlantaoRepository) WithTransaction(ctx context.Context, fn func(plantao.PlantaoTransaction) error) error {
 	tx, err := r.pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.Serializable})
 	if err != nil {
@@ -365,23 +484,19 @@ func (t *plantaoTransaction) FindFeriados(ctx context.Context, inicio, fim time.
 	return result, rows.Err()
 }
 
-func (t *plantaoTransaction) FindValorDiaCentavos(ctx context.Context, tipoDia financeiro.TipoDia, data time.Time) (int64, error) {
+func (t *plantaoTransaction) FindValorDiaCentavos(ctx context.Context, tipoDia financeiro.TipoDia) (int64, error) {
 	const query = `
 		SELECT
 			CASE
 				WHEN valor > 0 AND valor = ROUND(valor, 2) THEN (valor * 100)::bigint
 				ELSE NULL
-			END,
-			vigencia_inicio,
-			vigencia_fim
+			END
 		FROM config_valores_dia
 		WHERE tipo_dia = $1
 		FOR SHARE
 	`
 	var centavos *int64
-	var inicio time.Time
-	var fim *time.Time
-	err := t.tx.QueryRow(ctx, query, tipoDia).Scan(&centavos, &inicio, &fim)
+	err := t.tx.QueryRow(ctx, query, tipoDia).Scan(&centavos)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return 0, financeiro.ErrorValorDiaNotFound
 	}
@@ -389,10 +504,6 @@ func (t *plantaoTransaction) FindValorDiaCentavos(ctx context.Context, tipoDia f
 		return 0, err
 	}
 
-	dataCivil := data.Format("2006-01-02")
-	if dataCivil < inicio.Format("2006-01-02") || (fim != nil && dataCivil > fim.Format("2006-01-02")) {
-		return 0, financeiro.ErrorValorDiaForaVigencia
-	}
 	if centavos == nil || *centavos <= 0 {
 		return 0, financeiro.ErrorValorDiaInvalido
 	}
