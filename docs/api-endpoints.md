@@ -490,7 +490,7 @@ Atualiza a data de um feriado.
 Configuração dos valores pagos por tipo de dia de plantão.
 
 ### GET `/api/v1/admin/config-valores`
-Lista as configurações de valor vigentes.
+Lista todas as configurações globais de valor.
 
 **Auth:** `ADMIN`
 
@@ -500,9 +500,7 @@ Lista as configurações de valor vigentes.
   {
     "id": "uuid",
     "tipo_dia": "UTIL",
-    "valor": 250.00,
-    "vigencia_inicio": "2025-01-01T00:00:00Z",
-    "vigencia_fim": null
+    "valor": 250.00
   }
 ]
 ```
@@ -519,7 +517,7 @@ Define um novo valor para um tipo de dia.
 {
   "tipo_dia": "FERIADO",
   "valor": 500.00,
-  "vigencia_inicio": "2025-06-01"
+  "descricao": "Valor global para feriados"
 }
 ```
 
@@ -531,8 +529,26 @@ Define um novo valor para um tipo de dia.
   "id": "uuid",
   "tipo_dia": "FERIADO",
   "valor": 500.00,
-  "vigencia_inicio": "2025-06-01T00:00:00Z",
-  "vigencia_fim": null
+  "descricao": "Valor global para feriados"
+}
+```
+
+`descricao` é opcional. Se o tipo já existir, retorna `409 Conflict`. Os campos `vigencia_inicio` e
+`vigencia_fim` não são aceitos.
+
+---
+
+### PATCH `/api/v1/admin/config-valores/:tipo_dia`
+
+Atualiza `valor` e/ou `descricao` da configuração global. Campos de vigência
+retornam `400 Bad Request`.
+
+**Auth:** `ADMIN`
+
+```json
+{
+  "valor": 550.00,
+  "descricao": "Valor global de feriado"
 }
 ```
 
