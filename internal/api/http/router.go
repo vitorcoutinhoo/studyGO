@@ -78,6 +78,7 @@ func setupPlantaoRoutes(
 		{
 			plantaoRoutes.POST("", plantaoController.CreatePlantao)
 			plantaoRoutes.GET("", plantaoController.GetPlantoes)
+			plantaoRoutes.GET("/relatorio", midware.RoleMidware(ADMIN_ROLE, GERENTE_ROLE), plantaoController.GetRelatorio)
 			plantaoRoutes.GET("/:id", plantaoController.GetPlantaoById)
 			plantaoRoutes.DELETE("/:id", plantaoController.DeletePlantao)
 
@@ -138,10 +139,10 @@ func setupValorDiaRoutes(
 		valorDiaRoutes := v1.Group("/admin/config-valores")
 		valorDiaRoutes.Use(authMidware.AuthenticationMiddleware(), midware.RoleMidware(ADMIN_ROLE))
 		{
-			valorDiaRoutes.GET("", valorDiaController.GetVigentes)
+			valorDiaRoutes.GET("", valorDiaController.GetAll)
 			valorDiaRoutes.POST("", valorDiaController.SetValor)
-			valorDiaRoutes.PATCH("", valorDiaController.UpdateValorVigente)
-			valorDiaRoutes.PATCH("/:tipo_dia", valorDiaController.UpdateValorVigente)
+			valorDiaRoutes.PATCH("", valorDiaController.UpdateValor)
+			valorDiaRoutes.PATCH("/:tipo_dia", valorDiaController.UpdateValor)
 		}
 	}
 }
