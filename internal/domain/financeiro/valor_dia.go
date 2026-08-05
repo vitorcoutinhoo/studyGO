@@ -13,15 +13,14 @@ import (
 )
 
 var (
-	ErrorTipoDiaInvalido      = errors.New("Tipo de dia inválido!")
-	ErrorValorDiaInvalido     = errors.New("Valor deve ser maior que zero!")
-	ErrorValorDiaNotFound     = errors.New("Configuração de valor não encontrada!")
-	ErrorValorDiaForaVigencia = errors.New("Configuração de valor fora da vigência!")
-	ErrorVigenciaInvalida     = errors.New("Período de vigência inválido!")
-	ErrorPrecisaoValorDia     = errors.New("Valor deve possuir no máximo duas casas decimais!")
-	ErrorLimiteValorDia       = errors.New("Valor excede o limite monetário suportado!")
-	ErrorAtualizacaoVazia     = errors.New("Informe ao menos um campo para atualização!")
-	ErrorConflitoValorDia     = errors.New("Conflito de concorrência ao atualizar configuração de valor!")
+	ErrorTipoDiaInvalido       = errors.New("Tipo de dia inválido!")
+	ErrorValorDiaInvalido      = errors.New("Valor deve ser maior que zero!")
+	ErrorValorDiaNotFound      = errors.New("Configuração de valor não encontrada!")
+	ErrorValorDiaAlreadyExists = errors.New("Configuração de valor já existe!")
+	ErrorPrecisaoValorDia      = errors.New("Valor deve possuir no máximo duas casas decimais!")
+	ErrorLimiteValorDia        = errors.New("Valor excede o limite monetário suportado!")
+	ErrorAtualizacaoVazia      = errors.New("Informe ao menos um campo para atualização!")
+	ErrorConflitoValorDia      = errors.New("Conflito de concorrência ao atualizar configuração de valor!")
 )
 
 type TipoDia string
@@ -50,12 +49,9 @@ type ValorDia struct {
 }
 
 type AtualizacaoValorDia struct {
-	Valor                *float64
-	DescricaoInformada   bool
-	Descricao            *string
-	VigenciaInicio       *time.Time
-	VigenciaFimInformada bool
-	VigenciaFim          *time.Time
+	Valor              *float64
+	DescricaoInformada bool
+	Descricao          *string
 }
 
 type DiaCalculado struct {
@@ -71,15 +67,12 @@ type ResultadoCalculo struct {
 
 type CalculoFonte interface {
 	FindFeriados(ctx context.Context, inicio, fim time.Time) (map[string]bool, error)
-	FindValorDiaCentavos(ctx context.Context, tipoDia TipoDia, data time.Time) (int64, error)
+	FindValorDiaCentavos(ctx context.Context, tipoDia TipoDia) (int64, error)
 }
 
 type ValorDiaRepository interface {
-	FindVigentes(ctx context.Context) ([]ValorDia, error)
-	FindVigenteByTipoDia(ctx context.Context, tipoDia TipoDia) (*ValorDia, error)
-	FindVigenteByData(ctx context.Context, data time.Time) (map[TipoDia]float64, error)
+	FindAll(ctx context.Context) ([]ValorDia, error)
 	Store(ctx context.Context, valorDia *ValorDia) error
-	CloseVigencia(ctx context.Context, id uuid.UUID, vigenciaFim time.Time) error
 	WithTransaction(ctx context.Context, fn func(ValorDiaTransaction) error) error
 }
 
@@ -100,54 +93,39 @@ func NewConfigValorDiaService(repository ValorDiaRepository, log log.Logger) *Co
 	}
 }
 
-func (s *ConfigValorDiaService) GetVigentes(ctx context.Context) ([]ValorDia, error) {
-	s.log.Info("buscando configurações de valor vigentes")
+var configValorDiaInicioGlobal = time.Date(1900, 1, 1, 0, 0, 0, 0, time.UTC)
 
-	valores, err := s.repository.FindVigentes(ctx)
+func (s *ConfigValorDiaService) GetAll(ctx context.Context) ([]ValorDia, error) {
+	s.log.Info("buscando configurações globais de valor")
+
+	valores, err := s.repository.FindAll(ctx)
 	if err != nil {
-		s.log.Error("erro ao buscar configurações de valor vigentes", "error", err)
+		s.log.Error("erro ao buscar configurações globais de valor", "error", err)
 		return nil, err
 	}
 
-	s.log.Info("configurações de valor vigentes encontradas com sucesso", "quantidade", len(valores))
+	s.log.Info("configurações globais de valor encontradas com sucesso", "quantidade", len(valores))
 	return valores, nil
 }
 
-func (s *ConfigValorDiaService) SetValor(ctx context.Context, tipoDia TipoDia, valor float64, vigenciaInicio time.Time) (*ValorDia, error) {
-	s.log.Info("iniciando configuração de valor por tipo de dia", "tipo_dia", tipoDia, "valor", valor, "vigencia_inicio", vigenciaInicio)
+func (s *ConfigValorDiaService) SetValor(ctx context.Context, tipoDia TipoDia, valor float64, descricao *string) (*ValorDia, error) {
+	s.log.Info("iniciando configuração global de valor por tipo de dia", "tipo_dia", tipoDia, "valor", valor)
 
 	if !tiposDiaValidos[tipoDia] {
 		s.log.Warn("tipo de dia inválido para configuração de valor", "tipo_dia", tipoDia)
 		return nil, ErrorTipoDiaInvalido
 	}
-	if valor <= 0 {
-		s.log.Warn("valor inválido para configuração de tipo de dia", "tipo_dia", tipoDia, "valor", valor)
-		return nil, ErrorValorDiaInvalido
-	}
-
-	vigenciaInicio = normalizeDate(vigenciaInicio)
-
-	// fecha o vigente anterior, se existir
-	s.log.Info("buscando configuração vigente anterior", "tipo_dia", tipoDia)
-	vigente, err := s.repository.FindVigenteByTipoDia(ctx, tipoDia)
-	if err != nil {
-		s.log.Error("erro ao buscar configuração vigente anterior", "tipo_dia", tipoDia, "error", err)
+	if err := validarValorMonetario(valor); err != nil {
+		s.log.Warn("valor inválido para configuração de tipo de dia", "tipo_dia", tipoDia, "valor", valor, "error", err)
 		return nil, err
-	}
-	if vigente != nil {
-		ontem := vigenciaInicio.AddDate(0, 0, -1)
-		s.log.Info("fechando vigência anterior", "id_valor_dia", vigente.Id, "tipo_dia", tipoDia, "vigencia_fim", ontem)
-		if err := s.repository.CloseVigencia(ctx, vigente.Id, ontem); err != nil {
-			s.log.Error("erro ao fechar vigência anterior", "id_valor_dia", vigente.Id, "tipo_dia", tipoDia, "error", err)
-			return nil, err
-		}
 	}
 
 	novo := &ValorDia{
 		Id:             uuid.New(),
 		TipoDia:        tipoDia,
 		Valor:          valor,
-		VigenciaInicio: vigenciaInicio,
+		Descricao:      descricao,
+		VigenciaInicio: configValorDiaInicioGlobal,
 	}
 
 	if err := s.repository.Store(ctx, novo); err != nil {
@@ -159,7 +137,7 @@ func (s *ConfigValorDiaService) SetValor(ctx context.Context, tipoDia TipoDia, v
 	return novo, nil
 }
 
-func (s *ConfigValorDiaService) UpdateVigente(ctx context.Context, tipoDia TipoDia, atualizacao *AtualizacaoValorDia) (*ValorDia, error) {
+func (s *ConfigValorDiaService) Update(ctx context.Context, tipoDia TipoDia, atualizacao *AtualizacaoValorDia) (*ValorDia, error) {
 	s.log.Info("iniciando atualização de configuração de valor", "tipo_dia", tipoDia)
 
 	if !tiposDiaValidos[tipoDia] {
@@ -188,23 +166,6 @@ func (s *ConfigValorDiaService) UpdateVigente(ctx context.Context, tipoDia TipoD
 		if atualizacao.DescricaoInformada {
 			configuracao.Descricao = atualizacao.Descricao
 		}
-		if atualizacao.VigenciaInicio != nil {
-			data := normalizeDate(*atualizacao.VigenciaInicio)
-			configuracao.VigenciaInicio = data
-		}
-		if atualizacao.VigenciaFimInformada {
-			if atualizacao.VigenciaFim == nil {
-				configuracao.VigenciaFim = nil
-			} else {
-				data := normalizeDate(*atualizacao.VigenciaFim)
-				configuracao.VigenciaFim = &data
-			}
-		}
-
-		if configuracao.VigenciaFim != nil && configuracao.VigenciaFim.Before(configuracao.VigenciaInicio) {
-			return ErrorVigenciaInvalida
-		}
-
 		resultado, err = tx.Update(ctx, configuracao)
 		return err
 	})
@@ -219,9 +180,7 @@ func (s *ConfigValorDiaService) UpdateVigente(ctx context.Context, tipoDia TipoD
 
 func (a *AtualizacaoValorDia) temCampos() bool {
 	return a.Valor != nil ||
-		a.DescricaoInformada ||
-		a.VigenciaInicio != nil ||
-		a.VigenciaFimInformada
+		a.DescricaoInformada
 }
 
 func validarValorMonetario(valor float64) error {
@@ -277,7 +236,7 @@ func (s *CalculoService) Calcular(ctx context.Context, periodo *shared.Periodo, 
 			EhFeriado: feriados[data.Format("2006-01-02")],
 		}
 		tipoDia := determinaTipoDia(dia)
-		valorCentavos, err := fonte.FindValorDiaCentavos(ctx, tipoDia, data)
+		valorCentavos, err := fonte.FindValorDiaCentavos(ctx, tipoDia)
 		if err != nil {
 			s.log.Warn("valor não configurado para data do cálculo financeiro", "tipo_dia", tipoDia, "data", data, "error", err)
 			return nil, err
