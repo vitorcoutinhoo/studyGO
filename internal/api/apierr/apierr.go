@@ -66,6 +66,7 @@ func classify(err error) (int, ErrorResponse) {
 		plantao.ErrorPagamentoInconsistente,
 		plantao.ErrorDetalhesInconsistentes,
 		plantao.ErrorConflitoConcorrencia,
+		financeiro.ErrorValorDiaAlreadyExists,
 		financeiro.ErrorConflitoValorDia,
 	) {
 		return http.StatusConflict, ErrorResponse{Code: "CONFLICT", Message: err.Error()}
@@ -96,8 +97,6 @@ func classify(err error) (int, ErrorResponse) {
 		financeiro.ErrorFeriadoNotMunicipal,
 		financeiro.ErrorTipoDiaInvalido,
 		financeiro.ErrorValorDiaInvalido,
-		financeiro.ErrorValorDiaForaVigencia,
-		financeiro.ErrorVigenciaInvalida,
 		financeiro.ErrorPrecisaoValorDia,
 		financeiro.ErrorLimiteValorDia,
 		plantao.ErrorInvalidStatusPlantao,
