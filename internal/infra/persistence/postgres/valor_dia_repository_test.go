@@ -9,6 +9,7 @@ import (
 
 	"plantao/internal/domain/financeiro"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -19,6 +20,13 @@ func TestTranslateValorDiaTransactionErrorMapeiaConcorrencia(t *testing.T) {
 		if !errors.Is(err, financeiro.ErrorConflitoValorDia) {
 			t.Fatalf("SQLSTATE %s não foi mapeado: %v", code, err)
 		}
+	}
+}
+
+func TestTranslateValorDiaStoreErrorMapeiaDuplicidade(t *testing.T) {
+	err := translateValorDiaStoreError(&pgconn.PgError{Code: "23505"})
+	if !errors.Is(err, financeiro.ErrorValorDiaAlreadyExists) {
+		t.Fatalf("duplicidade não foi mapeada: %v", err)
 	}
 }
 
@@ -36,23 +44,70 @@ func TestValorDiaTransactionIntegracao(t *testing.T) {
 	}
 	defer pool.Close()
 
-	const tipoDia = financeiro.TipoDia("TESTE_PATCH_CODEX")
-	_, _ = pool.Exec(ctx, `DELETE FROM config_valores_dia WHERE tipo_dia = $1`, tipoDia)
+	const (
+		tipoDia  = financeiro.TipoDia("TESTE_PATCH_CODEX")
+		tipoNovo = financeiro.TipoDia("TESTE_GLOBAL_CODEX")
+	)
+	_, _ = pool.Exec(ctx, `DELETE FROM config_valores_dia WHERE tipo_dia IN ($1, $2)`, tipoDia, tipoNovo)
 	t.Cleanup(func() {
 		cleanupCtx, cleanupCancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cleanupCancel()
-		_, _ = pool.Exec(cleanupCtx, `DELETE FROM config_valores_dia WHERE tipo_dia = $1`, tipoDia)
+		_, _ = pool.Exec(cleanupCtx, `DELETE FROM config_valores_dia WHERE tipo_dia IN ($1, $2)`, tipoDia, tipoNovo)
 	})
+
+	repository := NewValorDiaRepository(pool)
+	descricaoGlobal := "configuração criada com descrição"
+	if err := repository.Store(ctx, &financeiro.ValorDia{
+		Id:             uuid.New(),
+		TipoDia:        tipoNovo,
+		Valor:          125.50,
+		Descricao:      &descricaoGlobal,
+		VigenciaInicio: time.Date(1900, 1, 1, 0, 0, 0, 0, time.UTC),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	var inicioGlobal time.Time
+	var fimGlobal *time.Time
+	var descricaoPersistida *string
+	if err := pool.QueryRow(ctx, `SELECT descricao, vigencia_inicio, vigencia_fim FROM config_valores_dia WHERE tipo_dia = $1`, tipoNovo).Scan(&descricaoPersistida, &inicioGlobal, &fimGlobal); err != nil {
+		t.Fatal(err)
+	}
+	if descricaoPersistida == nil || *descricaoPersistida != descricaoGlobal || inicioGlobal.Format("2006-01-02") != "1900-01-01" || fimGlobal != nil {
+		t.Fatalf("inserção global = descrição %v, datas %s/%v", descricaoPersistida, inicioGlobal, fimGlobal)
+	}
 
 	if _, err := pool.Exec(ctx, `
 		INSERT INTO config_valores_dia
 			(tipo_dia, valor, descricao, vigencia_inicio, vigencia_fim, updated_at)
-		VALUES ($1, 100.00, 'original', '2026-01-01', NULL, '2000-01-01T00:00:00Z')
+		VALUES ($1, 100.00, 'original', '2026-01-01', '2026-06-30', '2000-01-01T00:00:00Z')
 	`, tipoDia); err != nil {
 		t.Fatal(err)
 	}
 
-	repository := NewValorDiaRepository(pool)
+	valores, err := repository.FindAll(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	encontrouEncerrada := false
+	for _, valor := range valores {
+		if valor.TipoDia == tipoDia {
+			encontrouEncerrada = valor.VigenciaFim != nil
+		}
+	}
+	if !encontrouEncerrada {
+		t.Fatal("listagem global omitiu configuração com vigencia_fim preenchida")
+	}
+
+	err = repository.Store(ctx, &financeiro.ValorDia{
+		Id:             uuid.New(),
+		TipoDia:        tipoDia,
+		Valor:          200,
+		VigenciaInicio: time.Date(1900, 1, 1, 0, 0, 0, 0, time.UTC),
+	})
+	if !errors.Is(err, financeiro.ErrorValorDiaAlreadyExists) {
+		t.Fatalf("store duplicado = %v, esperado conflito", err)
+	}
+
 	var atualizado *financeiro.ValorDia
 	err = repository.WithTransaction(ctx, func(tx financeiro.ValorDiaTransaction) error {
 		valor, err := tx.LockByTipoDia(ctx, tipoDia)
@@ -86,11 +141,13 @@ func TestValorDiaTransactionIntegracao(t *testing.T) {
 		t.Fatalf("erro = %v, esperado sentinel", err)
 	}
 	var valorPersistido float64
-	if err := pool.QueryRow(ctx, `SELECT valor FROM config_valores_dia WHERE tipo_dia = $1`, tipoDia).Scan(&valorPersistido); err != nil {
+	var inicioPersistido time.Time
+	var fimPersistido *time.Time
+	if err := pool.QueryRow(ctx, `SELECT valor, vigencia_inicio, vigencia_fim FROM config_valores_dia WHERE tipo_dia = $1`, tipoDia).Scan(&valorPersistido, &inicioPersistido, &fimPersistido); err != nil {
 		t.Fatal(err)
 	}
-	if valorPersistido != 175.50 {
-		t.Fatalf("rollback falhou: valor persistido = %.2f", valorPersistido)
+	if valorPersistido != 175.50 || inicioPersistido.Format("2006-01-02") != "2026-01-01" || fimPersistido == nil || fimPersistido.Format("2006-01-02") != "2026-06-30" {
+		t.Fatalf("rollback/datas internas incorretos: %.2f/%s/%v", valorPersistido, inicioPersistido, fimPersistido)
 	}
 
 	lockObtido := make(chan struct{})

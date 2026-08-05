@@ -25,8 +25,11 @@ func (l testLogger) With(...any) log.Logger {
 func (testLogger) Sync() error { return nil }
 
 type repositoryFake struct {
-	tx        *transactionFake
-	committed bool
+	tx              *transactionFake
+	committed       bool
+	relatorio       []RelatorioItem
+	relatorioFiltro *RelatorioFiltro
+	relatorioErr    error
 }
 
 func (r *repositoryFake) Store(context.Context, *Plantao) error  { return nil }
@@ -36,6 +39,10 @@ func (r *repositoryFake) FindById(context.Context, string) (*Plantao, error) {
 	return r.tx.plantao, nil
 }
 func (r *repositoryFake) Find(context.Context, *Filtro) ([]Plantao, error) { return nil, nil }
+func (r *repositoryFake) FindRelatorio(_ context.Context, filtro *RelatorioFiltro) ([]RelatorioItem, error) {
+	r.relatorioFiltro = filtro
+	return r.relatorio, r.relatorioErr
+}
 func (r *repositoryFake) WithTransaction(_ context.Context, fn func(PlantaoTransaction) error) error {
 	if err := fn(r.tx); err != nil {
 		return err
@@ -85,7 +92,7 @@ func (t *transactionFake) CountPagamentos(context.Context, string) (int, error) 
 func (t *transactionFake) FindFeriados(context.Context, time.Time, time.Time) (map[string]bool, error) {
 	return t.feriados, nil
 }
-func (t *transactionFake) FindValorDiaCentavos(_ context.Context, tipo financeiro.TipoDia, _ time.Time) (int64, error) {
+func (t *transactionFake) FindValorDiaCentavos(_ context.Context, tipo financeiro.TipoDia) (int64, error) {
 	valor, ok := t.valores[tipo]
 	if !ok {
 		return 0, financeiro.ErrorValorDiaNotFound
@@ -333,5 +340,80 @@ func TestIniciarPlantoesAgendadosFazRollbackSeHistoricoFalhar(t *testing.T) {
 	}
 	if repo.committed {
 		t.Fatal("transação com falha foi confirmada")
+	}
+}
+
+func TestGetRelatorioValidaEPropagaFiltros(t *testing.T) {
+	service, repo := novoServicoFake(StatusPlantaoAgendado, roleAdmin, "colaborador-1")
+	inicio := time.Date(2026, 8, 1, 0, 0, 0, 0, time.UTC)
+	fim := time.Date(2026, 8, 31, 0, 0, 0, 0, time.UTC)
+	status := StatusPlantaoConcluido
+	repo.relatorio = []RelatorioItem{{PlantaoID: "plantao-relatorio"}}
+
+	resultado, err := service.GetRelatorio(context.Background(), &RelatorioFiltro{
+		DataInicio:    inicio,
+		DataFim:       fim,
+		ColaboradorID: "colaborador-1",
+		Status:        &status,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(resultado) != 1 || resultado[0].PlantaoID != "plantao-relatorio" {
+		t.Fatalf("resultado inesperado: %+v", resultado)
+	}
+	if repo.relatorioFiltro == nil ||
+		!repo.relatorioFiltro.DataInicio.Equal(inicio) ||
+		!repo.relatorioFiltro.DataFim.Equal(fim) ||
+		repo.relatorioFiltro.ColaboradorID != "colaborador-1" ||
+		repo.relatorioFiltro.Status == nil || *repo.relatorioFiltro.Status != status {
+		t.Fatalf("filtro não propagado: %+v", repo.relatorioFiltro)
+	}
+}
+
+func TestGetRelatorioValidaPeriodoEStatus(t *testing.T) {
+	inicio := time.Date(2026, 8, 1, 0, 0, 0, 0, time.UTC)
+	fim := time.Date(2026, 8, 31, 0, 0, 0, 0, time.UTC)
+	statusNegativo := StatusPlantao(-1)
+	statusAcimaDoLimite := StatusPlantaoPago + 1
+
+	tests := []struct {
+		nome     string
+		filtro   *RelatorioFiltro
+		esperado error
+	}{
+		{"filtro ausente", nil, shared.ErrorPeriodoInvalido},
+		{"início ausente", &RelatorioFiltro{DataFim: fim}, shared.ErrorPeriodoInvalido},
+		{"fim ausente", &RelatorioFiltro{DataInicio: inicio}, shared.ErrorPeriodoInvalido},
+		{"fim anterior", &RelatorioFiltro{DataInicio: fim, DataFim: inicio}, shared.ErrorEndBeforeStart},
+		{"status negativo", &RelatorioFiltro{DataInicio: inicio, DataFim: fim, Status: &statusNegativo}, ErrorInvalidStatusPlantao},
+		{"status acima do limite", &RelatorioFiltro{DataInicio: inicio, DataFim: fim, Status: &statusAcimaDoLimite}, ErrorInvalidStatusPlantao},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.nome, func(t *testing.T) {
+			service, repo := novoServicoFake(StatusPlantaoAgendado, roleAdmin, "colaborador-1")
+			_, err := service.GetRelatorio(context.Background(), tt.filtro)
+			if !errors.Is(err, tt.esperado) {
+				t.Fatalf("erro = %v, esperado %v", err, tt.esperado)
+			}
+			if repo.relatorioFiltro != nil {
+				t.Fatal("repositório foi consultado com filtro inválido")
+			}
+		})
+	}
+}
+
+func TestGetRelatorioPropagaErroDoRepositorio(t *testing.T) {
+	service, repo := novoServicoFake(StatusPlantaoAgendado, roleAdmin, "colaborador-1")
+	sentinel := errors.New("falha no relatório")
+	repo.relatorioErr = sentinel
+
+	_, err := service.GetRelatorio(context.Background(), &RelatorioFiltro{
+		DataInicio: time.Date(2026, 8, 1, 0, 0, 0, 0, time.UTC),
+		DataFim:    time.Date(2026, 8, 31, 0, 0, 0, 0, time.UTC),
+	})
+	if !errors.Is(err, sentinel) {
+		t.Fatalf("erro = %v, esperado sentinel", err)
 	}
 }
