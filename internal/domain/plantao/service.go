@@ -366,6 +366,20 @@ func (s *PlantaoService) GetPlantoes(ctx context.Context, filter *Filtro) ([]Pla
 	return s.repository.Find(ctx, filter)
 }
 
+func (s *PlantaoService) GetRelatorio(ctx context.Context, filter *RelatorioFiltro) ([]RelatorioItem, error) {
+	if filter == nil || filter.DataInicio.IsZero() || filter.DataFim.IsZero() {
+		return nil, shared.ErrorPeriodoInvalido
+	}
+	if filter.DataFim.Before(filter.DataInicio) {
+		return nil, shared.ErrorEndBeforeStart
+	}
+	if filter.Status != nil && (*filter.Status < StatusPlantaoAgendado || *filter.Status > StatusPlantaoPago) {
+		return nil, ErrorInvalidStatusPlantao
+	}
+
+	return s.repository.FindRelatorio(ctx, filter)
+}
+
 func (s *PlantaoService) GetPlantoesByColaboradorId(ctx context.Context, colaboradorID string) ([]Plantao, error) {
 	return s.repository.Find(ctx, &Filtro{ColaboradorID: colaboradorID})
 }
