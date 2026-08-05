@@ -1,6 +1,8 @@
 package dto
 
 import (
+	"time"
+
 	"plantao/internal/domain/plantao"
 	"plantao/internal/domain/shared"
 )
@@ -31,4 +33,17 @@ type CreatePlantaoResponse struct {
 	Status        plantao.StatusPlantao `json:"status"`
 	ValorTotal    float64               `json:"valor_total"`
 	Observacoes   *string               `json:"observacoes,omitempty"`
+}
+
+type RelatorioPlantaoResponse struct {
+	ColaboradorID   string                `json:"colaborador_id"`
+	PlantaoID       string                `json:"plantao_id"`
+	Status          plantao.StatusPlantao `json:"status"`
+	DataInicio      time.Time             `json:"data_inicio"`
+	DataFim         time.Time             `json:"data_fim"`
+	Data            string                `json:"data"`
+	NomeColaborador string                `json:"nome_colaborador"`
+	ValorTotal      float64               `json:"valor_total"`
+	Valor           float64               `json:"valor"`
+	Observacoes     *string               `json:"observacoes"`
 }
