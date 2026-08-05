@@ -18,6 +18,7 @@ import (
 	"plantao/internal/domain/setor"
 	"plantao/internal/domain/usuario"
 	"plantao/internal/infra/config"
+	"plantao/internal/infra/feriadoapi"
 	"plantao/internal/infra/logger"
 	"plantao/internal/infra/mail"
 	pgstore "plantao/internal/infra/persistence/postgres"
@@ -46,6 +47,10 @@ var PostgresModule = fx.Module("postgres",
 		fx.Annotate(pgstore.NewSetorRepository, fx.As(new(setor.SetorRepository))),
 		fx.Annotate(pgstore.NewRoleRepository, fx.As(new(role.RoleRepository))),
 	),
+)
+
+var FeriadoAPIModule = fx.Module("feriadoapi",
+	fx.Provide(feriadoapi.NewInvertextoClient),
 )
 
 var SecurityModule = fx.Module("security",

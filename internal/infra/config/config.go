@@ -17,6 +17,7 @@ type Config struct {
 	FalePath FileSavePath
 	Frontend FrontendConfig
 	Public   PublicConfig
+	Feriados FeriadosConfig
 }
 
 // Configurações do servidor, como porta e host
@@ -54,6 +55,12 @@ type FrontendConfig struct {
 
 type PublicConfig struct {
 	URL string
+}
+
+type FeriadosConfig struct {
+	APIKey string
+	Estado string
+	Cidade string
 }
 
 // Pra teste, seria mais apropriado carregar de um arquivo ou variáveis de ambiente
@@ -95,6 +102,11 @@ func LoadConfig() (*Config, error) {
 		},
 		Public: PublicConfig{
 			URL: os.Getenv("PUBLIC_URL"),
+		},
+		Feriados: FeriadosConfig{
+			APIKey: os.Getenv("FERIADOS_TOKEN_API"),
+			Estado: os.Getenv("ESTADO"),
+			Cidade: os.Getenv("CIDADE"),
 		},
 	}, nil
 } // Fim LoadConfig

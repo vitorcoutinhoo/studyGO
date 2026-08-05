@@ -28,6 +28,7 @@ type FeriadoRepository interface {
 	FindByAno(ctx context.Context, ano int) ([]Feriado, error)
 	FindByPeriodo(ctx context.Context, inicio, fim time.Time) (map[time.Time]bool, error)
 	UpdateData(ctx context.Context, id uuid.UUID, novaData time.Time) error
+	Upsert(ctx context.Context, feriados []Feriado) error
 }
 
 type FeriadoService struct {

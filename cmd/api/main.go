@@ -15,6 +15,7 @@ func main() {
 	fx.New(
 		appfx.ConfigModule,
 		appfx.PostgresModule,
+		appfx.FeriadoAPIModule,
 		appfx.SecurityModule,
 		appfx.DomainModule,
 		appfx.APIModule,
@@ -25,6 +26,11 @@ func main() {
 		fx.Invoke(middleware.StartRateLimitCleanup),
 		fx.Provide(worker.NewPlantaoStatusWorker),
 		fx.Invoke(worker.RegisterPlantaoStatusWorker),
+
+		// Sincronização de feriados desativada: dados de 2026 já foram
+		// importados. Reativar (fx.Provide/fx.Invoke) quando precisar
+		// puxar um novo ano.
+		fx.Provide(worker.NewFeriadoSyncWorker),
 
 		fx.Invoke(func(lc fx.Lifecycle, server *apihttp.Server, log log.Logger) {
 			lc.Append(fx.Hook{
