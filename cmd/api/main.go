@@ -30,7 +30,9 @@ func main() {
 		// Sincronização de feriados desativada: dados de 2026 já foram
 		// importados. Reativar (fx.Provide/fx.Invoke) quando precisar
 		// puxar um novo ano.
-		fx.Provide(worker.NewFeriadoSyncWorker),
+		
+		// fx.Provide(worker.NewFeriadoSyncWorker), descomentar quando precisar puxar um novo ano
+		// fx.Invoke(worker.RegisterFeriadoSyncWorker), descomentar quando precisar puxar um novo ano
 
 		fx.Invoke(func(lc fx.Lifecycle, server *apihttp.Server, log log.Logger) {
 			lc.Append(fx.Hook{
