@@ -1,0 +1,1024 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>studyGO — Mapa do Backend</title>
+<style>
+  :root {
+    --bg: #F6F7F5;
+    --bg-raised: #FFFFFF;
+    --bg-sunken: #EBEEEA;
+    --ink: #101812;
+    --ink-soft: #3D473F;
+    --ink-faint: #78826E;
+    --line: #D9DED4;
+    --line-soft: #E7EAE1;
+    --accent: #0F6E5C;
+    --accent-soft: #E3F1EA;
+    --accent-ink: #0A4B3E;
+    --slate: #2C3A4A;
+    --slate-soft: #EAEEF2;
+    --ok: #1E8E5A;
+    --ok-soft: #E8F5EC;
+    --warn: #B7791B;
+    --warn-soft: #FBF1DF;
+    --err: #B4222C;
+    --err-soft: #FBE8E9;
+    --mono-bg: #101812;
+    --shadow: 0 1px 2px rgba(16,24,18,0.05), 0 10px 26px -14px rgba(16,24,18,0.16);
+    color-scheme: light;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0C1210;
+      --bg-raised: #131C18;
+      --bg-sunken: #0A0F0C;
+      --ink: #E6EBE5;
+      --ink-soft: #AAB6A9;
+      --ink-faint: #66735F;
+      --line: #223028;
+      --line-soft: #1A241E;
+      --accent: #35C79A;
+      --accent-soft: #10261F;
+      --accent-ink: #7FE2BB;
+      --slate: #9FB1C6;
+      --slate-soft: #16202B;
+      --ok: #4ADE8B;
+      --ok-soft: #0F2419;
+      --warn: #E3A73C;
+      --warn-soft: #2A2110;
+      --err: #F0616B;
+      --err-soft: #2A1315;
+      --shadow: 0 1px 2px rgba(0,0,0,0.35), 0 10px 26px -14px rgba(0,0,0,0.6);
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0C1210; --bg-raised: #131C18; --bg-sunken: #0A0F0C;
+    --ink: #E6EBE5; --ink-soft: #AAB6A9; --ink-faint: #66735F;
+    --line: #223028; --line-soft: #1A241E;
+    --accent: #35C79A; --accent-soft: #10261F; --accent-ink: #7FE2BB;
+    --slate: #9FB1C6; --slate-soft: #16202B;
+    --ok: #4ADE8B; --ok-soft: #0F2419;
+    --warn: #E3A73C; --warn-soft: #2A2110;
+    --err: #F0616B; --err-soft: #2A1315;
+    --shadow: 0 1px 2px rgba(0,0,0,0.35), 0 10px 26px -14px rgba(0,0,0,0.6);
+    color-scheme: dark;
+  }
+  :root[data-theme="light"] {
+    --bg: #F6F7F5; --bg-raised: #FFFFFF; --bg-sunken: #EBEEEA;
+    --ink: #101812; --ink-soft: #3D473F; --ink-faint: #78826E;
+    --line: #D9DED4; --line-soft: #E7EAE1;
+    --accent: #0F6E5C; --accent-soft: #E3F1EA; --accent-ink: #0A4B3E;
+    --slate: #2C3A4A; --slate-soft: #EAEEF2;
+    --ok: #1E8E5A; --ok-soft: #E8F5EC;
+    --warn: #B7791B; --warn-soft: #FBF1DF;
+    --err: #B4222C; --err-soft: #FBE8E9;
+    --shadow: 0 1px 2px rgba(16,24,18,0.05), 0 10px 26px -14px rgba(16,24,18,0.16);
+    color-scheme: light;
+  }
+
+  @font-face {
+    font-family: 'Newsreader Display';
+    src: local('Newsreader');
+    font-weight: 400 700;
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    * { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+  }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, 'Segoe UI', Roboto, system-ui, sans-serif;
+  }
+
+  .display {
+    font-family: 'Newsreader Display', 'Iowan Old Style', Georgia, serif;
+  }
+
+  code, .mono, .path {
+    font-family: 'SFMono-Regular', 'Cascadia Code', Consolas, 'Liberation Mono', monospace;
+    font-variant-numeric: tabular-nums;
+  }
+
+  a { color: inherit; }
+
+  /* ---------- shell ---------- */
+
+  .shell {
+    display: grid;
+    grid-template-columns: 250px minmax(0, 1fr);
+    max-width: 1280px;
+    margin: 0 auto;
+  }
+
+  @media (max-width: 900px) {
+    .shell { grid-template-columns: 1fr; }
+  }
+
+  nav.toc {
+    position: sticky;
+    top: 0;
+    align-self: start;
+    height: 100vh;
+    overflow-y: auto;
+    padding: 2rem 1.25rem 2rem 1.75rem;
+    border-right: 1px solid var(--line-soft);
+  }
+
+  @media (max-width: 900px) {
+    nav.toc {
+      position: static;
+      height: auto;
+      border-right: none;
+      border-bottom: 1px solid var(--line-soft);
+      padding: 1.25rem 1.25rem;
+    }
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    margin-bottom: 1.9rem;
+  }
+
+  .brand-mark {
+    width: 26px;
+    height: 26px;
+    border-radius: 6px;
+    background: var(--accent);
+    color: var(--bg-raised);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'SFMono-Regular', monospace;
+    font-weight: 700;
+    font-size: 0.72rem;
+    flex: none;
+  }
+
+  .brand-text { display: flex; flex-direction: column; gap: 0.1rem; }
+
+  .brand-name {
+    font-weight: 700;
+    font-size: 0.88rem;
+    letter-spacing: -0.01em;
+  }
+
+  .brand-sub {
+    font-size: 0.66rem;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+
+  .toc-group { margin-bottom: 1.4rem; }
+
+  .toc-group-label {
+    font-size: 0.62rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin: 0 0 0.45rem;
+    font-weight: 600;
+  }
+
+  .toc-group ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.02rem;
+  }
+
+  .toc-group a {
+    display: block;
+    font-size: 0.8rem;
+    color: var(--ink-soft);
+    text-decoration: none;
+    padding: 0.28rem 0.5rem;
+    margin: 0 -0.5rem;
+    border-radius: 6px;
+    transition: background 0.15s, color 0.15s;
+  }
+
+  .toc-group a:hover { background: var(--bg-sunken); color: var(--ink); }
+
+  main {
+    padding: 2.75rem clamp(1.25rem, 4vw, 3.5rem) 6rem;
+    min-width: 0;
+  }
+
+  /* ---------- header ---------- */
+
+  header.top {
+    margin-bottom: 3rem;
+    padding-bottom: 1.75rem;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .kicker {
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 0.8rem;
+    font-weight: 600;
+  }
+
+  h1.title {
+    font-weight: 600;
+    font-size: clamp(1.9rem, 3.8vw, 2.6rem);
+    line-height: 1.12;
+    letter-spacing: -0.01em;
+    margin: 0 0 0.85rem;
+    text-wrap: balance;
+  }
+
+  p.lede {
+    font-size: 1.02rem;
+    line-height: 1.6;
+    color: var(--ink-soft);
+    max-width: 64ch;
+    margin: 0 0 1.3rem;
+  }
+
+  .meta-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.6rem;
+    font-size: 0.78rem;
+    color: var(--ink-faint);
+  }
+
+  .meta-row strong { color: var(--ink-soft); font-weight: 700; }
+
+  /* ---------- sections ---------- */
+
+  section.block { margin-bottom: 3.5rem; scroll-margin-top: 1.5rem; }
+
+  .section-head {
+    display: flex;
+    align-items: baseline;
+    gap: 0.8rem;
+    margin-bottom: 1rem;
+  }
+
+  h2.section-title {
+    font-weight: 600;
+    font-size: 1.4rem;
+    letter-spacing: -0.005em;
+    margin: 0;
+  }
+
+  .section-note { font-size: 0.76rem; color: var(--ink-faint); }
+
+  h3.sub-title {
+    font-weight: 700;
+    font-size: 0.88rem;
+    letter-spacing: 0.005em;
+    margin: 1.8rem 0 0.7rem;
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+  }
+
+  h3.sub-title .dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--accent); flex: none;
+  }
+
+  p.intro {
+    font-size: 0.92rem;
+    line-height: 1.6;
+    color: var(--ink-soft);
+    max-width: 68ch;
+    margin: 0 0 1.2rem;
+  }
+
+  /* ---------- endpoint table ---------- */
+
+  .table-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--bg-raised);
+    box-shadow: var(--shadow);
+  }
+
+  table.routes {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.81rem;
+    min-width: 680px;
+  }
+
+  table.routes th {
+    text-align: left;
+    font-size: 0.65rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    font-weight: 700;
+    padding: 0.7rem 0.9rem;
+    background: var(--bg-sunken);
+    border-bottom: 1px solid var(--line);
+    white-space: nowrap;
+  }
+
+  table.routes td {
+    padding: 0.62rem 0.9rem;
+    border-bottom: 1px solid var(--line-soft);
+    color: var(--ink-soft);
+    vertical-align: top;
+  }
+
+  table.routes tr:last-child td { border-bottom: none; }
+  table.routes tr:hover td { background: var(--bg-sunken); }
+
+  .verb {
+    display: inline-block;
+    font-size: 0.66rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    padding: 0.1rem 0.4rem;
+    border-radius: 4px;
+    min-width: 3.6em;
+    text-align: center;
+  }
+  .verb-get { background: var(--accent-soft); color: var(--accent-ink); }
+  .verb-post { background: var(--ok-soft); color: var(--ok); }
+  .verb-patch { background: var(--warn-soft); color: var(--warn); }
+  .verb-put { background: var(--warn-soft); color: var(--warn); }
+  .verb-delete { background: var(--err-soft); color: var(--err); }
+
+  td.path { color: var(--accent-ink); font-weight: 600; white-space: nowrap; }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    font-size: 0.66rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    padding: 0.18rem 0.5rem;
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+  .chip-admin { background: var(--err-soft); color: var(--err); }
+  .chip-any { background: var(--ok-soft); color: var(--ok); }
+  .chip-public { background: var(--slate-soft); color: var(--slate); }
+
+  /* ---------- domain cards ---------- */
+
+  .domain-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1rem;
+  }
+
+  .domain-card {
+    border: 1px solid var(--line);
+    border-radius: 11px;
+    background: var(--bg-raised);
+    box-shadow: var(--shadow);
+    padding: 1.1rem 1.25rem 1.25rem;
+  }
+
+  .domain-card-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.55rem;
+  }
+
+  .domain-card-name {
+    font-weight: 700;
+    font-size: 0.95rem;
+  }
+
+  .domain-pkg {
+    font-size: 0.68rem;
+    color: var(--ink-faint);
+  }
+
+  .domain-card-body {
+    font-size: 0.84rem;
+    line-height: 1.55;
+    color: var(--ink-soft);
+    margin-bottom: 0.7rem;
+  }
+
+  .table-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+  }
+
+  .table-tag {
+    font-size: 0.66rem;
+    color: var(--slate);
+    background: var(--slate-soft);
+    border-radius: 5px;
+    padding: 0.15rem 0.45rem;
+  }
+
+  /* ---------- infra services ---------- */
+
+  .service-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+    gap: 1rem;
+  }
+
+  .service-card {
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 1rem 1.15rem;
+    background: var(--bg-raised);
+    box-shadow: var(--shadow);
+  }
+
+  .service-name {
+    font-size: 0.83rem;
+    font-weight: 700;
+    color: var(--accent-ink);
+    margin-bottom: 0.15rem;
+  }
+
+  .service-role {
+    font-size: 0.76rem;
+    color: var(--ink-faint);
+    margin-bottom: 0.55rem;
+  }
+
+  .service-detail {
+    font-size: 0.72rem;
+    line-height: 1.7;
+    color: var(--ink-soft);
+  }
+
+  /* ---------- worker timeline ---------- */
+
+  .worker-card {
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 10px 10px 0;
+    background: var(--bg-raised);
+    box-shadow: var(--shadow);
+    padding: 1.15rem 1.35rem;
+    margin-bottom: 1rem;
+  }
+
+  .worker-card.disabled {
+    border-left-color: var(--ink-faint);
+    opacity: 0.86;
+  }
+
+  .worker-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem;
+    margin-bottom: 0.4rem;
+  }
+
+  .worker-name { font-weight: 700; font-size: 0.9rem; }
+
+  .worker-status {
+    font-size: 0.64rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    padding: 0.14rem 0.5rem;
+    border-radius: 999px;
+  }
+  .status-on { background: var(--ok-soft); color: var(--ok); }
+  .status-off { background: var(--bg-sunken); color: var(--ink-faint); }
+
+  .worker-text {
+    font-size: 0.86rem;
+    line-height: 1.6;
+    color: var(--ink-soft);
+  }
+
+  .worker-text code {
+    font-size: 0.83em;
+    background: var(--bg-sunken);
+    padding: 0.05rem 0.35rem;
+    border-radius: 4px;
+    color: var(--accent-ink);
+  }
+
+  /* ---------- decision log ---------- */
+
+  .log-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .log-row {
+    display: grid;
+    grid-template-columns: 88px 1fr;
+    gap: 1.1rem;
+    padding: 0.9rem 0;
+    border-bottom: 1px solid var(--line-soft);
+  }
+  .log-row:last-child { border-bottom: none; }
+
+  .log-date {
+    font-size: 0.72rem;
+    color: var(--ink-faint);
+    padding-top: 0.15rem;
+  }
+
+  .log-title {
+    font-size: 0.87rem;
+    font-weight: 700;
+    margin: 0 0 0.25rem;
+  }
+
+  .log-desc {
+    font-size: 0.83rem;
+    line-height: 1.55;
+    color: var(--ink-soft);
+  }
+
+  .log-desc code {
+    font-size: 0.83em;
+    background: var(--bg-sunken);
+    padding: 0.05rem 0.32rem;
+    border-radius: 4px;
+    color: var(--accent-ink);
+  }
+
+  /* ---------- callout ---------- */
+
+  .callout {
+    border: 1px solid var(--warn);
+    background: var(--warn-soft);
+    border-radius: 10px;
+    padding: 0.95rem 1.15rem;
+    display: flex;
+    gap: 0.7rem;
+    margin: 1.4rem 0;
+  }
+  .callout.err { border-color: var(--err); background: var(--err-soft); }
+
+  .callout-icon { color: var(--warn); flex: none; font-size: 1.05rem; line-height: 1.3; }
+  .callout.err .callout-icon { color: var(--err); }
+
+  .callout-text {
+    font-size: 0.82rem;
+    line-height: 1.55;
+    color: var(--ink-soft);
+  }
+  .callout-text strong { color: var(--ink); }
+  .callout-text code {
+    font-size: 0.85em;
+    background: var(--bg-raised);
+    padding: 0.05rem 0.32rem;
+    border-radius: 4px;
+  }
+
+  /* ---------- stack pills ---------- */
+
+  .pill-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin: 1.1rem 0 0;
+  }
+
+  .pill {
+    font-size: 0.76rem;
+    border: 1px solid var(--line);
+    background: var(--bg-raised);
+    border-radius: 999px;
+    padding: 0.3rem 0.75rem;
+    color: var(--ink-soft);
+  }
+  .pill b { color: var(--ink); font-weight: 700; }
+
+  footer.end {
+    margin-top: 3.5rem;
+    padding-top: 1.4rem;
+    border-top: 1px solid var(--line);
+    font-size: 0.75rem;
+    color: var(--ink-faint);
+  }
+
+  ::selection { background: var(--accent-soft); color: var(--accent-ink); }
+</style>
+</head>
+<body>
+
+
+<div class="shell">
+  <nav class="toc">
+    <div class="brand">
+      <span class="brand-mark">GO</span>
+      <span class="brand-text">
+        <span class="brand-name">studyGO</span>
+        <span class="brand-sub">Mapa do backend</span>
+      </span>
+    </div>
+
+    <div class="toc-group">
+      <p class="toc-group-label">Visão geral</p>
+      <ul>
+        <li><a href="#stack">Stack &amp; execução</a></li>
+        <li><a href="#endpoints">Endpoints da API</a></li>
+      </ul>
+    </div>
+
+    <div class="toc-group">
+      <p class="toc-group-label">Domínio</p>
+      <ul>
+        <li><a href="#dominios">Módulos de domínio</a></li>
+        <li><a href="#dados">Modelo de dados</a></li>
+      </ul>
+    </div>
+
+    <div class="toc-group">
+      <p class="toc-group-label">Infraestrutura</p>
+      <ul>
+        <li><a href="#infra">Serviços de infra</a></li>
+        <li><a href="#workers">Workers em background</a></li>
+        <li><a href="#seguranca">Segurança &amp; acesso</a></li>
+      </ul>
+    </div>
+
+    <div class="toc-group">
+      <p class="toc-group-label">Operação</p>
+      <ul>
+        <li><a href="#decisoes">Decisões recentes</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <main>
+    <header class="top">
+      <p class="kicker">Levantamento técnico · studyGO / plantao-app</p>
+      <h1 class="title display">O que existe hoje na API de plantões</h1>
+      <p class="lede">Backend em Go que administra escala, colaboradores, pagamento e comunicação de um serviço de plantões — arquitetura, endpoints, módulos de domínio e o que está rodando por trás, direto do código.</p>
+      <div class="meta-row">
+        <span><strong>18</strong> grupos de rotas</span>
+        <span><strong>10</strong> domínios</span>
+        <span><strong>13</strong> tabelas</span>
+        <span><strong>2</strong> workers em background</span>
+        <span><strong>1</strong> integração externa</span>
+      </div>
+      <div class="pill-row">
+        <span class="pill"><b>Go</b> · Gin</span>
+        <span class="pill"><b>Uber Fx</b> · injeção de dependência</span>
+        <span class="pill"><b>PostgreSQL 16</b> · pgx/v5</span>
+        <span class="pill">JWT · RS256</span>
+        <span class="pill">Docker Compose</span>
+      </div>
+    </header>
+
+    <!-- STACK -->
+    <section class="block" id="stack">
+      <div class="section-head">
+        <h2 class="section-title display">Stack &amp; execução</h2>
+      </div>
+      <p class="intro">
+        Router <code class="mono">gin</code>, todo o grafo de dependências montado com <code class="mono">go.uber.org/fx</code> — cada camada (config, postgres, domínio, api, segurança, workers) é um <code class="mono">fx.Module</code> próprio registrado em <code class="mono">internal/fx/modules.go</code>. Persistência via <code class="mono">pgxpool</code> direto sobre SQL, sem ORM. Autenticação com par de chaves RSA (<code class="mono">JWT_PRIVATE_KEY_PATH</code> / <code class="mono">JWT_PUBLIC_KEY_PATH</code>).
+      </p>
+      <p class="intro">
+        Dois caminhos de execução convivem: <code class="mono">docker compose up --build</code> sobe API + Postgres juntos; ou só o Postgres em container (<code class="mono">docker compose up postgres -d</code>) com a API rodando local via <code class="mono">go run ./cmd/api</code> — mais rápido para iterar, já que o <code class="mono">.env</code> já aponta <code class="mono">DB_URL</code> para <code class="mono">localhost:5432</code>.
+      </p>
+      <div class="callout">
+        <span class="callout-icon">▲</span>
+        <span class="callout-text">
+          <strong>Porta do servidor não é fixa no compose.</strong> A aplicação lê <code>SERVER_PORT</code> do ambiente (hoje <code>8090</code> no <code>.env</code> local), então rodar via Docker exige sobrescrever essa variável no <code>environment:</code> do serviço <code>app</code> para casar com o mapeamento de porta do <code>docker-compose.yaml</code> — senão o container aceita a conexão TCP mas nada responde do lado do servidor.
+        </span>
+      </div>
+    </section>
+
+    <!-- ENDPOINTS -->
+    <section class="block" id="endpoints">
+      <div class="section-head">
+        <h2 class="section-title display">Endpoints da API</h2>
+        <span class="section-note mono">internal/api/http/router.go · prefixo /api/v1</span>
+      </div>
+      <h3 class="sub-title"><span class="dot"></span>Autenticação &amp; contas</h3>
+      <div class="table-wrap">
+        <table class="routes">
+          <thead><tr><th>Método</th><th>Rota</th><th>Descrição</th><th>Acesso</th></tr></thead>
+          <tbody>
+            <tr><td><span class="verb verb-post">POST</span></td><td class="path">/auth/login</td><td>Login — sob rate limit dedicado</td><td><span class="chip chip-public">Público</span></td></tr>
+            <tr><td><span class="verb verb-post">POST</span></td><td class="path">/usuarios/cadastro</td><td>Cria usuário a partir de token de convite</td><td><span class="chip chip-public">Público, com token</span></td></tr>
+            <tr><td><span class="verb verb-get">GET</span></td><td class="path">/authenticated/usuarios</td><td>Dados do usuário logado</td><td><span class="chip chip-any">Autenticado</span></td></tr>
+            <tr><td><span class="verb verb-put">PUT</span></td><td class="path">/authenticated/usuarios</td><td>Atualiza e-mail/senha do próprio usuário</td><td><span class="chip chip-any">Autenticado</span></td></tr>
+            <tr><td><span class="verb verb-delete">DELETE</span></td><td class="path">/authenticated/usuarios</td><td>Remove a própria conta</td><td><span class="chip chip-any">Autenticado</span></td></tr>
+            <tr><td><span class="verb verb-get">GET</span></td><td class="path">/admin/all</td><td>Lista todos os usuários</td><td><span class="chip chip-admin">Admin</span></td></tr>
+            <tr><td><span class="verb verb-patch">PATCH</span></td><td class="path">/admin/usuarios/:id/role</td><td>Altera papel de um usuário</td><td><span class="chip chip-admin">Admin</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 class="sub-title"><span class="dot"></span>Plantões &amp; escala</h3>
+      <div class="table-wrap">
+        <table class="routes">
+          <thead><tr><th>Método</th><th>Rota</th><th>Descrição</th><th>Acesso</th></tr></thead>
+          <tbody>
+            <tr><td><span class="verb verb-post">POST</span></td><td class="path">/plantoes</td><td>Cria plantão</td><td><span class="chip chip-admin">Admin/Gerente/Colab.</span></td></tr>
+            <tr><td><span class="verb verb-get">GET</span></td><td class="path">/plantoes</td><td>Lista plantões</td><td><span class="chip chip-admin">Admin/Gerente/Colab.</span></td></tr>
+            <tr><td><span class="verb verb-get">GET</span></td><td class="path">/plantoes/:id</td><td>Detalhe de um plantão</td><td><span class="chip chip-admin">Admin/Gerente/Colab.</span></td></tr>
+            <tr><td><span class="verb verb-delete">DELETE</span></td><td class="path">/plantoes/:id</td><td>Remove plantão</td><td><span class="chip chip-admin">Admin/Gerente/Colab.</span></td></tr>
+            <tr><td><span class="verb verb-get">GET</span></td><td class="path">/plantoes/colaborador/:colaborador_id</td><td>Plantões de um colaborador</td><td><span class="chip chip-admin">Admin/Gerente/Colab.</span></td></tr>
+            <tr><td><span class="verb verb-get">GET</span></td><td class="path">/plantoes/status/:status</td><td>Filtra por status</td><td><span class="chip chip-admin">Admin/Gerente/Colab.</span></td></tr>
+            <tr><td><span class="verb verb-get">GET</span></td><td class="path">/plantoes/periodo/:start/:end</td><td>Filtra por período</td><td><span class="chip chip-admin">Admin/Gerente/Colab.</span></td></tr>
+            <tr><td><span class="verb verb-patch">PATCH</span></td><td class="path">/plantoes/:id/status</td><td>Avança status do plantão</td><td><span class="chip chip-admin">Admin/Gerente/Colab.</span></td></tr>
+            <tr><td><span class="verb verb-post">POST</span></td><td class="path">/plantoes/:id/pagamento</td><td>Registra pagamento do plantão</td><td><span class="chip chip-admin">Admin/Gerente</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 class="sub-title"><span class="dot"></span>Colaboradores &amp; convites</h3>
+      <div class="table-wrap">
+        <table class="routes">
+          <thead><tr><th>Método</th><th>Rota</th><th>Descrição</th><th>Acesso</th></tr></thead>
+          <tbody>
+            <tr><td><span class="verb verb-post">POST</span></td><td class="path">/colaboradores</td><td>Cadastra colaborador</td><td><span class="chip chip-admin">Admin/Gerente/Colab.</span></td></tr>
+            <tr><td><span class="verb verb-get">GET</span></td><td class="path">/colaboradores</td><td>Lista com filtros</td><td><span class="chip chip-admin">Admin/Gerente/Colab.</span></td></tr>
+            <tr><td><span class="verb verb-get">GET</span></td><td class="path">/colaboradores/:id</td><td>Detalhe do colaborador</td><td><span class="chip chip-admin">Admin/Gerente/Colab.</span></td></tr>
+            <tr><td><span class="verb verb-patch">PATCH</span></td><td class="path">/colaboradores/:id</td><td>Atualiza cadastro</td><td><span class="chip chip-admin">Admin/Gerente/Colab.</span></td></tr>
+            <tr><td><span class="verb verb-patch">PATCH</span></td><td class="path">/colaboradores/:id/foto</td><td>Upload de foto de perfil</td><td><span class="chip chip-admin">Admin/Gerente/Colab.</span></td></tr>
+            <tr><td><span class="verb verb-delete">DELETE</span></td><td class="path">/colaboradores/:id</td><td>Desativa colaborador</td><td><span class="chip chip-admin">Admin/Gerente/Colab.</span></td></tr>
+            <tr><td><span class="verb verb-post">POST</span></td><td class="path">/convites</td><td>Envia convite de acesso</td><td><span class="chip chip-admin">Admin</span></td></tr>
+            <tr><td><span class="verb verb-get">GET</span></td><td class="path">/convites</td><td>Lista convites</td><td><span class="chip chip-admin">Admin</span></td></tr>
+            <tr><td><span class="verb verb-delete">DELETE</span></td><td class="path">/convites/:token</td><td>Revoga convite</td><td><span class="chip chip-admin">Admin</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 class="sub-title"><span class="dot"></span>Financeiro &amp; feriados</h3>
+      <div class="table-wrap">
+        <table class="routes">
+          <thead><tr><th>Método</th><th>Rota</th><th>Descrição</th><th>Acesso</th></tr></thead>
+          <tbody>
+            <tr><td><span class="verb verb-get">GET</span></td><td class="path">/admin/config-valores</td><td>Valores vigentes por tipo de dia</td><td><span class="chip chip-admin">Admin</span></td></tr>
+            <tr><td><span class="verb verb-post">POST</span></td><td class="path">/admin/config-valores</td><td>Define novo valor</td><td><span class="chip chip-admin">Admin</span></td></tr>
+            <tr><td><span class="verb verb-patch">PATCH</span></td><td class="path">/admin/config-valores(/:tipo_dia)</td><td>Atualiza valor vigente</td><td><span class="chip chip-admin">Admin</span></td></tr>
+            <tr><td><span class="verb verb-get">GET</span></td><td class="path">/admin/feriados</td><td>Feriados por ano</td><td><span class="chip chip-admin">Admin</span></td></tr>
+            <tr><td><span class="verb verb-patch">PATCH</span></td><td class="path">/admin/feriados/:id/data</td><td>Corrige data de feriado municipal</td><td><span class="chip chip-admin">Admin</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 class="sub-title"><span class="dot"></span>Taxonomia, papéis &amp; comunicação</h3>
+      <div class="table-wrap">
+        <table class="routes">
+          <thead><tr><th>Método</th><th>Rota</th><th>Descrição</th><th>Acesso</th></tr></thead>
+          <tbody>
+            <tr><td><span class="verb verb-get">GET</span></td><td class="path">/cargos</td><td>Lista cargos</td><td><span class="chip chip-admin">Admin/Gerente/Colab.</span></td></tr>
+            <tr><td><span class="verb verb-post">POST</span></td><td class="path">/admin/cargos</td><td>Cria cargo</td><td><span class="chip chip-admin">Admin</span></td></tr>
+            <tr><td><span class="verb verb-delete">DELETE</span></td><td class="path">/admin/cargos/:id</td><td>Remove cargo</td><td><span class="chip chip-admin">Admin</span></td></tr>
+            <tr><td><span class="verb verb-get">GET</span></td><td class="path">/setores</td><td>Lista setores</td><td><span class="chip chip-admin">Admin/Gerente/Colab.</span></td></tr>
+            <tr><td><span class="verb verb-post">POST</span></td><td class="path">/admin/setores</td><td>Cria setor</td><td><span class="chip chip-admin">Admin</span></td></tr>
+            <tr><td><span class="verb verb-delete">DELETE</span></td><td class="path">/admin/setores/:id</td><td>Remove setor</td><td><span class="chip chip-admin">Admin</span></td></tr>
+            <tr><td><span class="verb verb-get">GET</span></td><td class="path">/roles</td><td>Lista papéis de sistema</td><td><span class="chip chip-public">Público</span></td></tr>
+            <tr><td><span class="verb verb-post">POST</span></td><td class="path">/auth/admin/modelo-comunicacao</td><td>Cria modelo de e-mail</td><td><span class="chip chip-admin">Admin</span></td></tr>
+            <tr><td><span class="verb verb-get">GET</span></td><td class="path">/auth/admin/modelo-comunicacao</td><td>Lista modelos</td><td><span class="chip chip-admin">Admin</span></td></tr>
+            <tr><td><span class="verb verb-put">PUT</span></td><td class="path">/auth/admin/modelo-comunicacao/:id</td><td>Atualiza modelo</td><td><span class="chip chip-admin">Admin</span></td></tr>
+            <tr><td><span class="verb verb-delete">DELETE</span></td><td class="path">/auth/admin/modelo-comunicacao/:id</td><td>Desativa modelo</td><td><span class="chip chip-admin">Admin</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- DOMINIOS -->
+    <section class="block" id="dominios">
+      <div class="section-head">
+        <h2 class="section-title display">Módulos de domínio</h2>
+        <span class="section-note mono">internal/domain/*</span>
+      </div>
+      <p class="intro">Cada pasta expõe uma interface de repositório implementada em <code class="mono">internal/infra/persistence/postgres</code> e um serviço com as regras de negócio — sem vazamento de SQL para a camada de domínio.</p>
+      <div class="domain-grid">
+        <div class="domain-card">
+          <div class="domain-card-head"><span class="domain-card-name">plantao</span><span class="domain-pkg mono">domain/plantao</span></div>
+          <p class="domain-card-body">Ciclo de vida do plantão: agendar, iniciar, concluir, pagar. Worker próprio promove plantões agendados automaticamente.</p>
+          <div class="table-tags"><span class="table-tag">plantoes</span><span class="table-tag">plantoes_detalhes</span><span class="table-tag">status_plantao</span></div>
+        </div>
+        <div class="domain-card">
+          <div class="domain-card-head"><span class="domain-card-name">colaborador</span><span class="domain-pkg mono">domain/colaborador</span></div>
+          <p class="domain-card-body">Cadastro de colaboradores, foto de perfil (armazenamento local) e vínculo com cargo/setor.</p>
+          <div class="table-tags"><span class="table-tag">colaboradores</span></div>
+        </div>
+        <div class="domain-card">
+          <div class="domain-card-head"><span class="domain-card-name">usuario</span><span class="domain-pkg mono">domain/usuario</span></div>
+          <p class="domain-card-body">Contas de acesso, hash de senha (bcrypt), emissão de token e papel de sistema (role).</p>
+          <div class="table-tags"><span class="table-tag">usuarios_login</span></div>
+        </div>
+        <div class="domain-card">
+          <div class="domain-card-head"><span class="domain-card-name">financeiro</span><span class="domain-pkg mono">domain/financeiro</span></div>
+          <p class="domain-card-body">Três serviços: cálculo de valores, configuração de valor por tipo de dia e feriados — incluindo sincronização com API externa.</p>
+          <div class="table-tags"><span class="table-tag">config_valores_dia</span><span class="table-tag">feriados</span><span class="table-tag">pagamentos</span></div>
+        </div>
+        <div class="domain-card">
+          <div class="domain-card-head"><span class="domain-card-name">convite</span><span class="domain-pkg mono">domain/convite</span></div>
+          <p class="domain-card-body">Tokens de convite para onboarding — geração, expiração, revogação e reenvio.</p>
+          <div class="table-tags"><span class="table-tag">convites</span></div>
+        </div>
+        <div class="domain-card">
+          <div class="domain-card-head"><span class="domain-card-name">comunicacao</span><span class="domain-pkg mono">domain/comunicacao</span></div>
+          <p class="domain-card-body">Modelos de e-mail transacional com placeholders e o log de cada envio disparado.</p>
+          <div class="table-tags"><span class="table-tag">modelos_comunicacao</span><span class="table-tag">envios_comunicacao</span></div>
+        </div>
+        <div class="domain-card">
+          <div class="domain-card-head"><span class="domain-card-name">cargo · setor · role</span><span class="domain-pkg mono">domain/{cargo,setor,role}</span></div>
+          <p class="domain-card-body">Taxonomia organizacional simples — CRUD raso que alimenta os seletores de colaborador e o controle de acesso.</p>
+          <div class="table-tags"><span class="table-tag">cargos</span><span class="table-tag">setores</span><span class="table-tag">roles</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- DADOS -->
+    <section class="block" id="dados">
+      <div class="section-head">
+        <h2 class="section-title display">Modelo de dados</h2>
+        <span class="section-note mono">seed/01_schema.sql · Postgres 16</span>
+      </div>
+      <p class="intro">13 tabelas, chaves <code class="mono">UUID</code> geradas por <code class="mono">gen_random_uuid()</code>. Duas restrições valem a pena guardar de cor:</p>
+      <div class="callout">
+        <span class="callout-icon">▲</span>
+        <span class="callout-text">
+          <code>feriados.data</code> é <strong>UNIQUE</strong> — é a chave usada pelo upsert da sincronização externa (<code>ON CONFLICT (data) DO UPDATE</code>), então re-rodar a importação nunca duplica um feriado.
+        </span>
+      </div>
+      <div class="pill-row">
+        <span class="pill">cargos</span><span class="pill">setores</span><span class="pill">roles</span><span class="pill">colaboradores</span>
+        <span class="pill">usuarios_login</span><span class="pill">convites</span><span class="pill">plantoes</span><span class="pill">plantoes_detalhes</span>
+        <span class="pill">status_plantao</span><span class="pill">pagamentos</span><span class="pill">config_valores_dia</span>
+        <span class="pill">feriados</span><span class="pill">modelos_comunicacao</span><span class="pill">envios_comunicacao</span>
+      </div>
+    </section>
+
+    <!-- INFRA -->
+    <section class="block" id="infra">
+      <div class="section-head">
+        <h2 class="section-title display">Serviços de infraestrutura</h2>
+        <span class="section-note mono">internal/infra/*</span>
+      </div>
+      <div class="service-grid">
+        <div class="service-card">
+          <div class="service-name">feriadoapi.InvertextoClient</div>
+          <div class="service-role">Integração externa — invertexto.com</div>
+          <div class="service-detail">GET /v1/holidays/{ano}?token=…&amp;state=BA<br>Timeout 10s · mapeia date/name/level para o domínio, descarta type e law.</div>
+        </div>
+        <div class="service-card">
+          <div class="service-name">security.JWTService</div>
+          <div class="service-role">Emissão e verificação de token</div>
+          <div class="service-detail">RS256 com par de chaves em internal/infra/security/keys<br>Expiração configurável via EXPIRATION_TIME_MINUTES.</div>
+        </div>
+        <div class="service-card">
+          <div class="service-name">mail.SMTPMailer</div>
+          <div class="service-role">Envio de e-mail transacional</div>
+          <div class="service-detail">SMTP via Gmail (smtp.gmail.com:587)<br>Usado por comunicacao.EnvioService para convites e notificações.</div>
+        </div>
+        <div class="service-card">
+          <div class="service-name">storage.LocalStorage</div>
+          <div class="service-role">Armazenamento de arquivos</div>
+          <div class="service-detail">Disco local em FILE_PATH=uploads<br>Servido estaticamente em /uploads/*filepath.</div>
+        </div>
+        <div class="service-card">
+          <div class="service-name">persistence/postgres</div>
+          <div class="service-role">Camada de dados</div>
+          <div class="service-detail">pgxpool.Pool compartilhado<br>Um repository por agregado, SQL escrito à mão.</div>
+        </div>
+        <div class="service-card">
+          <div class="service-name">logger (zap)</div>
+          <div class="service-role">Log estruturado</div>
+          <div class="service-detail">JSON com timestamp, caller, request_id<br>Interface log.Logger injetada via Fx em todos os serviços.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- WORKERS -->
+    <section class="block" id="workers">
+      <div class="section-head">
+        <h2 class="section-title display">Workers em background</h2>
+        <span class="section-note mono">internal/worker · registrados como fx.Lifecycle hooks</span>
+      </div>
+
+      <div class="worker-card">
+        <div class="worker-head">
+          <span class="worker-name">PlantaoStatusWorker</span>
+          <span class="worker-status status-on">Ativo</span>
+        </div>
+        <p class="worker-text">Roda a cada <code>5 minutos</code>, chama <code>IniciarPlantoesAgendados</code> para promover plantões com horário de início já alcançado de <code>agendado</code> para <code>em andamento</code>. Executa uma vez no start e depois no intervalo, com <code>context.CancelFunc</code> para desligamento limpo.</p>
+      </div>
+
+      <div class="worker-card disabled">
+        <div class="worker-head">
+          <span class="worker-name">FeriadoSyncWorker</span>
+          <span class="worker-status status-off">Registrado, não iniciado</span>
+        </div>
+        <p class="worker-text">Sincronizaria feriados do ano corrente com a API Invertexto a cada <code>24h</code>, só disparando a chamada de fato quando o ano ainda não tiver sido sincronizado (<code>lastSyncedYear</code> em memória). Hoje o <code>fx.Invoke(worker.RegisterFeriadoSyncWorker)</code> está comentado em <code>cmd/api/main.go</code> — os 18 feriados de 2026 já foram importados manualmente e não há necessidade de rechamar a API a cada restart. Reativar descomentando essa linha, tipicamente na virada do ano.</p>
+      </div>
+    </section>
+
+    <!-- SEGURANÇA -->
+    <section class="block" id="seguranca">
+      <div class="section-head">
+        <h2 class="section-title display">Segurança &amp; acesso</h2>
+        <span class="section-note mono">internal/api/middleware</span>
+      </div>
+      <div class="service-grid">
+        <div class="service-card">
+          <div class="service-name">AuthMidware</div>
+          <div class="service-role">Autenticação por cookie JWT</div>
+          <div class="service-detail">Valida access_token, injeta claims no contexto Gin.</div>
+        </div>
+        <div class="service-card">
+          <div class="service-name">RoleMidware</div>
+          <div class="service-role">Autorização por papel</div>
+          <div class="service-detail">admin · gerente · colaborador, aplicado por grupo de rota.</div>
+        </div>
+        <div class="service-card">
+          <div class="service-name">globalLimiter</div>
+          <div class="service-role">Rate limit geral</div>
+          <div class="service-detail">100 requisições/min por cliente (IP ou user_id do JWT).</div>
+        </div>
+        <div class="service-card">
+          <div class="service-name">loginLimiter</div>
+          <div class="service-role">Rate limit de login</div>
+          <div class="service-detail">20 requisições/min — retorna 429 Too Many Requests ao estourar.</div>
+        </div>
+      </div>
+      <div class="callout">
+        <span class="callout-icon">▲</span>
+        <span class="callout-text">
+          CORS liberado só para <code>http://localhost:5173</code> e <code>http://127.0.0.1:5173</code>, hardcoded em <code>router.go</code> — qualquer outra origem de frontend (porta diferente, domínio de produção) precisa ser adicionada manualmente à lista.
+        </span>
+      </div>
+    </section>
+
+    <!-- DECISOES -->
+    <section class="block" id="decisoes">
+      <div class="section-head">
+        <h2 class="section-title display">Decisões recentes</h2>
+        <span class="section-note">desta sessão de trabalho</span>
+      </div>
+      <div class="log-list">
+        <div class="log-row">
+          <span class="log-date mono">2026-08-01</span>
+          <div>
+            <p class="log-title">Corrigido descompasso de porta no compose</p>
+            <p class="log-desc">O servidor lia <code>SERVER_PORT=8090</code> do <code>.env</code> mesmo dentro do container, enquanto o <code>docker-compose.yaml</code> só mapeava <code>8080</code> — conexões TCP eram aceitas mas nunca respondidas. Adicionado <code>SERVER_PORT: "8080"</code> ao <code>environment:</code> do serviço <code>app</code>.</p>
+          </div>
+        </div>
+        <div class="log-row">
+          <span class="log-date mono">2026-08-01</span>
+          <div>
+            <p class="log-title">Sincronização automática de feriados implementada</p>
+            <p class="log-desc">Novo cliente <code>InvertextoClient</code>, método <code>Upsert</code> no repositório (<code>ON CONFLICT (data) DO UPDATE</code>) e o <code>FeriadoSyncWorker</code>. Removido um script CLI antigo e divergente em <code>cmd/seed/feriados</code> que usava uma API e variáveis de ambiente diferentes.</p>
+          </div>
+        </div>
+        <div class="log-row">
+          <span class="log-date mono">2026-08-03</span>
+          <div>
+            <p class="log-title">Nome de variável de ambiente corrigido</p>
+            <p class="log-desc"><code>.env</code> passou a usar <code>FERIADOS_TOKEN_API</code> em vez de <code>FERIADOS_API_KEY</code> — <code>config.go</code> atualizado para o novo nome; <code>ESTADO</code>/<code>CIDADE</code> restaurados.</p>
+          </div>
+        </div>
+        <div class="log-row">
+          <span class="log-date mono">2026-08-05</span>
+          <div>
+            <p class="log-title">Backend movido para execução local</p>
+            <p class="log-desc">Container <code>app</code> parado (<code>docker compose stop app</code>), Postgres seguiu em Docker. API rodando via <code>go run ./cmd/api</code> em <code>localhost:8090</code>, apontando para o mesmo banco.</p>
+          </div>
+        </div>
+        <div class="log-row">
+          <span class="log-date mono">2026-08-05</span>
+          <div>
+            <p class="log-title">Worker de feriados desativado após import inicial</p>
+            <p class="log-desc"><code>fx.Invoke(worker.RegisterFeriadoSyncWorker)</code> comentado em <code>cmd/api/main.go</code> — os 18 feriados de 2026 já estão no banco, sem necessidade de rechamar a API externa a cada restart local.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <footer class="end">
+      Gerado a partir do código-fonte de studyGO — reflete o estado em 2026-08-05. Não substitui a leitura do código para mudanças futuras.
+    </footer>
+  </main>
+</div>
+
+</body>
+</html>

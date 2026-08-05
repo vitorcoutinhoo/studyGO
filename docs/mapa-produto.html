@@ -1,0 +1,1166 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Intellisys Plantão — Mapa do Produto</title>
+<style>
+  @font-face {
+    font-family: 'Fraunces Var';
+    src: local('Fraunces');
+    font-weight: 300 700;
+  }
+
+  :root {
+    --bg: #F6F7FA;
+    --bg-raised: #FFFFFF;
+    --bg-sunken: #ECEEF3;
+    --ink: #171B24;
+    --ink-soft: #454C5C;
+    --ink-faint: #7B8394;
+    --line: #DCE0E8;
+    --line-soft: #E9EBF0;
+    --accent: #B5071A;
+    --accent-soft: #FBEAEC;
+    --accent-ink: #7A0512;
+    --navy: #1E293B;
+    --navy-soft: #EEF1F5;
+    --ok: #15803D;
+    --ok-soft: #EAF7EE;
+    --warn: #C2410C;
+    --warn-soft: #FDF1E9;
+    --mono-bg: #11151D;
+    --mono-ink: #D7DCE5;
+    --shadow: 0 1px 2px rgba(23,27,36,0.04), 0 8px 24px -12px rgba(23,27,36,0.12);
+    color-scheme: light;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0E1116;
+      --bg-raised: #161A22;
+      --bg-sunken: #0A0D12;
+      --ink: #E7E9EE;
+      --ink-soft: #AEB4C2;
+      --ink-faint: #6C7383;
+      --line: #262C38;
+      --line-soft: #1D222C;
+      --accent: #E23B4C;
+      --accent-soft: #2A1418;
+      --accent-ink: #FF8A94;
+      --navy: #A9B4C9;
+      --navy-soft: #1A2029;
+      --ok: #4ADE80;
+      --ok-soft: #10241A;
+      --warn: #FB923C;
+      --warn-soft: #241A10;
+      --mono-bg: #05070A;
+      --mono-ink: #C4CADA;
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px -12px rgba(0,0,0,0.5);
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0E1116; --bg-raised: #161A22; --bg-sunken: #0A0D12;
+    --ink: #E7E9EE; --ink-soft: #AEB4C2; --ink-faint: #6C7383;
+    --line: #262C38; --line-soft: #1D222C;
+    --accent: #E23B4C; --accent-soft: #2A1418; --accent-ink: #FF8A94;
+    --navy: #A9B4C9; --navy-soft: #1A2029;
+    --ok: #4ADE80; --ok-soft: #10241A;
+    --warn: #FB923C; --warn-soft: #241A10;
+    --mono-bg: #05070A; --mono-ink: #C4CADA;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px -12px rgba(0,0,0,0.5);
+    color-scheme: dark;
+  }
+  :root[data-theme="light"] {
+    --bg: #F6F7FA; --bg-raised: #FFFFFF; --bg-sunken: #ECEEF3;
+    --ink: #171B24; --ink-soft: #454C5C; --ink-faint: #7B8394;
+    --line: #DCE0E8; --line-soft: #E9EBF0;
+    --accent: #B5071A; --accent-soft: #FBEAEC; --accent-ink: #7A0512;
+    --navy: #1E293B; --navy-soft: #EEF1F5;
+    --ok: #15803D; --ok-soft: #EAF7EE;
+    --warn: #C2410C; --warn-soft: #FDF1E9;
+    --mono-bg: #11151D; --mono-ink: #D7DCE5;
+    --shadow: 0 1px 2px rgba(23,27,36,0.04), 0 8px 24px -12px rgba(23,27,36,0.12);
+    color-scheme: light;
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    * { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+  }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Iowan Old Style', 'Palatino Linotype', 'Source Serif 4', Georgia, serif;
+    font-family: ui-serif, Georgia, 'Source Serif 4', serif;
+    font-family: -apple-system, 'Segoe UI', system-ui, sans-serif;
+  }
+
+  body {
+    font-family: 'Charter', 'Iowan Old Style', 'Source Serif Pro', Georgia, 'Segoe UI', serif;
+  }
+
+  /* Body copy face: a humanist serif for narrative sections; UI chrome uses a grotesque sans defined per-component below */
+  .prose, .lede, .page-desc, .flow-text, .legend-desc {
+    font-family: 'Charter', 'Iowan Old Style', Georgia, 'Source Serif Pro', serif;
+  }
+
+  .sans {
+    font-family: -apple-system, 'Segoe UI', Roboto, system-ui, sans-serif;
+  }
+
+  code, .mono, .path, .kicker-mono {
+    font-family: 'SFMono-Regular', 'Cascadia Code', Consolas, 'Liberation Mono', monospace;
+    font-variant-numeric: tabular-nums;
+  }
+
+  a { color: inherit; }
+
+  /* ---------- shell ---------- */
+
+  .shell {
+    display: grid;
+    grid-template-columns: 260px minmax(0, 1fr);
+    max-width: 1320px;
+    margin: 0 auto;
+  }
+
+  @media (max-width: 920px) {
+    .shell { grid-template-columns: 1fr; }
+  }
+
+  nav.toc {
+    position: sticky;
+    top: 0;
+    align-self: start;
+    height: 100vh;
+    overflow-y: auto;
+    padding: 2.25rem 1.5rem 2rem 2rem;
+    border-right: 1px solid var(--line-soft);
+  }
+
+  @media (max-width: 920px) {
+    nav.toc {
+      position: static;
+      height: auto;
+      border-right: none;
+      border-bottom: 1px solid var(--line-soft);
+      padding: 1.5rem 1.25rem;
+    }
+  }
+
+  .brand {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    margin-bottom: 2rem;
+  }
+
+  .brand-mark {
+    font-family: 'Fraunces Var', 'Iowan Old Style', Georgia, serif;
+    font-weight: 600;
+    font-size: 1.05rem;
+    letter-spacing: 0.01em;
+    color: var(--accent);
+  }
+
+  .brand-sub {
+    font-family: -apple-system, 'Segoe UI', sans-serif;
+    font-size: 0.68rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+
+  .toc-group {
+    margin-bottom: 1.5rem;
+  }
+
+  .toc-group-label {
+    font-family: -apple-system, 'Segoe UI', sans-serif;
+    font-size: 0.63rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin: 0 0 0.5rem;
+  }
+
+  .toc-group ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.05rem;
+  }
+
+  .toc-group a {
+    display: block;
+    font-family: -apple-system, 'Segoe UI', sans-serif;
+    font-size: 0.82rem;
+    color: var(--ink-soft);
+    text-decoration: none;
+    padding: 0.3rem 0.5rem;
+    margin: 0 -0.5rem;
+    border-radius: 6px;
+    transition: background 0.15s, color 0.15s;
+  }
+
+  .toc-group a:hover {
+    background: var(--bg-sunken);
+    color: var(--ink);
+  }
+
+  main {
+    padding: 3rem clamp(1.25rem, 4vw, 4rem) 6rem;
+    min-width: 0;
+  }
+
+  /* ---------- header ---------- */
+
+  header.top {
+    margin-bottom: 3.5rem;
+    padding-bottom: 2rem;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .kicker-mono {
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 0.9rem;
+  }
+
+  h1.title {
+    font-family: 'Fraunces Var', 'Iowan Old Style', Georgia, serif;
+    font-weight: 600;
+    font-size: clamp(2rem, 4.2vw, 2.9rem);
+    line-height: 1.08;
+    letter-spacing: -0.01em;
+    margin: 0 0 0.9rem;
+    text-wrap: balance;
+    color: var(--ink);
+  }
+
+  p.lede {
+    font-size: 1.08rem;
+    line-height: 1.6;
+    color: var(--ink-soft);
+    max-width: 62ch;
+    margin: 0 0 1.4rem;
+  }
+
+  .meta-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.75rem;
+    font-family: -apple-system, 'Segoe UI', sans-serif;
+    font-size: 0.78rem;
+    color: var(--ink-faint);
+  }
+
+  .meta-row strong {
+    color: var(--ink-soft);
+    font-weight: 600;
+  }
+
+  /* ---------- sections ---------- */
+
+  section.block {
+    margin-bottom: 4rem;
+    scroll-margin-top: 1.5rem;
+  }
+
+  .section-head {
+    display: flex;
+    align-items: baseline;
+    gap: 0.85rem;
+    margin-bottom: 1.1rem;
+  }
+
+  h2.section-title {
+    font-family: 'Fraunces Var', 'Iowan Old Style', Georgia, serif;
+    font-weight: 600;
+    font-size: 1.55rem;
+    letter-spacing: -0.005em;
+    margin: 0;
+    color: var(--ink);
+  }
+
+  .section-note {
+    font-family: -apple-system, 'Segoe UI', sans-serif;
+    font-size: 0.78rem;
+    color: var(--ink-faint);
+  }
+
+  h3.sub-title {
+    font-family: -apple-system, 'Segoe UI', sans-serif;
+    font-weight: 700;
+    font-size: 0.92rem;
+    letter-spacing: 0.01em;
+    margin: 2rem 0 0.75rem;
+    color: var(--ink);
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+  }
+
+  h3.sub-title .dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--accent);
+    flex: none;
+  }
+
+  /* ---------- route table ---------- */
+
+  .table-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--bg-raised);
+    box-shadow: var(--shadow);
+  }
+
+  table.routes {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: -apple-system, 'Segoe UI', sans-serif;
+    font-size: 0.83rem;
+    min-width: 720px;
+  }
+
+  table.routes th {
+    text-align: left;
+    font-size: 0.68rem;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    font-weight: 600;
+    padding: 0.75rem 1rem;
+    background: var(--bg-sunken);
+    border-bottom: 1px solid var(--line);
+    white-space: nowrap;
+  }
+
+  table.routes td {
+    padding: 0.7rem 1rem;
+    border-bottom: 1px solid var(--line-soft);
+    color: var(--ink-soft);
+    vertical-align: top;
+  }
+
+  table.routes tr:last-child td { border-bottom: none; }
+  table.routes tr:hover td { background: var(--bg-sunken); }
+
+  table.routes td.path {
+    font-family: 'SFMono-Regular', Consolas, monospace;
+    font-size: 0.79rem;
+    color: var(--accent-ink);
+    white-space: nowrap;
+    font-weight: 600;
+  }
+
+  table.routes td.page-name {
+    color: var(--ink);
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    padding: 0.2rem 0.55rem;
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+
+  .chip-admin { background: var(--accent-soft); color: var(--accent-ink); }
+  .chip-any { background: var(--ok-soft); color: var(--ok); }
+  .chip-public { background: var(--navy-soft); color: var(--navy); }
+
+  /* ---------- domain cards ---------- */
+
+  .domain {
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--bg-raised);
+    box-shadow: var(--shadow);
+    padding: 1.5rem 1.6rem 1.6rem;
+    margin-bottom: 1.75rem;
+  }
+
+  .domain-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    margin-bottom: 0.3rem;
+  }
+
+  .domain-name {
+    font-family: 'Fraunces Var', 'Iowan Old Style', Georgia, serif;
+    font-weight: 600;
+    font-size: 1.2rem;
+    color: var(--ink);
+  }
+
+  .domain-access {
+    font-family: -apple-system, 'Segoe UI', sans-serif;
+  }
+
+  .domain-body {
+    color: var(--ink-faint);
+    font-size: 0.82rem;
+    font-family: -apple-system, 'Segoe UI', sans-serif;
+    margin-bottom: 1.1rem;
+  }
+
+  .page-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 0.9rem;
+  }
+
+  .page-card {
+    border: 1px solid var(--line-soft);
+    border-radius: 9px;
+    padding: 0.95rem 1.05rem;
+    background: var(--bg-sunken);
+  }
+
+  .page-card-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.4rem;
+  }
+
+  .page-name-title {
+    font-family: -apple-system, 'Segoe UI', sans-serif;
+    font-weight: 700;
+    font-size: 0.88rem;
+    color: var(--ink);
+  }
+
+  .page-path {
+    font-family: 'SFMono-Regular', Consolas, monospace;
+    font-size: 0.7rem;
+    color: var(--ink-faint);
+    white-space: nowrap;
+  }
+
+  .page-desc {
+    font-size: 0.87rem;
+    line-height: 1.5;
+    color: var(--ink-soft);
+    margin: 0 0 0.6rem;
+  }
+
+  .page-viz {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+  }
+
+  .viz-tag {
+    font-family: -apple-system, 'Segoe UI', sans-serif;
+    font-size: 0.66rem;
+    letter-spacing: 0.02em;
+    color: var(--navy);
+    background: var(--navy-soft);
+    border-radius: 5px;
+    padding: 0.15rem 0.45rem;
+  }
+
+  /* ---------- services ---------- */
+
+  .service-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1rem;
+  }
+
+  .service-card {
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 1.1rem 1.2rem;
+    background: var(--bg-raised);
+    box-shadow: var(--shadow);
+  }
+
+  .service-name {
+    font-family: 'SFMono-Regular', Consolas, monospace;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--accent-ink);
+    margin-bottom: 0.15rem;
+  }
+
+  .service-domain {
+    font-family: -apple-system, 'Segoe UI', sans-serif;
+    font-size: 0.78rem;
+    color: var(--ink-faint);
+    margin-bottom: 0.6rem;
+  }
+
+  .service-ops {
+    font-family: 'SFMono-Regular', Consolas, monospace;
+    font-size: 0.72rem;
+    line-height: 1.7;
+    color: var(--ink-soft);
+    word-break: break-word;
+  }
+
+  /* ---------- flow narrative ---------- */
+
+  .flow-card {
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 10px 10px 0;
+    background: var(--bg-raised);
+    box-shadow: var(--shadow);
+    padding: 1.3rem 1.5rem;
+    margin-bottom: 1.1rem;
+  }
+
+  .flow-role {
+    font-family: -apple-system, 'Segoe UI', sans-serif;
+    font-size: 0.68rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 0.5rem;
+    font-weight: 700;
+  }
+
+  .flow-text {
+    font-size: 0.95rem;
+    line-height: 1.65;
+    color: var(--ink-soft);
+  }
+
+  .flow-text .step {
+    color: var(--ink);
+    font-weight: 600;
+  }
+
+  .flow-text code {
+    font-size: 0.83em;
+    background: var(--bg-sunken);
+    padding: 0.05rem 0.35rem;
+    border-radius: 4px;
+    color: var(--accent-ink);
+  }
+
+  /* ---------- viz legend ---------- */
+
+  .legend-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 0.9rem;
+  }
+
+  .legend-card {
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 1rem 1.1rem;
+    background: var(--bg-raised);
+    box-shadow: var(--shadow);
+  }
+
+  .legend-icon {
+    width: 30px;
+    height: 30px;
+    border-radius: 7px;
+    background: var(--accent-soft);
+    color: var(--accent-ink);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 0.6rem;
+  }
+
+  .legend-name {
+    font-family: -apple-system, 'Segoe UI', sans-serif;
+    font-weight: 700;
+    font-size: 0.85rem;
+    color: var(--ink);
+    margin-bottom: 0.25rem;
+  }
+
+  .legend-desc {
+    font-size: 0.83rem;
+    line-height: 1.5;
+    color: var(--ink-soft);
+    margin-bottom: 0.55rem;
+  }
+
+  .legend-pages {
+    font-family: -apple-system, 'Segoe UI', sans-serif;
+    font-size: 0.68rem;
+    color: var(--ink-faint);
+  }
+
+  /* ---------- callout ---------- */
+
+  .callout {
+    border: 1px solid var(--warn);
+    background: var(--warn-soft);
+    border-radius: 10px;
+    padding: 1rem 1.2rem;
+    display: flex;
+    gap: 0.75rem;
+    margin: 1.5rem 0;
+  }
+
+  .callout-icon {
+    color: var(--warn);
+    flex: none;
+    font-size: 1.1rem;
+    line-height: 1;
+  }
+
+  .callout-text {
+    font-family: -apple-system, 'Segoe UI', sans-serif;
+    font-size: 0.83rem;
+    line-height: 1.55;
+    color: var(--ink-soft);
+  }
+
+  .callout-text strong { color: var(--ink); }
+
+  /* ---------- footer ---------- */
+
+  footer.end {
+    margin-top: 4rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--line);
+    font-family: -apple-system, 'Segoe UI', sans-serif;
+    font-size: 0.76rem;
+    color: var(--ink-faint);
+  }
+
+  ::selection { background: var(--accent-soft); color: var(--accent-ink); }
+</style>
+</head>
+<body>
+
+
+<div class="shell">
+  <nav class="toc">
+    <div class="brand">
+      <span class="brand-mark">Intellisys</span>
+      <span class="brand-sub">Mapa do produto — Plantão</span>
+    </div>
+
+    <div class="toc-group">
+      <p class="toc-group-label">Visão geral</p>
+      <ul>
+        <li><a href="#stack">Stack &amp; guarda de rotas</a></li>
+        <li><a href="#rotas">Mapa de rotas</a></li>
+      </ul>
+    </div>
+
+    <div class="toc-group">
+      <p class="toc-group-label">Domínios</p>
+      <ul>
+        <li><a href="#auth">Autenticação</a></li>
+        <li><a href="#home">Início</a></li>
+        <li><a href="#escala">Escala</a></li>
+        <li><a href="#plantoes">Plantões</a></li>
+        <li><a href="#colaboradores">Colaboradores</a></li>
+        <li><a href="#convites">Convites</a></li>
+        <li><a href="#financeiro">Financeiro</a></li>
+        <li><a href="#admin">Cargos, setores &amp; e-mail</a></li>
+        <li><a href="#relatorios">Relatórios</a></li>
+        <li><a href="#conta">Conta</a></li>
+      </ul>
+    </div>
+
+    <div class="toc-group">
+      <p class="toc-group-label">Estrutura</p>
+      <ul>
+        <li><a href="#servicos">Serviços de domínio</a></li>
+        <li><a href="#fluxos">Fluxos de navegação</a></li>
+        <li><a href="#visualizacoes">Padrões de visualização</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <main>
+    <header class="top">
+      <p class="kicker-mono">Levantamento técnico · intellisys-plantao-frontend</p>
+      <h1 class="title">Tudo que existe hoje no Plantão</h1>
+      <p class="lede">Mapa completo de rotas, telas, fluxos de navegação e padrões de visualização do sistema — como está implementado agora, direto do código.</p>
+      <div class="meta-row">
+        <span><strong>18</strong> rotas</span>
+        <span><strong>~24</strong> telas</span>
+        <span><strong>6</strong> serviços de domínio</span>
+        <span><strong>2</strong> perfis de acesso</span>
+        <span>React · TypeScript · Vite</span>
+      </div>
+    </header>
+
+    <!-- STACK -->
+    <section class="block" id="stack">
+      <div class="section-head">
+        <h2 class="section-title">Stack &amp; guarda de rotas</h2>
+      </div>
+      <p class="page-desc" style="max-width: 68ch; font-size: 0.95rem;">
+        React + TypeScript sobre Vite, roteamento com <code class="mono">react-router-dom</code>, transições animadas com <code class="mono">framer-motion</code>, Tailwind para estilo e <code class="mono">lucide-react</code> para ícones. Geração de PDF via <code class="mono">@react-pdf/renderer</code>. Cliente HTTP em <code class="mono">axios</code> centralizado em <code class="mono">services/api.ts</code>.
+      </p>
+      <div class="callout">
+        <span class="callout-icon">▲</span>
+        <span class="callout-text">
+          <strong>Guarda de rota é só de interface.</strong> <code class="mono">AdminRoute</code> lê o papel do usuário direto do <code class="mono">localStorage</code> e redireciona quem não é <code class="mono">admin</code>/<code class="mono">gerente</code> — não valida token nem sessão. Funciona como atalho de UX; a autorização real precisa estar garantida no backend.
+        </span>
+      </div>
+    </section>
+
+    <!-- ROUTE MAP -->
+    <section class="block" id="rotas">
+      <div class="section-head">
+        <h2 class="section-title">Mapa de rotas</h2>
+        <span class="section-note">src/App.tsx</span>
+      </div>
+      <div class="table-wrap">
+        <table class="routes">
+          <thead>
+            <tr>
+              <th>Caminho</th>
+              <th>Tela</th>
+              <th>Função</th>
+              <th>Acesso</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td class="path">/</td><td class="page-name">Login</td><td>Formulário de e-mail e senha</td><td><span class="chip chip-public">Público</span></td></tr>
+            <tr><td class="path">/cadastro</td><td class="page-name">Cadastro</td><td>Definir senha a partir de convite (token na URL)</td><td><span class="chip chip-public">Público, com token</span></td></tr>
+            <tr><td class="path">/home</td><td class="page-name">Home</td><td>Painel inicial pós-login, conteúdo muda por papel</td><td><span class="chip chip-any">Autenticado</span></td></tr>
+            <tr><td class="path">/scale/month</td><td class="page-name">Scale/Month</td><td>Calendário mensal de plantões</td><td><span class="chip chip-admin">Admin/Gerente</span></td></tr>
+            <tr><td class="path">/scale/suggestion</td><td class="page-name">Scale/Suggestion</td><td>Sugestão automática de escala por rodízio</td><td><span class="chip chip-admin">Admin/Gerente</span></td></tr>
+            <tr><td class="path">/duty</td><td class="page-name">Duty</td><td>Gestão de plantões — criar, concluir, pagar, excluir</td><td><span class="chip chip-admin">Admin/Gerente</span></td></tr>
+            <tr><td class="path">/users</td><td class="page-name">Users/All</td><td>Lista e gestão de colaboradores</td><td><span class="chip chip-admin">Admin/Gerente</span></td></tr>
+            <tr><td class="path">/users/create</td><td class="page-name">Users/Create</td><td>Cadastro de novo colaborador</td><td><span class="chip chip-admin">Admin/Gerente</span></td></tr>
+            <tr><td class="path">/users/edit/:id</td><td class="page-name">Users/Edit</td><td>Edição de colaborador</td><td><span class="chip chip-admin">Admin/Gerente</span></td></tr>
+            <tr><td class="path">/users/details/:id</td><td class="page-name">Users/Details</td><td>Perfil somente leitura do colaborador</td><td><span class="chip chip-admin">Admin/Gerente</span></td></tr>
+            <tr><td class="path">/users/duty-history/:id</td><td class="page-name">Users/DutyHistory</td><td>Histórico de plantões do colaborador + PDF</td><td><span class="chip chip-admin">Admin/Gerente</span></td></tr>
+            <tr><td class="path">/users/permissions</td><td class="page-name">Users/Permissions</td><td>Atribuição de papéis de sistema</td><td><span class="chip chip-admin">Admin/Gerente</span></td></tr>
+            <tr><td class="path">/convites</td><td class="page-name">Convites</td><td>Gestão de convites de acesso</td><td><span class="chip chip-admin">Admin</span></td></tr>
+            <tr><td class="path">/financeiro</td><td class="page-name">Financeiro</td><td>Valores de plantão e feriados</td><td><span class="chip chip-admin">Admin</span></td></tr>
+            <tr><td class="path">/cargos-setores</td><td class="page-name">CargosSetores</td><td>Cargos e setores da empresa</td><td><span class="chip chip-admin">Admin</span></td></tr>
+            <tr><td class="path">/modelo-comunicacao</td><td class="page-name">ModeloComunicacao</td><td>Modelos de e-mail transacional</td><td><span class="chip chip-admin">Admin</span></td></tr>
+            <tr><td class="path">/reports</td><td class="page-name">Reports</td><td>Relatório de plantões por período + PDF</td><td><span class="chip chip-admin">Admin/Gerente</span></td></tr>
+            <tr><td class="path">/reports/print</td><td class="page-name">ReportPrint</td><td>Impressão HTML alternativa (via sessionStorage)</td><td><span class="chip chip-public">Sem link ativo</span></td></tr>
+            <tr><td class="path">/perfil</td><td class="page-name">Perfil</td><td>Trocar o próprio e-mail e senha</td><td><span class="chip chip-any">Autenticado</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout">
+        <span class="callout-icon">▲</span>
+        <span class="callout-text">
+          <strong><code class="mono">/reports/print</code> parece órfã.</strong> Duplica visualmente o relatório em PDF mas lê de <code class="mono">sessionStorage['report-print-data']</code> e nada no app navega até lá hoje — <code class="mono">Reports.tsx</code> usa o fluxo de PDF em blob. Candidata a remoção ou a virar o caminho único de impressão.
+        </span>
+      </div>
+    </section>
+
+    <!-- AUTH -->
+    <section class="block" id="auth">
+      <div class="section-head">
+        <h2 class="section-title">Autenticação</h2>
+      </div>
+      <div class="domain">
+        <div class="domain-head">
+          <span class="domain-name">Entrada, convite e sessão</span>
+          <span class="domain-access chip chip-public">Público → autenticado</span>
+        </div>
+        <p class="domain-body">Não há decodificação real de JWT visível — identidade e papel do usuário vivem inteiramente em <code class="mono">localStorage['@Intellisys:user']</code>, atualizados por <code class="mono">authService.getUsuario()</code>.</p>
+        <div class="page-grid">
+          <div class="page-card">
+            <div class="page-card-head"><span class="page-name-title">Login</span><span class="page-path">/</span></div>
+            <p class="page-desc">Credenciais → <code class="mono">authService.login()</code>. Bloqueia acesso se o colaborador estiver <code class="mono">inativo</code>. Link de "esqueci a senha" aponta para <code class="mono">/recovery</code>, rota inexistente.</p>
+            <div class="page-viz"><span class="viz-tag">Formulário</span><span class="viz-tag">Card centralizado</span></div>
+          </div>
+          <div class="page-card">
+            <div class="page-card-head"><span class="page-name-title">Cadastro</span><span class="page-path">/cadastro</span></div>
+            <p class="page-desc">Lê <code class="mono">token</code>/<code class="mono">nome</code> da URL do e-mail de convite; define senha (mín. 6, com confirmação) via <code class="mono">authService.cadastro()</code>.</p>
+            <div class="page-viz"><span class="viz-tag">Formulário</span><span class="viz-tag">Estados de sucesso/erro em tela cheia</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- HOME -->
+    <section class="block" id="home">
+      <div class="section-head">
+        <h2 class="section-title">Início</h2>
+      </div>
+      <div class="domain">
+        <div class="domain-head">
+          <span class="domain-name">Home</span>
+          <span class="domain-access chip chip-any">/home · qualquer autenticado</span>
+        </div>
+        <p class="domain-body">A única tela que se bifurca por completo conforme o papel do usuário.</p>
+        <div class="page-grid">
+          <div class="page-card">
+            <div class="page-card-head"><span class="page-name-title">Visão admin</span></div>
+            <p class="page-desc">4 blocos grandes (<code class="mono">ToolCard</code>) para Escala, Plantões, Colaboradores e Relatórios; busca global no mobile que roteia por palavra-chave.</p>
+            <div class="page-viz"><span class="viz-tag">Tiles de atalho</span><span class="viz-tag">Busca por texto</span></div>
+          </div>
+          <div class="page-card">
+            <div class="page-card-head"><span class="page-name-title">Visão colaborador</span></div>
+            <p class="page-desc">Lista em cards dos próprios plantões ativos (<code class="mono">AGENDADO</code>/<code class="mono">EM_ANDAMENTO</code>). Tocar um card abre modal para observações e avançar status.</p>
+            <div class="page-viz"><span class="viz-tag">Cards de status</span><span class="viz-tag">Modal de ação</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ESCALA -->
+    <section class="block" id="escala">
+      <div class="section-head">
+        <h2 class="section-title">Escala</h2>
+        <span class="section-note">restrito a admin/gerente</span>
+      </div>
+      <div class="domain">
+        <div class="domain-head">
+          <span class="domain-name">Planejamento de rodízio</span>
+          <span class="domain-access chip chip-admin">Admin/Gerente</span>
+        </div>
+        <div class="page-grid">
+          <div class="page-card">
+            <div class="page-card-head"><span class="page-name-title">Scale/Month</span><span class="page-path">/scale/month</span></div>
+            <p class="page-desc">Grade mensal — quem está de plantão em cada dia, feriados destacados. Mobile vira lista por semana. Atalhos para Relatório (mês pré-filtrado) e Sugestão.</p>
+            <div class="page-viz"><span class="viz-tag">Calendário em grade 7 colunas</span><span class="viz-tag">Agenda mobile</span></div>
+          </div>
+          <div class="page-card">
+            <div class="page-card-head"><span class="page-name-title">Scale/Suggestion</span><span class="page-path">/scale/suggestion</span></div>
+            <p class="page-desc">Gera blocos de 7 dias em rodízio entre colaboradores ativos; detecta e trava um bloco herdado do mês anterior. Seleção de blocos → confirma em lote.</p>
+            <div class="page-viz"><span class="viz-tag">Calendário selecionável</span><span class="viz-tag">Tabela de blocos</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PLANTOES -->
+    <section class="block" id="plantoes">
+      <div class="section-head">
+        <h2 class="section-title">Plantões</h2>
+        <span class="section-note">restrito a admin/gerente</span>
+      </div>
+      <div class="domain">
+        <div class="domain-head">
+          <span class="domain-name">Duty</span>
+          <span class="domain-access chip chip-admin">/duty</span>
+        </div>
+        <p class="domain-body">Tela central do ciclo de vida do plantão: criar, selecionar, finalizar, pagar, excluir.</p>
+        <div class="page-grid">
+          <div class="page-card">
+            <div class="page-card-head"><span class="page-name-title">Lista + ações</span></div>
+            <p class="page-desc">Linha selecionada habilita barra inferior: Detalhes, Finalizar, Pagar, Deletar, Inserir. Nome do colaborador resolvido via <code class="mono">collaboratorService</code>; busca compartilhada pelo layout.</p>
+            <div class="page-viz"><span class="viz-tag">DataTable</span><span class="viz-tag">Seleção de linha</span><span class="viz-tag">Modal de criação</span><span class="viz-tag">Badge de status</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- COLABORADORES -->
+    <section class="block" id="colaboradores">
+      <div class="section-head">
+        <h2 class="section-title">Colaboradores</h2>
+        <span class="section-note">restrito a admin/gerente</span>
+      </div>
+      <div class="domain">
+        <div class="domain-head">
+          <span class="domain-name">Cadastro, permissões e histórico</span>
+          <span class="domain-access chip chip-admin">/users/*</span>
+        </div>
+        <div class="page-grid">
+          <div class="page-card">
+            <div class="page-card-head"><span class="page-name-title">Users/All</span><span class="page-path">/users</span></div>
+            <p class="page-desc">Lista com código, nome, cargo, setor, status. Seleção de linha habilita Convidar, Incluir, Convites, Permissões, Editar, Excluir. Não-admin vê tela de acesso restrito.</p>
+            <div class="page-viz"><span class="viz-tag">DataTable</span><span class="viz-tag">Duplo clique → detalhes</span></div>
+          </div>
+          <div class="page-card">
+            <div class="page-card-head"><span class="page-name-title">Users/Create &amp; Edit</span><span class="page-path">/users/create, /users/edit/:id</span></div>
+            <p class="page-desc">Formulário em cards agrupados (Identificação com foto, Contato, Informações Profissionais); cargo/setor vindos de <code class="mono">scaleService</code>.</p>
+            <div class="page-viz"><span class="viz-tag">Formulário multi-card</span><span class="viz-tag">Upload de foto</span></div>
+          </div>
+          <div class="page-card">
+            <div class="page-card-head"><span class="page-name-title">Users/Details</span><span class="page-path">/users/details/:id</span></div>
+            <p class="page-desc">Perfil somente leitura em 3 cards, com atalhos para editar ou ver histórico de plantões.</p>
+            <div class="page-viz"><span class="viz-tag">Perfil em cards</span></div>
+          </div>
+          <div class="page-card">
+            <div class="page-card-head"><span class="page-name-title">Users/DutyHistory</span><span class="page-path">/users/duty-history/:id</span></div>
+            <p class="page-desc">Todos os plantões passados do colaborador com total acumulado; exporta relatório em PDF.</p>
+            <div class="page-viz"><span class="viz-tag">DataTable</span><span class="viz-tag">Barra de total</span><span class="viz-tag">Exportar PDF</span></div>
+          </div>
+          <div class="page-card">
+            <div class="page-card-head"><span class="page-name-title">Users/Permissions</span><span class="page-path">/users/permissions</span></div>
+            <p class="page-desc">Lista de contas de usuário (não colaboradores) com seletor inline de papel de sistema por linha.</p>
+            <div class="page-viz"><span class="viz-tag">DataTable</span><span class="viz-tag">Select inline</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CONVITES -->
+    <section class="block" id="convites">
+      <div class="section-head">
+        <h2 class="section-title">Convites</h2>
+        <span class="section-note">restrito a admin</span>
+      </div>
+      <div class="domain">
+        <div class="domain-head">
+          <span class="domain-name">Convites</span>
+          <span class="domain-access chip chip-admin">/convites</span>
+        </div>
+        <p class="page-desc" style="max-width: 68ch;">Lista de tokens de convite com colaborador, token truncado, validade e status (Usado / Expirado / Pendente, calculado no cliente por <code class="mono">isExpirado</code>). Seleção habilita Reenviar (apaga e recria) e Revogar; formulário inline para enviar novo convite a colaborador ativo sem conta.</p>
+        <div class="page-viz"><span class="viz-tag">DataTable</span><span class="viz-tag">Seleção de linha</span><span class="viz-tag">Badge de status</span></div>
+      </div>
+    </section>
+
+    <!-- FINANCEIRO -->
+    <section class="block" id="financeiro">
+      <div class="section-head">
+        <h2 class="section-title">Financeiro</h2>
+        <span class="section-note">restrito a admin</span>
+      </div>
+      <div class="domain">
+        <div class="domain-head">
+          <span class="domain-name">Financeiro</span>
+          <span class="domain-access chip chip-admin">/financeiro</span>
+        </div>
+        <p class="domain-body">Duas abas com alternador em pílula.</p>
+        <div class="page-grid">
+          <div class="page-card">
+            <div class="page-card-head"><span class="page-name-title">Aba Valores</span></div>
+            <p class="page-desc">Valor pago por tipo de dia (Útil/Sábado/Domingo/Feriado), com vigência e pílula Vigente/Encerrado. Edição de linha inline + formulário de criação.</p>
+            <div class="page-viz"><span class="viz-tag">DataTable</span><span class="viz-tag">Edição inline</span></div>
+          </div>
+          <div class="page-card">
+            <div class="page-card-head"><span class="page-name-title">Aba Feriados</span></div>
+            <p class="page-desc">Lista de feriados por ano navegável, somente leitura — nome, data e tipo.</p>
+            <div class="page-viz"><span class="viz-tag">DataTable</span><span class="viz-tag">Paginação por ano</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ADMIN -->
+    <section class="block" id="admin">
+      <div class="section-head">
+        <h2 class="section-title">Cargos, setores &amp; e-mail</h2>
+        <span class="section-note">restrito a admin</span>
+      </div>
+      <div class="domain">
+        <div class="domain-head">
+          <span class="domain-name">Taxonomia e comunicação</span>
+          <span class="domain-access chip chip-admin">Admin</span>
+        </div>
+        <div class="page-grid">
+          <div class="page-card">
+            <div class="page-card-head"><span class="page-name-title">CargosSetores</span><span class="page-path">/cargos-setores</span></div>
+            <p class="page-desc">Duas abas (Cargos / Setores), formulário simples de inclusão e lista com exclusão — a única tela de lista que não usa <code class="mono">DataTable</code>. Alimenta os seletores de Users/Create e Edit.</p>
+            <div class="page-viz"><span class="viz-tag">Lista simples</span><span class="viz-tag">Formulário inline</span></div>
+          </div>
+          <div class="page-card">
+            <div class="page-card-head"><span class="page-name-title">ModeloComunicacao</span><span class="page-path">/modelo-comunicacao</span></div>
+            <p class="page-desc">Modelos de e-mail transacional (agendamento, conclusão, ciclo de vida do colaborador). Corpo com placeholders <code class="mono">{{.nome}}</code>, <code class="mono">{{.dataInicio}}</code>, etc.</p>
+            <div class="page-viz"><span class="viz-tag">DataTable</span><span class="viz-tag">Editor de template</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- RELATORIOS -->
+    <section class="block" id="relatorios">
+      <div class="section-head">
+        <h2 class="section-title">Relatórios</h2>
+        <span class="section-note">restrito a admin/gerente</span>
+      </div>
+      <div class="domain">
+        <div class="domain-head">
+          <span class="domain-name">Reports</span>
+          <span class="domain-access chip chip-admin">/reports</span>
+        </div>
+        <p class="page-desc" style="max-width: 68ch;">Filtro por período e, opcionalmente, colaborador → tabela de resultados com barra de total. Pode chegar pré-preenchido via query string (ex.: vindo de Scale/Month). PDF via <code class="mono">ReportTemplate</code>: sem colaborador selecionado, gera uma página por pessoa.</p>
+        <div class="page-viz"><span class="viz-tag">Formulário de filtro</span><span class="viz-tag">DataTable</span><span class="viz-tag">PDF paginado por colaborador</span></div>
+      </div>
+    </section>
+
+    <!-- CONTA -->
+    <section class="block" id="conta">
+      <div class="section-head">
+        <h2 class="section-title">Conta</h2>
+      </div>
+      <div class="domain">
+        <div class="domain-head">
+          <span class="domain-name">Perfil</span>
+          <span class="domain-access chip chip-any">/perfil · qualquer autenticado</span>
+        </div>
+        <p class="domain-body">Trocar o próprio e-mail e/ou senha (campo em branco = mantém o atual). Única tela fora do padrão admin-only acessível por todos.</p>
+        <div class="page-viz"><span class="viz-tag">Formulário</span></div>
+      </div>
+    </section>
+
+    <!-- SERVICES -->
+    <section class="block" id="servicos">
+      <div class="section-head">
+        <h2 class="section-title">Serviços de domínio</h2>
+        <span class="section-note">src/services/</span>
+      </div>
+      <div class="service-grid">
+        <div class="service-card">
+          <div class="service-name">authService</div>
+          <div class="service-domain">Autenticação e contas</div>
+          <div class="service-ops">login · logout · getUsuario · getColaborador · cadastro · updateConta · desativarConta · listarUsuarios · atualizarRole</div>
+        </div>
+        <div class="service-card">
+          <div class="service-name">collaboratorService</div>
+          <div class="service-domain">Colaboradores (registro de equipe)</div>
+          <div class="service-ops">getAll · getById · create · update · delete · uploadFoto</div>
+        </div>
+        <div class="service-card">
+          <div class="service-name">dutyService</div>
+          <div class="service-domain">Plantões</div>
+          <div class="service-ops">getAll · getById · getByColaborador · getByStatus · getByPeriod · create · updateStatus · delete · pagar</div>
+        </div>
+        <div class="service-card">
+          <div class="service-name">scaleService</div>
+          <div class="service-domain">Config de escala — feriados, valores, cargos, setores</div>
+          <div class="service-ops">getFeriados · updateFeriado · getConfigValores · createConfigValor · updateConfigValor · getCargos · createCargo · deleteCargo · getSetores · createSetor · deleteSetor</div>
+        </div>
+        <div class="service-card">
+          <div class="service-name">conviteService</div>
+          <div class="service-domain">Convites de acesso</div>
+          <div class="service-ops">criar · listar · deletar</div>
+        </div>
+        <div class="service-card">
+          <div class="service-name">api</div>
+          <div class="service-domain">Cliente HTTP base (axios)</div>
+          <div class="service-ops">instância compartilhada por todos os serviços acima</div>
+        </div>
+      </div>
+      <div class="callout">
+        <span class="callout-icon">▲</span>
+        <span class="callout-text">
+          <strong>Nem tudo passa pela camada de serviço.</strong> <code class="mono">Users/Permissions.tsx</code> e <code class="mono">Convites.tsx</code> chamam <code class="mono">api</code> direto para rotas como <code class="mono">/admin/all</code>, <code class="mono">/roles</code>, <code class="mono">/admin/feriados</code> em vez de passar por um serviço dedicado.
+        </span>
+      </div>
+    </section>
+
+    <!-- FLOWS -->
+    <section class="block" id="fluxos">
+      <div class="section-head">
+        <h2 class="section-title">Fluxos de navegação</h2>
+      </div>
+
+      <div class="flow-card">
+        <p class="flow-role">Sessão típica — admin ou gerente</p>
+        <p class="flow-text">
+          Login → <code>/home</code>, com os 4 blocos de atalho. Normalmente começa pela <span class="step">Escala</span> (<code>/scale/month</code>) revisando o calendário do mês; usa <span class="step">Sugestão</span> para gerar o próximo rodízio e confirma os blocos. Do mês, salta direto para <span class="step">Relatório</span> já filtrado naquele período e imprime o PDF. Em paralelo, cuida de <span class="step">Colaboradores</span> (<code>/users</code>): cadastra novos, entra em detalhes → histórico de plantões (PDF individual) ou edição. Da lista, envia convites de acesso e ajusta permissões. A seção "Administração" fecha o ciclo: <span class="step">Financeiro</span> (valores e feriados), <span class="step">Cargos/Setores</span> (taxonomia usada nos formulários de colaborador) e <span class="step">Modelos de e-mail</span>. O dia a dia do plantão em si acontece em <code>/duty</code>: criar, finalizar, pagar ou excluir.
+        </p>
+      </div>
+
+      <div class="flow-card">
+        <p class="flow-role">Sessão típica — colaborador</p>
+        <p class="flow-text">
+          Login → <code>/home</code> mostra só os próprios plantões ativos, em cards. Tocar um card abre um modal para registrar observação e avançar o status (<span class="step">Iniciar</span> → <span class="step">Concluir</span>). Se tentar acessar uma rota administrativa direto pela URL, <code>AdminRoute</code> devolve para <code>/home</code>. Na prática, as únicas telas alcançáveis são <code>/home</code> e <code>/perfil</code>.
+        </p>
+      </div>
+
+      <div class="callout">
+        <span class="callout-icon">▲</span>
+        <span class="callout-text">
+          <strong>Pequena inconsistência de papel.</strong> A barra lateral marca as seções Colaboradores/Plantões/Escala/Relatórios como visíveis para todos (<code class="mono">adminOnly: false</code> no nível da seção), mas cada página individual é protegida por <code class="mono">AdminRoute</code> — um colaborador comum vê o link e é redirecionado só ao clicar. <code class="mono">Home.tsx</code> também trata só <code class="mono">role === 'admin'</code> como visão administrativa, enquanto o restante do app trata <code class="mono">admin</code> e <code class="mono">gerente</code> como equivalentes.
+        </span>
+      </div>
+    </section>
+
+    <!-- VIZ PATTERNS -->
+    <section class="block" id="visualizacoes">
+      <div class="section-head">
+        <h2 class="section-title">Padrões de visualização</h2>
+      </div>
+
+      <div class="legend-grid">
+        <div class="legend-card">
+          <div class="legend-icon">▦</div>
+          <div class="legend-name">Calendário em grade</div>
+          <p class="legend-desc">Grade CSS de 7 colunas para visão mensal; cada dia mostra colaborador e feriado. No mobile, vira agenda agrupada por semana.</p>
+          <p class="legend-pages">Scale/Month, Scale/Suggestion</p>
+        </div>
+        <div class="legend-card">
+          <div class="legend-icon">▤</div>
+          <div class="legend-name">DataTable</div>
+          <p class="legend-desc">Componente genérico central do app: tabela em grade no desktop, lista de cards no mobile, com seleção de linha e duplo clique opcionais.</p>
+          <p class="legend-pages">Duty, Users/All, Users/Permissions, Users/DutyHistory, Convites, Financeiro, ModeloComunicacao, Reports</p>
+        </div>
+        <div class="legend-card">
+          <div class="legend-icon">◫</div>
+          <div class="legend-name">Cards de status</div>
+          <p class="legend-desc">Listas fora do padrão de tabela: plantões do próprio colaborador na Home, e a lista simples de cargos/setores.</p>
+          <p class="legend-pages">Home (visão colaborador), CargosSetores</p>
+        </div>
+        <div class="legend-card">
+          <div class="legend-icon">◧</div>
+          <div class="legend-name">Perfil em cards</div>
+          <p class="legend-desc">Formulário ou visualização agrupada em cartões temáticos (Identificação, Contato, Profissional), mesma linguagem visual em criar/editar/ver.</p>
+          <p class="legend-pages">Users/Create, Users/Edit, Users/Details</p>
+        </div>
+        <div class="legend-card">
+          <div class="legend-icon">▣</div>
+          <div class="legend-name">Tiles de atalho</div>
+          <p class="legend-desc"><code class="mono">ToolCard</code> — 4 blocos grandes de navegação no painel administrativo da Home.</p>
+          <p class="legend-pages">Home (visão admin)</p>
+        </div>
+        <div class="legend-card">
+          <div class="legend-icon">▥</div>
+          <div class="legend-name">Modal</div>
+          <p class="legend-desc">Overlay fixo verdadeiro (não painel inline) para detalhe e criação de plantão.</p>
+          <p class="legend-pages">Duty, Home (ação de plantão)</p>
+        </div>
+        <div class="legend-card">
+          <div class="legend-icon">⎙</div>
+          <div class="legend-name">Relatório em PDF</div>
+          <p class="legend-desc"><code class="mono">ReportTemplate</code> via <code class="mono">@react-pdf/renderer</code>: logo, resumo do período, tabela de status coloridas; pode paginar uma página por colaborador.</p>
+          <p class="legend-pages">Reports, Users/DutyHistory</p>
+        </div>
+        <div class="legend-card">
+          <div class="legend-icon">●</div>
+          <div class="legend-name">Badge de status</div>
+          <p class="legend-desc">Pílulas coloridas para status de plantão (Agendado/Em andamento/Concluído/Cancelado/Pago), convite (Usado/Expirado/Pendente) e ativo/inativo.</p>
+          <p class="legend-pages">Presente em quase todas as telas com dados</p>
+        </div>
+      </div>
+
+      <h3 class="sub-title"><span class="dot"></span>Convenção responsiva dominante</h3>
+      <p class="page-desc" style="max-width: 68ch;">Praticamente toda tela segue o mesmo split: <code class="mono">hidden md:block</code> para a versão desktop (tabela/grade) e <code class="mono">md:hidden</code> para pilha de cards no mobile com barra de ação fixa embaixo — não é exclusividade do <code class="mono">DataTable</code>, é o padrão de layout do projeto inteiro.</p>
+    </section>
+
+    <footer class="end">
+      Levantamento gerado a partir do estado atual do código-fonte em <code class="mono">intellisys-plantao-frontend</code>. Reflete a implementação, não a especificação — trate os pontos de atenção destacados como candidatos a revisão, não como bugs confirmados.
+    </footer>
+  </main>
+</div>
+
+</body></html>
+</body>
+</html>

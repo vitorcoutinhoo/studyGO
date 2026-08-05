@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>studyGO — Documentação</title>
+<style>
+  :root {
+    --bg: #F6F7F5;
+    --bg-raised: #FFFFFF;
+    --ink: #101812;
+    --ink-soft: #3D473F;
+    --ink-faint: #78826E;
+    --line: #D9DED4;
+    --accent: #0F6E5C;
+    --accent-soft: #E3F1EA;
+    --accent-ink: #0A4B3E;
+    --shadow: 0 1px 2px rgba(16,24,18,0.05), 0 10px 26px -14px rgba(16,24,18,0.16);
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0C1210;
+      --bg-raised: #131C18;
+      --ink: #E6EBE5;
+      --ink-soft: #AAB6A9;
+      --ink-faint: #66735F;
+      --line: #223028;
+      --accent: #35C79A;
+      --accent-soft: #10261F;
+      --accent-ink: #7FE2BB;
+      --shadow: 0 1px 2px rgba(0,0,0,0.35), 0 10px 26px -14px rgba(0,0,0,0.6);
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0C1210; --bg-raised: #131C18; --ink: #E6EBE5; --ink-soft: #AAB6A9;
+    --ink-faint: #66735F; --line: #223028; --accent: #35C79A; --accent-soft: #10261F;
+    --accent-ink: #7FE2BB; --shadow: 0 1px 2px rgba(0,0,0,0.35), 0 10px 26px -14px rgba(0,0,0,0.6);
+    color-scheme: dark;
+  }
+  :root[data-theme="light"] {
+    --bg: #F6F7F5; --bg-raised: #FFFFFF; --ink: #101812; --ink-soft: #3D473F;
+    --ink-faint: #78826E; --line: #D9DED4; --accent: #0F6E5C; --accent-soft: #E3F1EA;
+    --accent-ink: #0A4B3E; --shadow: 0 1px 2px rgba(16,24,18,0.05), 0 10px 26px -14px rgba(16,24,18,0.16);
+    color-scheme: light;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, 'Segoe UI', Roboto, system-ui, sans-serif;
+  }
+
+  main {
+    max-width: 880px;
+    margin: 0 auto;
+    padding: clamp(2.5rem, 6vw, 5rem) 1.5rem 5rem;
+  }
+
+  .kicker {
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 700;
+    margin: 0 0 0.8rem;
+  }
+
+  h1 {
+    font-size: clamp(1.8rem, 4vw, 2.4rem);
+    letter-spacing: -0.01em;
+    margin: 0 0 0.8rem;
+  }
+
+  p.lede {
+    font-size: 1rem;
+    line-height: 1.6;
+    color: var(--ink-soft);
+    max-width: 60ch;
+    margin: 0 0 2.5rem;
+  }
+
+  .card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.1rem;
+  }
+
+  a.card {
+    display: block;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--bg-raised);
+    box-shadow: var(--shadow);
+    padding: 1.5rem 1.6rem;
+    text-decoration: none;
+    color: inherit;
+    transition: transform 0.15s ease, border-color 0.15s ease;
+  }
+
+  a.card:hover {
+    transform: translateY(-2px);
+    border-color: var(--accent);
+  }
+
+  .card-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    background: var(--accent-soft);
+    color: var(--accent-ink);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    margin-bottom: 0.9rem;
+  }
+
+  .card-title {
+    font-size: 1.02rem;
+    font-weight: 700;
+    margin: 0 0 0.4rem;
+  }
+
+  .card-desc {
+    font-size: 0.85rem;
+    line-height: 1.55;
+    color: var(--ink-soft);
+    margin: 0;
+  }
+
+  footer {
+    margin-top: 3rem;
+    padding-top: 1.4rem;
+    border-top: 1px solid var(--line);
+    font-size: 0.75rem;
+    color: var(--ink-faint);
+  }
+</style>
+</head>
+<body>
+<main>
+  <p class="kicker">studyGO</p>
+  <h1>Documentação do projeto</h1>
+  <p class="lede">Mapas de produto e arquitetura gerados a partir do código-fonte — frontend e backend do sistema de plantões.</p>
+
+  <div class="card-grid">
+    <a class="card" href="mapa-produto.html">
+      <span class="card-icon">◆</span>
+      <p class="card-title">Mapa do Produto</p>
+      <p class="card-desc">Rotas, telas, fluxos de navegação e padrões de visualização do frontend — React + TypeScript.</p>
+    </a>
+    <a class="card" href="mapa-backend.html">
+      <span class="card-icon">▤</span>
+      <p class="card-title">Mapa do Backend</p>
+      <p class="card-desc">Endpoints da API, módulos de domínio, workers e infraestrutura — Go, Gin e PostgreSQL.</p>
+    </a>
+  </div>
+
+  <footer>Gerado a partir do código-fonte de studyGO.</footer>
+</main>
+</body>
+</html>
