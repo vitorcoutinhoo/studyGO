@@ -5,7 +5,6 @@ import (
 	"plantao/internal/api/apierr"
 	"plantao/internal/api/dto"
 	"plantao/internal/domain/financeiro"
-	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -18,8 +17,8 @@ func NewValorDiaController(service *financeiro.ConfigValorDiaService) *ValorDiaC
 	return &ValorDiaController{service: service}
 }
 
-func (c *ValorDiaController) GetVigentes(ctx *gin.Context) {
-	valores, err := c.service.GetVigentes(ctx.Request.Context())
+func (c *ValorDiaController) GetAll(ctx *gin.Context) {
+	valores, err := c.service.GetAll(ctx.Request.Context())
 	if err != nil {
 		apierr.Respond(ctx, err)
 		return
@@ -39,14 +38,12 @@ func (c *ValorDiaController) SetValor(ctx *gin.Context) {
 		ctx.JSON(http.StatusBadRequest, apierr.ErrorResponse{Code: "BAD_REQUEST", Message: err.Error()})
 		return
 	}
-
-	vigenciaInicio, err := time.Parse("2006-01-02", req.VigenciaInicio)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, apierr.ErrorResponse{Code: "BAD_REQUEST", Message: "vigencia_inicio inválida, use o formato YYYY-MM-DD"})
+	if req.HasDeprecatedVigenciaFields() {
+		ctx.JSON(http.StatusBadRequest, apierr.ErrorResponse{Code: "BAD_REQUEST", Message: "vigencia_inicio e vigencia_fim não são mais aceitos"})
 		return
 	}
 
-	valor, err := c.service.SetValor(ctx.Request.Context(), financeiro.TipoDia(req.TipoDia), req.Valor, vigenciaInicio)
+	valor, err := c.service.SetValor(ctx.Request.Context(), financeiro.TipoDia(req.TipoDia), req.Valor, req.Descricao)
 	if err != nil {
 		apierr.Respond(ctx, err)
 		return
@@ -55,7 +52,7 @@ func (c *ValorDiaController) SetValor(ctx *gin.Context) {
 	ctx.JSON(http.StatusCreated, toValorDiaResponse(*valor))
 }
 
-func (c *ValorDiaController) UpdateValorVigente(ctx *gin.Context) {
+func (c *ValorDiaController) UpdateValor(ctx *gin.Context) {
 	tipoDia := ctx.Param("tipo_dia")
 	if tipoDia == "" {
 		ctx.JSON(http.StatusBadRequest, apierr.ErrorResponse{Code: "BAD_REQUEST", Message: "tipo_dia é obrigatório na URL"})
@@ -67,15 +64,18 @@ func (c *ValorDiaController) UpdateValorVigente(ctx *gin.Context) {
 		ctx.JSON(http.StatusBadRequest, apierr.ErrorResponse{Code: "BAD_REQUEST", Message: err.Error()})
 		return
 	}
+	if req.HasDeprecatedVigenciaFields() {
+		ctx.JSON(http.StatusBadRequest, apierr.ErrorResponse{Code: "BAD_REQUEST", Message: "vigencia_inicio e vigencia_fim não são mais aceitos"})
+		return
+	}
 	if !req.HasFields() {
 		ctx.JSON(http.StatusBadRequest, apierr.ErrorResponse{Code: "BAD_REQUEST", Message: financeiro.ErrorAtualizacaoVazia.Error()})
 		return
 	}
 
 	atualizacao := &financeiro.AtualizacaoValorDia{
-		DescricaoInformada:   req.Descricao.Set,
-		Descricao:            req.Descricao.Value,
-		VigenciaFimInformada: req.VigenciaFim.Set,
+		DescricaoInformada: req.Descricao.Set,
+		Descricao:          req.Descricao.Value,
 	}
 
 	if req.Valor.Set {
@@ -85,54 +85,26 @@ func (c *ValorDiaController) UpdateValorVigente(ctx *gin.Context) {
 		}
 		atualizacao.Valor = req.Valor.Value
 	}
-	if req.VigenciaInicio.Set {
-		if req.VigenciaInicio.Value == nil {
-			ctx.JSON(http.StatusBadRequest, apierr.ErrorResponse{Code: "BAD_REQUEST", Message: "vigencia_inicio não pode ser null"})
-			return
-		}
-		data, err := parseValorDiaDate(*req.VigenciaInicio.Value)
-		if err != nil {
-			ctx.JSON(http.StatusBadRequest, apierr.ErrorResponse{Code: "BAD_REQUEST", Message: "vigencia_inicio inválida, use o formato YYYY-MM-DD"})
-			return
-		}
-		atualizacao.VigenciaInicio = &data
-	}
-	if req.VigenciaFim.Set && req.VigenciaFim.Value != nil {
-		data, err := parseValorDiaDate(*req.VigenciaFim.Value)
-		if err != nil {
-			ctx.JSON(http.StatusBadRequest, apierr.ErrorResponse{Code: "BAD_REQUEST", Message: "vigencia_fim inválida, use o formato YYYY-MM-DD ou null"})
-			return
-		}
-		atualizacao.VigenciaFim = &data
-	}
-
-	valor, err := c.service.UpdateVigente(ctx.Request.Context(), financeiro.TipoDia(tipoDia), atualizacao)
+	valor, err := c.service.Update(ctx.Request.Context(), financeiro.TipoDia(tipoDia), atualizacao)
 	if err != nil {
 		apierr.Respond(ctx, err)
 		return
 	}
 
 	ctx.JSON(http.StatusOK, dto.UpdateValorDiaResponse{
-		Id:             valor.Id.String(),
-		TipoDia:        string(valor.TipoDia),
-		Valor:          valor.Valor,
-		Descricao:      valor.Descricao,
-		VigenciaInicio: valor.VigenciaInicio,
-		VigenciaFim:    valor.VigenciaFim,
-		UpdatedAt:      valor.UpdatedAt,
+		Id:        valor.Id.String(),
+		TipoDia:   string(valor.TipoDia),
+		Valor:     valor.Valor,
+		Descricao: valor.Descricao,
+		UpdatedAt: valor.UpdatedAt,
 	})
-}
-
-func parseValorDiaDate(value string) (time.Time, error) {
-	return time.Parse("2006-01-02", value)
 }
 
 func toValorDiaResponse(v financeiro.ValorDia) dto.ValorDiaResponse {
 	return dto.ValorDiaResponse{
-		Id:             v.Id.String(),
-		TipoDia:        string(v.TipoDia),
-		Valor:          v.Valor,
-		VigenciaInicio: v.VigenciaInicio,
-		VigenciaFim:    v.VigenciaFim,
+		Id:        v.Id.String(),
+		TipoDia:   string(v.TipoDia),
+		Valor:     v.Valor,
+		Descricao: v.Descricao,
 	}
 }
