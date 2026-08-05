@@ -14,6 +14,7 @@ type PlantaoRepository interface {
 	Delete(ctx context.Context, plantaoID string) error
 	FindById(ctx context.Context, plantaoID string) (*Plantao, error)
 	Find(ctx context.Context, filter *Filtro) ([]Plantao, error)
+	FindRelatorio(ctx context.Context, filter *RelatorioFiltro) ([]RelatorioItem, error)
 	WithTransaction(ctx context.Context, fn func(PlantaoTransaction) error) error
 }
 
