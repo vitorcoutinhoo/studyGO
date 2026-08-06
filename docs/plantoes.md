@@ -62,6 +62,20 @@ reconsiderados nos ciclos seguintes.
 }
 ```
 
+### Regra de sobreposição
+
+- plantões de colaboradores diferentes podem ocupar o mesmo período;
+- o mesmo colaborador não pode possuir plantões não cancelados que se sobreponham;
+- plantões cancelados não bloqueiam uma nova criação;
+- períodos que apenas encostam, quando um termina exatamente no instante em que
+  o outro começa, são permitidos;
+- dois plantões pontuais com início e fim idênticos são considerados sobrepostos;
+- conflito de período retorna `409 Conflict`.
+
+A validação e a inserção são executadas na mesma transação. Criações concorrentes
+para o mesmo colaborador são serializadas sem bloquear criações de outros
+colaboradores.
+
 ---
 
 ## `GET /plantoes`
