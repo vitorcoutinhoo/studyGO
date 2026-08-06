@@ -17,6 +17,16 @@ type CreatePlantaoRequest struct {
 	ColaboradorId string         `json:"colaborador_id" binding:"required"`
 }
 
+type UpdatePlantaoRequest struct {
+	ColaboradorID OptionalString `json:"colaborador_id"`
+	DataInicio    OptionalString `json:"data_inicio"`
+	DataFim       OptionalString `json:"data_fim"`
+}
+
+func (r UpdatePlantaoRequest) HasFields() bool {
+	return r.ColaboradorID.Set || r.DataInicio.Set || r.DataFim.Set
+}
+
 type UpdateStatusPlantaoRequest struct {
 	NewStatus   string  `json:"new_status" binding:"required"`
 	Observacoes *string `json:"observacoes"`
