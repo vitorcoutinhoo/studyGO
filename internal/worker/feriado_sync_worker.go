@@ -89,6 +89,19 @@ func (w *FeriadoSyncWorker) execute(ctx context.Context) {
 	}
 	w.mu.Unlock()
 
+	existentes, err := w.repository.FindByAno(ctx, ano)
+	if err != nil {
+		w.log.Error("erro ao verificar feriados existentes", "ano", ano, "error", err)
+		return
+	}
+	if len(existentes) > 0 {
+		w.log.Debug("feriados do ano já sincronizados, ignorando chamada à API externa", "ano", ano, "quantidade", len(existentes))
+		w.mu.Lock()
+		w.lastSyncedYear = ano
+		w.mu.Unlock()
+		return
+	}
+
 	feriados, err := w.fetcher.FetchFeriados(ano)
 	if err != nil {
 		w.log.Error("erro ao buscar feriados na API externa", "ano", ano, "error", err)
