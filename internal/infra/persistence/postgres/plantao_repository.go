@@ -26,26 +26,72 @@ func NewPlantaoRepository(pool *pgxpool.Pool) *PlantaoRepository {
 	return &PlantaoRepository{pool: pool}
 }
 
-func (r *PlantaoRepository) Store(ctx context.Context, plantao *plantao.Plantao) error {
+func (r *PlantaoRepository) Store(ctx context.Context, p *plantao.Plantao) error {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to begin plantao creation transaction: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	var colaboradorID string
+	err = tx.QueryRow(ctx, `
+		SELECT id
+		FROM colaboradores
+		WHERE id = $1
+		FOR UPDATE
+	`, p.ColaboradorId).Scan(&colaboradorID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return plantao.ErrorColaboradorNotFound
+	}
+	if err != nil {
+		return fmt.Errorf("failed to lock plantao colaborador: %w", err)
+	}
+
+	var sobreposto bool
+	err = tx.QueryRow(ctx, `
+		SELECT EXISTS (
+			SELECT 1
+			FROM plantoes
+			WHERE id_colaborador = $1
+			  AND status <> $4
+			  AND (
+				(data_inicio < $3 AND data_fim > $2)
+				OR (data_inicio = data_fim AND $2 = $3 AND data_inicio = $2)
+			  )
+		)
+	`, p.ColaboradorId, p.Periodo.Inicio, p.Periodo.Fim, strconv.Itoa(int(plantao.StatusPlantaoCancelado))).Scan(&sobreposto)
+	if err != nil {
+		return fmt.Errorf("failed to check overlapping plantoes: %w", err)
+	}
+	if sobreposto {
+		return plantao.ErrorExistingPlantao
+	}
+
 	query := `
 		INSERT INTO plantoes (id, id_colaborador, data_inicio, data_fim, status, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7)
 	`
 
-	_, err := r.pool.Exec(ctx, query,
-		plantao.Id,
-		plantao.ColaboradorId,
-		plantao.Periodo.Inicio,
-		plantao.Periodo.Fim,
-		strconv.Itoa(int(plantao.Status)),
-		plantao.CreatedAt,
-		plantao.UpdatedAt,
+	tag, err := tx.Exec(ctx, query,
+		p.Id,
+		p.ColaboradorId,
+		p.Periodo.Inicio,
+		p.Periodo.Fim,
+		strconv.Itoa(int(p.Status)),
+		p.CreatedAt,
+		p.UpdatedAt,
 	)
 
 	if err != nil {
 		return fmt.Errorf("failed to store plantao: %w", err)
 	}
+	if tag.RowsAffected() != 1 {
+		return fmt.Errorf("failed to store plantao: unexpected affected rows")
+	}
 
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("failed to commit plantao creation transaction: %w", err)
+	}
 	return nil
 }
 
