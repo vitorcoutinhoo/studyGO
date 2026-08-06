@@ -309,6 +309,26 @@ Cria um novo plantão.
 
 ---
 
+### PATCH `/api/v1/plantoes/:id`
+
+Atualiza parcialmente colaborador e/ou período de um plantão agendado.
+
+**Auth:** `ADMIN`, `GERENTE`
+
+```json
+{
+  "colaborador_id": "uuid",
+  "data_inicio": "2026-09-01T08:00:00Z",
+  "data_fim": "2026-09-01T18:00:00Z"
+}
+```
+
+Todos os campos são opcionais; corpo vazio retorna `400`. Sobreposição, plantão
+não agendado ou conflito concorrente retorna `409`. A resposta `200` contém o
+plantão atualizado.
+
+---
+
 ### GET `/api/v1/plantoes`
 Lista todos os plantões.
 
