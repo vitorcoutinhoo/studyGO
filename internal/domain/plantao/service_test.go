@@ -27,12 +27,20 @@ func (testLogger) Sync() error { return nil }
 type repositoryFake struct {
 	tx              *transactionFake
 	committed       bool
+	stored          *Plantao
+	storeErr        error
 	relatorio       []RelatorioItem
 	relatorioFiltro *RelatorioFiltro
 	relatorioErr    error
 }
 
-func (r *repositoryFake) Store(context.Context, *Plantao) error  { return nil }
+func (r *repositoryFake) Store(_ context.Context, p *Plantao) error {
+	if r.storeErr != nil {
+		return r.storeErr
+	}
+	r.stored = p
+	return nil
+}
 func (r *repositoryFake) Update(context.Context, *Plantao) error { return nil }
 func (r *repositoryFake) Delete(context.Context, string) error   { return nil }
 func (r *repositoryFake) FindById(context.Context, string) (*Plantao, error) {
@@ -181,6 +189,37 @@ func novoServicoFake(status StatusPlantao, role, actorColaborador string) (*Plan
 	}
 	repo := &repositoryFake{tx: tx}
 	return NewPlantaoService(repo, financeiro.NewCalculoService(testLogger{}), testLogger{}), repo
+}
+
+func TestCreatePlantaoDelegaCriacaoAtomicaAoRepositorio(t *testing.T) {
+	repo := &repositoryFake{}
+	service := NewPlantaoService(repo, nil, testLogger{})
+	periodo := &shared.Periodo{
+		Inicio: time.Date(2026, 9, 1, 8, 0, 0, 0, time.UTC),
+		Fim:    time.Date(2026, 9, 1, 18, 0, 0, 0, time.UTC),
+	}
+
+	criado, err := service.CreatePlantao(context.Background(), "colaborador-1", periodo)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if repo.stored == nil || criado != repo.stored || criado.ColaboradorId != "colaborador-1" {
+		t.Fatalf("plantão não delegado ao repositório: criado=%+v armazenado=%+v", criado, repo.stored)
+	}
+}
+
+func TestCreatePlantaoPropagaConflitoSemCriacao(t *testing.T) {
+	repo := &repositoryFake{storeErr: ErrorExistingPlantao}
+	service := NewPlantaoService(repo, nil, testLogger{})
+	periodo := &shared.Periodo{
+		Inicio: time.Date(2026, 9, 1, 8, 0, 0, 0, time.UTC),
+		Fim:    time.Date(2026, 9, 1, 18, 0, 0, 0, time.UTC),
+	}
+
+	criado, err := service.CreatePlantao(context.Background(), "colaborador-1", periodo)
+	if !errors.Is(err, ErrorExistingPlantao) || criado != nil || repo.stored != nil {
+		t.Fatalf("resultado inesperado: criado=%+v armazenado=%+v erro=%v", criado, repo.stored, err)
+	}
 }
 
 func TestFecharPlantaoAutorizacaoEAtomicidade(t *testing.T) {
