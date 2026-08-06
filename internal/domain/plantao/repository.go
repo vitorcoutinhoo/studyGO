@@ -22,6 +22,9 @@ type PlantaoTransaction interface {
 	financeiro.CalculoFonte
 
 	LockPlantao(ctx context.Context, plantaoID string) (*Plantao, error)
+	LockColaborador(ctx context.Context, colaboradorID string) error
+	HasOverlappingPlantao(ctx context.Context, colaboradorID string, inicio, fim time.Time, excludePlantaoID string) (bool, error)
+	UpdateSchedule(ctx context.Context, plantaoID, colaboradorID string, inicio, fim time.Time) (*Plantao, error)
 	FindActor(ctx context.Context, usuarioID string) (*Actor, error)
 	ColaboradorExists(ctx context.Context, colaboradorID string) (bool, error)
 	CountDetalhes(ctx context.Context, plantaoID string) (int, error)
