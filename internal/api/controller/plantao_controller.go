@@ -58,6 +58,74 @@ func (p *PlantaoController) CreatePlantao(ctx *gin.Context) {
 	ctx.JSON(http.StatusCreated, toPlantaoResponse(plantaoCriado))
 }
 
+func (p *PlantaoController) UpdatePlantao(ctx *gin.Context) {
+	plantaoID := ctx.Param("id")
+	if _, err := uuid.Parse(plantaoID); err != nil {
+		ctx.JSON(http.StatusBadRequest, apierr.ErrorResponse{Code: "BAD_REQUEST", Message: "id do plantão inválido"})
+		return
+	}
+	userID, ok := authenticatedUserID(ctx)
+	if !ok {
+		return
+	}
+
+	var req dto.UpdatePlantaoRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, apierr.ErrorResponse{Code: "BAD_REQUEST", Message: err.Error()})
+		return
+	}
+	if !req.HasFields() {
+		ctx.JSON(http.StatusBadRequest, apierr.ErrorResponse{Code: "BAD_REQUEST", Message: plantao.ErrorAtualizacaoPlantaoVazia.Error()})
+		return
+	}
+
+	atualizacao := &plantao.AtualizacaoPlantao{}
+	if req.ColaboradorID.Set {
+		if req.ColaboradorID.Value == nil {
+			ctx.JSON(http.StatusBadRequest, apierr.ErrorResponse{Code: "BAD_REQUEST", Message: "colaborador_id não pode ser null"})
+			return
+		}
+		id, err := uuid.Parse(*req.ColaboradorID.Value)
+		if err != nil {
+			ctx.JSON(http.StatusBadRequest, apierr.ErrorResponse{Code: "BAD_REQUEST", Message: "colaborador_id inválido"})
+			return
+		}
+		colaboradorID := id.String()
+		atualizacao.ColaboradorID = &colaboradorID
+	}
+	if req.DataInicio.Set {
+		if req.DataInicio.Value == nil {
+			ctx.JSON(http.StatusBadRequest, apierr.ErrorResponse{Code: "BAD_REQUEST", Message: "data_inicio não pode ser null"})
+			return
+		}
+		inicio, err := parseDateTime(*req.DataInicio.Value)
+		if err != nil {
+			ctx.JSON(http.StatusBadRequest, apierr.ErrorResponse{Code: "BAD_REQUEST", Message: "data_inicio inválida, use YYYY-MM-DD ou RFC3339"})
+			return
+		}
+		atualizacao.DataInicio = &inicio
+	}
+	if req.DataFim.Set {
+		if req.DataFim.Value == nil {
+			ctx.JSON(http.StatusBadRequest, apierr.ErrorResponse{Code: "BAD_REQUEST", Message: "data_fim não pode ser null"})
+			return
+		}
+		fim, err := parseDateTime(*req.DataFim.Value)
+		if err != nil {
+			ctx.JSON(http.StatusBadRequest, apierr.ErrorResponse{Code: "BAD_REQUEST", Message: "data_fim inválida, use YYYY-MM-DD ou RFC3339"})
+			return
+		}
+		atualizacao.DataFim = &fim
+	}
+
+	atualizado, err := p.service.EditarPlantao(ctx.Request.Context(), plantaoID, userID, atualizacao)
+	if err != nil {
+		apierr.Respond(ctx, err)
+		return
+	}
+	ctx.JSON(http.StatusOK, toPlantaoResponse(atualizado))
+}
+
 func (p *PlantaoController) UpdateStatusPlantao(ctx *gin.Context) {
 	var req dto.UpdateStatusPlantaoRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
