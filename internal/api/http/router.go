@@ -77,6 +77,7 @@ func setupPlantaoRoutes(
 		plantaoRoutes.Use(authMidware.AuthenticationMiddleware(), midware.RoleMidware(ADMIN_ROLE, GERENTE_ROLE, COLABORADOR_ROLE))
 		{
 			plantaoRoutes.POST("", plantaoController.CreatePlantao)
+			plantaoRoutes.PATCH("/:id", midware.RoleMidware(ADMIN_ROLE, GERENTE_ROLE), plantaoController.UpdatePlantao)
 			plantaoRoutes.GET("", plantaoController.GetPlantoes)
 			plantaoRoutes.GET("/relatorio", midware.RoleMidware(ADMIN_ROLE, GERENTE_ROLE), plantaoController.GetRelatorio)
 			plantaoRoutes.GET("/:id", plantaoController.GetPlantaoById)
