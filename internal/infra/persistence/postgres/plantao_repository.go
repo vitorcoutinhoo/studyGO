@@ -27,41 +27,19 @@ func NewPlantaoRepository(pool *pgxpool.Pool) *PlantaoRepository {
 }
 
 func (r *PlantaoRepository) Store(ctx context.Context, p *plantao.Plantao) error {
-	tx, err := r.pool.Begin(ctx)
+	tx, err := r.pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.Serializable})
 	if err != nil {
 		return fmt.Errorf("failed to begin plantao creation transaction: %w", err)
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
-	var colaboradorID string
-	err = tx.QueryRow(ctx, `
-		SELECT id
-		FROM colaboradores
-		WHERE id = $1
-		FOR UPDATE
-	`, p.ColaboradorId).Scan(&colaboradorID)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return plantao.ErrorColaboradorNotFound
+	transaction := &plantaoTransaction{tx: tx}
+	if err := transaction.LockColaborador(ctx, p.ColaboradorId); err != nil {
+		return translateTransactionError(err)
 	}
+	sobreposto, err := transaction.HasOverlappingPlantao(ctx, p.ColaboradorId, p.Periodo.Inicio, p.Periodo.Fim, "")
 	if err != nil {
-		return fmt.Errorf("failed to lock plantao colaborador: %w", err)
-	}
-
-	var sobreposto bool
-	err = tx.QueryRow(ctx, `
-		SELECT EXISTS (
-			SELECT 1
-			FROM plantoes
-			WHERE id_colaborador = $1
-			  AND status <> $4
-			  AND (
-				(data_inicio < $3 AND data_fim > $2)
-				OR (data_inicio = data_fim AND $2 = $3 AND data_inicio = $2)
-			  )
-		)
-	`, p.ColaboradorId, p.Periodo.Inicio, p.Periodo.Fim, strconv.Itoa(int(plantao.StatusPlantaoCancelado))).Scan(&sobreposto)
-	if err != nil {
-		return fmt.Errorf("failed to check overlapping plantoes: %w", err)
+		return translateTransactionError(err)
 	}
 	if sobreposto {
 		return plantao.ErrorExistingPlantao
@@ -83,14 +61,14 @@ func (r *PlantaoRepository) Store(ctx context.Context, p *plantao.Plantao) error
 	)
 
 	if err != nil {
-		return fmt.Errorf("failed to store plantao: %w", err)
+		return translateTransactionError(fmt.Errorf("failed to store plantao: %w", err))
 	}
 	if tag.RowsAffected() != 1 {
 		return fmt.Errorf("failed to store plantao: unexpected affected rows")
 	}
 
 	if err := tx.Commit(ctx); err != nil {
-		return fmt.Errorf("failed to commit plantao creation transaction: %w", err)
+		return translateTransactionError(fmt.Errorf("failed to commit plantao creation transaction: %w", err))
 	}
 	return nil
 }
@@ -464,6 +442,97 @@ func (t *plantaoTransaction) LockPlantao(ctx context.Context, plantaoID string) 
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, plantao.ErrorPlantaoNotFinded
+	}
+	if err != nil {
+		return nil, err
+	}
+	statusInt, err := strconv.Atoi(status)
+	if err != nil {
+		return nil, plantao.ErrorInvalidStatusPlantao
+	}
+	p.Status = plantao.StatusPlantao(statusInt)
+	return &p, nil
+}
+
+func (t *plantaoTransaction) LockColaborador(ctx context.Context, colaboradorID string) error {
+	var id string
+	err := t.tx.QueryRow(ctx, `
+		SELECT id
+		FROM colaboradores
+		WHERE id = $1
+		FOR UPDATE
+	`, colaboradorID).Scan(&id)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return plantao.ErrorColaboradorNotFound
+	}
+	if err != nil {
+		return fmt.Errorf("failed to lock plantao colaborador: %w", err)
+	}
+	return nil
+}
+
+func (t *plantaoTransaction) HasOverlappingPlantao(
+	ctx context.Context,
+	colaboradorID string,
+	inicio, fim time.Time,
+	excludePlantaoID string,
+) (bool, error) {
+	var excludedID any
+	if excludePlantaoID != "" {
+		excludedID = excludePlantaoID
+	}
+	var sobreposto bool
+	err := t.tx.QueryRow(ctx, `
+		SELECT EXISTS (
+			SELECT 1
+			FROM plantoes
+			WHERE id_colaborador = $1
+			  AND status <> $4
+			  AND ($5::uuid IS NULL OR id <> $5::uuid)
+			  AND (
+				(data_inicio < $3 AND data_fim > $2)
+				OR (data_inicio = data_fim AND $2 = $3 AND data_inicio = $2)
+			  )
+		)
+	`, colaboradorID, inicio, fim, strconv.Itoa(int(plantao.StatusPlantaoCancelado)), excludedID).Scan(&sobreposto)
+	if err != nil {
+		return false, fmt.Errorf("failed to check overlapping plantoes: %w", err)
+	}
+	return sobreposto, nil
+}
+
+func (t *plantaoTransaction) UpdateSchedule(
+	ctx context.Context,
+	plantaoID, colaboradorID string,
+	inicio, fim time.Time,
+) (*plantao.Plantao, error) {
+	tag, err := t.tx.Exec(ctx, `
+		UPDATE plantoes
+		SET id_colaborador = $2, data_inicio = $3, data_fim = $4, updated_at = NOW()
+		WHERE id = $1
+	`, plantaoID, colaboradorID, inicio, fim)
+	if err != nil {
+		return nil, err
+	}
+	if tag.RowsAffected() != 1 {
+		return nil, plantao.ErrorConflitoConcorrencia
+	}
+
+	const query = `
+		SELECT id, id_colaborador, data_inicio, data_fim, status, valor_total,
+		       observacoes, created_at, updated_at
+		FROM plantoes
+		WHERE id = $1
+	`
+	var p plantao.Plantao
+	var status string
+	p.Periodo = &shared.Periodo{}
+	err = t.tx.QueryRow(ctx, query, plantaoID).Scan(
+		&p.Id, &p.ColaboradorId, &p.Periodo.Inicio, &p.Periodo.Fim, &status,
+		&p.ValorTotal, &p.Observacoes, &p.CreatedAt, &p.UpdatedAt,
+	)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, plantao.ErrorConflitoConcorrencia
 	}
 	if err != nil {
 		return nil, err
