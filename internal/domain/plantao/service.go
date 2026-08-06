@@ -92,14 +92,6 @@ func NewPlantaoService(repository PlantaoRepository, calculoService *financeiro.
 
 func (s *PlantaoService) CreatePlantao(ctx context.Context, colaboradorID string, periodo *shared.Periodo) (*Plantao, error) {
 	s.log.Info("iniciando criação de plantão", "id_colaborador", colaboradorID, "periodo", periodo)
-	existing, err := s.repository.Find(ctx, &Filtro{ColaboradorID: colaboradorID, Periodo: periodo})
-	if err != nil {
-		return nil, err
-	}
-	if len(existing) > 0 {
-		return nil, ErrorExistingPlantao
-	}
-
 	p, err := NewPlantao(colaboradorID, periodo)
 	if err != nil {
 		return nil, err
