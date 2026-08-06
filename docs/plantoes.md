@@ -78,6 +78,41 @@ colaboradores.
 
 ---
 
+## `PATCH /plantoes/:id`
+
+Atualiza parcialmente a escala de um plantão agendado. Apenas `admin` e `gerente`
+podem utilizar este endpoint.
+
+**Request:**
+
+```json
+{
+  "colaborador_id": "uuid",
+  "data_inicio": "2026-09-01T08:00:00Z",
+  "data_fim": "2026-09-01T18:00:00Z"
+}
+```
+
+Todos os campos são opcionais e os campos omitidos preservam os valores atuais.
+Datas aceitam `YYYY-MM-DD` ou RFC3339. Valores `null` e corpo sem campos retornam
+`400 Bad Request`.
+
+**Response `200`:** plantão atualizado no mesmo formato utilizado pelo POST.
+
+Regras:
+
+- somente plantões com status `0` podem ser editados;
+- o período final, após mesclar os campos, deve ser válido;
+- a regra de sobreposição por colaborador também se aplica à edição, excluindo o
+  próprio plantão da comparação;
+- a operação bloqueia o plantão e os colaboradores envolvidos e atualiza somente
+  colaborador, início, fim e `updated_at`;
+- status, valor total, observações, detalhes, pagamentos e históricos não são
+  alterados;
+- plantão não editável, sobreposição ou concorrência retorna `409 Conflict`.
+
+---
+
 ## `GET /plantoes`
 > Retorna todos os plantões
 
