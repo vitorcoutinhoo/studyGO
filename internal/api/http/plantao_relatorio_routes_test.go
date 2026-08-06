@@ -62,3 +62,51 @@ func TestRelatorioPermiteAdminEGerenteERejeitaColaborador(t *testing.T) {
 		})
 	}
 }
+
+func TestSetupPlantaoRoutesRegistraEdicaoProtegida(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	setupPlantaoRoutes(router, &controller.PlantaoController{}, &middleware.AuthMidware{})
+
+	registrada := false
+	for _, rota := range router.Routes() {
+		if rota.Method == http.MethodPatch && rota.Path == "/api/v1/plantoes/:id" {
+			registrada = true
+			break
+		}
+	}
+	if !registrada {
+		t.Fatal("rota PATCH /api/v1/plantoes/:id não registrada")
+	}
+
+	recorder := httptest.NewRecorder()
+	router.ServeHTTP(recorder, httptest.NewRequest(http.MethodPatch, "/api/v1/plantoes/20000000-0000-0000-0000-000000000060", nil))
+	if recorder.Code != http.StatusUnauthorized {
+		t.Fatalf("status sem autenticação = %d, esperado 401", recorder.Code)
+	}
+}
+
+func TestEdicaoPlantaoPermiteAdminEGerenteERejeitaColaborador(t *testing.T) {
+	for _, tt := range []struct {
+		role   string
+		status int
+	}{
+		{ADMIN_ROLE, http.StatusOK},
+		{GERENTE_ROLE, http.StatusOK},
+		{COLABORADOR_ROLE, http.StatusForbidden},
+	} {
+		t.Run(tt.role, func(t *testing.T) {
+			router := gin.New()
+			router.Use(func(ctx *gin.Context) { ctx.Set("role", tt.role) })
+			router.PATCH("/plantoes/:id", middleware.RoleMidware(ADMIN_ROLE, GERENTE_ROLE), func(ctx *gin.Context) {
+				ctx.Status(http.StatusOK)
+			})
+
+			recorder := httptest.NewRecorder()
+			router.ServeHTTP(recorder, httptest.NewRequest(http.MethodPatch, "/plantoes/id", nil))
+			if recorder.Code != tt.status {
+				t.Fatalf("status = %d, esperado %d", recorder.Code, tt.status)
+			}
+		})
+	}
+}

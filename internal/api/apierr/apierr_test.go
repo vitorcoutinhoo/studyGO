@@ -21,6 +21,8 @@ func TestClassifyErrosDeFechamentoEPagamento(t *testing.T) {
 		{financeiro.ErrorValorDiaAlreadyExists, http.StatusConflict, "CONFLICT"},
 		{financeiro.ErrorConflitoValorDia, http.StatusConflict, "CONFLICT"},
 		{financeiro.ErrorAtualizacaoVazia, http.StatusBadRequest, "BAD_REQUEST"},
+		{plantao.ErrorAtualizacaoPlantaoVazia, http.StatusBadRequest, "BAD_REQUEST"},
+		{plantao.ErrorPlantaoNaoEditavel, http.StatusConflict, "CONFLICT"},
 	}
 
 	for _, tt := range tests {

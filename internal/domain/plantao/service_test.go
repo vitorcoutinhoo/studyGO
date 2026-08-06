@@ -60,30 +60,55 @@ func (r *repositoryFake) WithTransaction(_ context.Context, fn func(PlantaoTrans
 }
 
 type transactionFake struct {
-	plantao                *Plantao
-	actor                  *Actor
-	colaboradoresExistem   bool
-	detalhesCount          int
-	pagamentosCount        int
-	feriados               map[string]bool
-	valores                map[financeiro.TipoDia]int64
-	pagamento              *Pagamento
-	resumo                 *DetalhesResumo
-	detalhesInseridos      []PlantaoDetalhe
-	statusAtualizado       *StatusPlantao
-	historicos             int
-	pagamentoCriado        bool
-	pagamentoPago          bool
-	plantoesAgendados      []*Plantao
-	instanteRecebido       time.Time
-	consultasAgendados     int
-	plantaoIniciado        []string
-	historicosAutomaticos  int
-	historicoAutomaticoErr error
+	plantao                 *Plantao
+	actor                   *Actor
+	colaboradoresExistem    bool
+	detalhesCount           int
+	pagamentosCount         int
+	feriados                map[string]bool
+	valores                 map[financeiro.TipoDia]int64
+	pagamento               *Pagamento
+	resumo                  *DetalhesResumo
+	detalhesInseridos       []PlantaoDetalhe
+	statusAtualizado        *StatusPlantao
+	historicos              int
+	pagamentoCriado         bool
+	pagamentoPago           bool
+	plantoesAgendados       []*Plantao
+	instanteRecebido        time.Time
+	consultasAgendados      int
+	plantaoIniciado         []string
+	historicosAutomaticos   int
+	historicoAutomaticoErr  error
+	colaboradoresBloqueados []string
+	colaboradoresAusentes   map[string]bool
+	sobreposto              bool
+	sobreposicaoErr         error
+	excludePlantaoID        string
+	agendaAtualizada        bool
 }
 
 func (t *transactionFake) LockPlantao(context.Context, string) (*Plantao, error) {
 	return t.plantao, nil
+}
+func (t *transactionFake) LockColaborador(_ context.Context, colaboradorID string) error {
+	if t.colaboradoresAusentes[colaboradorID] {
+		return ErrorColaboradorNotFound
+	}
+	t.colaboradoresBloqueados = append(t.colaboradoresBloqueados, colaboradorID)
+	return nil
+}
+func (t *transactionFake) HasOverlappingPlantao(_ context.Context, _ string, _, _ time.Time, excludePlantaoID string) (bool, error) {
+	t.excludePlantaoID = excludePlantaoID
+	return t.sobreposto, t.sobreposicaoErr
+}
+func (t *transactionFake) UpdateSchedule(_ context.Context, _ string, colaboradorID string, inicio, fim time.Time) (*Plantao, error) {
+	copia := *t.plantao
+	copia.Periodo = &shared.Periodo{Inicio: inicio, Fim: fim}
+	copia.ColaboradorId = colaboradorID
+	copia.UpdatedAt = time.Now()
+	t.agendaAtualizada = true
+	return &copia, nil
 }
 func (t *transactionFake) FindActor(context.Context, string) (*Actor, error) {
 	return t.actor, nil
@@ -219,6 +244,146 @@ func TestCreatePlantaoPropagaConflitoSemCriacao(t *testing.T) {
 	criado, err := service.CreatePlantao(context.Background(), "colaborador-1", periodo)
 	if !errors.Is(err, ErrorExistingPlantao) || criado != nil || repo.stored != nil {
 		t.Fatalf("resultado inesperado: criado=%+v armazenado=%+v erro=%v", criado, repo.stored, err)
+	}
+}
+
+func TestEditarPlantaoAtualizaCamposParcialmente(t *testing.T) {
+	tests := []struct {
+		nome             string
+		atualizacao      func() *AtualizacaoPlantao
+		colaboradorFinal string
+		inicioFinal      int
+		fimFinal         int
+	}{
+		{
+			nome: "somente colaborador",
+			atualizacao: func() *AtualizacaoPlantao {
+				id := "colaborador-2"
+				return &AtualizacaoPlantao{ColaboradorID: &id}
+			},
+			colaboradorFinal: "colaborador-2", inicioFinal: 8, fimFinal: 18,
+		},
+		{
+			nome: "somente início",
+			atualizacao: func() *AtualizacaoPlantao {
+				inicio := time.Date(2026, 9, 1, 9, 0, 0, 0, time.UTC)
+				return &AtualizacaoPlantao{DataInicio: &inicio}
+			},
+			colaboradorFinal: "colaborador-1", inicioFinal: 9, fimFinal: 18,
+		},
+		{
+			nome: "somente fim",
+			atualizacao: func() *AtualizacaoPlantao {
+				fim := time.Date(2026, 9, 1, 20, 0, 0, 0, time.UTC)
+				return &AtualizacaoPlantao{DataFim: &fim}
+			},
+			colaboradorFinal: "colaborador-1", inicioFinal: 8, fimFinal: 20,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.nome, func(t *testing.T) {
+			service, repo := novoServicoFake(StatusPlantaoAgendado, roleAdmin, "ator")
+			repo.tx.plantao.Periodo = &shared.Periodo{
+				Inicio: time.Date(2026, 9, 1, 8, 0, 0, 0, time.UTC),
+				Fim:    time.Date(2026, 9, 1, 18, 0, 0, 0, time.UTC),
+			}
+
+			resultado, err := service.EditarPlantao(context.Background(), repo.tx.plantao.Id, "usuario-1", tt.atualizacao())
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !repo.committed || !repo.tx.agendaAtualizada || resultado.ColaboradorId != tt.colaboradorFinal ||
+				resultado.Periodo.Inicio.Hour() != tt.inicioFinal || resultado.Periodo.Fim.Hour() != tt.fimFinal ||
+				repo.tx.excludePlantaoID != repo.tx.plantao.Id {
+				t.Fatalf("edição parcial incorreta: resultado=%+v tx=%+v", resultado, repo.tx)
+			}
+		})
+	}
+}
+
+func TestEditarPlantaoAutorizaAdminEGerente(t *testing.T) {
+	for _, tt := range []struct {
+		role     string
+		esperado error
+	}{
+		{roleAdmin, nil},
+		{roleGerente, nil},
+		{roleColaborador, ErrorUsuarioSemPermissao},
+	} {
+		t.Run(tt.role, func(t *testing.T) {
+			service, repo := novoServicoFake(StatusPlantaoAgendado, tt.role, "colaborador-1")
+			fim := repo.tx.plantao.Periodo.Fim.Add(time.Hour)
+			_, err := service.EditarPlantao(context.Background(), repo.tx.plantao.Id, "usuario-1", &AtualizacaoPlantao{DataFim: &fim})
+			if !errors.Is(err, tt.esperado) {
+				t.Fatalf("erro = %v, esperado %v", err, tt.esperado)
+			}
+			if tt.esperado != nil && (repo.committed || repo.tx.agendaAtualizada) {
+				t.Fatal("edição não autorizada foi confirmada")
+			}
+		})
+	}
+}
+
+func TestEditarPlantaoValidaEstadoPeriodoSobreposicaoEColaborador(t *testing.T) {
+	tests := []struct {
+		nome     string
+		preparar func(*repositoryFake) *AtualizacaoPlantao
+		esperado error
+	}{
+		{
+			nome:     "patch vazio",
+			preparar: func(*repositoryFake) *AtualizacaoPlantao { return &AtualizacaoPlantao{} },
+			esperado: ErrorAtualizacaoPlantaoVazia,
+		},
+		{
+			nome: "status não editável",
+			preparar: func(repo *repositoryFake) *AtualizacaoPlantao {
+				repo.tx.plantao.Status = StatusPlantaoEmAndamento
+				fim := repo.tx.plantao.Periodo.Fim.Add(time.Hour)
+				return &AtualizacaoPlantao{DataFim: &fim}
+			},
+			esperado: ErrorPlantaoNaoEditavel,
+		},
+		{
+			nome: "período invertido após mesclagem",
+			preparar: func(repo *repositoryFake) *AtualizacaoPlantao {
+				inicio := repo.tx.plantao.Periodo.Fim.Add(time.Hour)
+				return &AtualizacaoPlantao{DataInicio: &inicio}
+			},
+			esperado: shared.ErrorEndBeforeStart,
+		},
+		{
+			nome: "sobreposição",
+			preparar: func(repo *repositoryFake) *AtualizacaoPlantao {
+				repo.tx.sobreposto = true
+				fim := repo.tx.plantao.Periodo.Fim.Add(time.Hour)
+				return &AtualizacaoPlantao{DataFim: &fim}
+			},
+			esperado: ErrorExistingPlantao,
+		},
+		{
+			nome: "colaborador inexistente",
+			preparar: func(repo *repositoryFake) *AtualizacaoPlantao {
+				id := "colaborador-2"
+				repo.tx.colaboradoresAusentes = map[string]bool{id: true}
+				return &AtualizacaoPlantao{ColaboradorID: &id}
+			},
+			esperado: ErrorColaboradorNotFound,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.nome, func(t *testing.T) {
+			service, repo := novoServicoFake(StatusPlantaoAgendado, roleAdmin, "ator")
+			_, err := service.EditarPlantao(context.Background(), repo.tx.plantao.Id, "usuario-1", tt.preparar(repo))
+			if !errors.Is(err, tt.esperado) {
+				t.Fatalf("erro = %v, esperado %v", err, tt.esperado)
+			}
+			if repo.committed || repo.tx.agendaAtualizada {
+				t.Fatal("edição inválida foi confirmada")
+			}
+		})
 	}
 }
 

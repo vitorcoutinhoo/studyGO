@@ -622,7 +622,7 @@ func TestPlantaoRepositoryCriacaoComSobreposicaoPorColaborador(t *testing.T) {
 		switch {
 		case err == nil:
 			sucessos++
-		case errors.Is(err, plantao.ErrorExistingPlantao):
+		case errors.Is(err, plantao.ErrorExistingPlantao), errors.Is(err, plantao.ErrorConflitoConcorrencia):
 			conflitosConcorrentes++
 		default:
 			t.Fatalf("erro concorrente inesperado: %v", err)
@@ -641,5 +641,73 @@ func TestPlantaoRepositoryCriacaoComSobreposicaoPorColaborador(t *testing.T) {
 	}
 	if inseridosConcorrentes != 1 {
 		t.Fatalf("criação concorrente inseriu %d plantões, esperado 1", inseridosConcorrentes)
+	}
+
+	const plantaoEditadoID = "20000000-0000-0000-0000-000000000041"
+	err = repository.WithTransaction(ctx, func(tx plantao.PlantaoTransaction) error {
+		p, err := tx.LockPlantao(ctx, plantaoEditadoID)
+		if err != nil {
+			return err
+		}
+		if err := tx.LockColaborador(ctx, p.ColaboradorId); err != nil {
+			return err
+		}
+		if err := tx.LockColaborador(ctx, colaboradores[3]); err != nil {
+			return err
+		}
+		sobreposto, err := tx.HasOverlappingPlantao(ctx, colaboradores[3], hora(8), hora(10), p.Id)
+		if err != nil {
+			return err
+		}
+		if !sobreposto {
+			t.Fatal("edição não detectou plantão sobreposto do colaborador de destino")
+		}
+		sobreposto, err = tx.HasOverlappingPlantao(ctx, colaboradores[3], hora(14), hora(16), p.Id)
+		if err != nil {
+			return err
+		}
+		if sobreposto {
+			t.Fatal("edição detectou sobreposição inexistente")
+		}
+		atualizado, err := tx.UpdateSchedule(ctx, p.Id, colaboradores[3], hora(14), hora(16))
+		if err != nil {
+			return err
+		}
+		if atualizado.ColaboradorId != colaboradores[3] || !atualizado.Periodo.Inicio.Equal(hora(14)) ||
+			!atualizado.Periodo.Fim.Equal(hora(16)) || atualizado.Status != plantao.StatusPlantaoAgendado {
+			t.Fatalf("plantão recarregado incorretamente: %+v", atualizado)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	sentinel := errors.New("forçar rollback da edição")
+	err = repository.WithTransaction(ctx, func(tx plantao.PlantaoTransaction) error {
+		if _, err := tx.LockPlantao(ctx, plantaoEditadoID); err != nil {
+			return err
+		}
+		if _, err := tx.UpdateSchedule(ctx, plantaoEditadoID, colaboradores[3], hora(15), hora(17)); err != nil {
+			return err
+		}
+		return sentinel
+	})
+	if !errors.Is(err, sentinel) {
+		t.Fatalf("rollback da edição = %v, esperado sentinel", err)
+	}
+	var colaboradorPersistido string
+	var inicioPersistido, fimPersistido time.Time
+	var statusPersistido string
+	if err := pool.QueryRow(ctx, `
+		SELECT id_colaborador, data_inicio, data_fim, status
+		FROM plantoes
+		WHERE id = $1
+	`, plantaoEditadoID).Scan(&colaboradorPersistido, &inicioPersistido, &fimPersistido, &statusPersistido); err != nil {
+		t.Fatal(err)
+	}
+	if colaboradorPersistido != colaboradores[3] || !inicioPersistido.Equal(hora(14)) ||
+		!fimPersistido.Equal(hora(16)) || statusPersistido != "0" {
+		t.Fatalf("rollback/preservação incorretos: %s/%s/%s/%s", colaboradorPersistido, inicioPersistido, fimPersistido, statusPersistido)
 	}
 }
