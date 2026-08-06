@@ -23,7 +23,19 @@ var (
 	ErrorConflitoConcorrencia         = errors.New("Conflito de concorrência ao processar o plantão!")
 	ErrorValorTotalInvalido           = errors.New("Valor total do plantão inválido!")
 	ErrorOperacaoPagamentoObrigatoria = errors.New("Status pago exige a operação de pagamento!")
+	ErrorAtualizacaoPlantaoVazia      = errors.New("Informe ao menos um campo para atualização do plantão!")
+	ErrorPlantaoNaoEditavel           = errors.New("Somente plantões agendados podem ser editados!")
 )
+
+type AtualizacaoPlantao struct {
+	ColaboradorID *string
+	DataInicio    *time.Time
+	DataFim       *time.Time
+}
+
+func (a *AtualizacaoPlantao) TemCampos() bool {
+	return a != nil && (a.ColaboradorID != nil || a.DataInicio != nil || a.DataFim != nil)
+}
 
 type Plantao struct {
 	Id            string
