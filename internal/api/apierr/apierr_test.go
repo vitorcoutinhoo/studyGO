@@ -18,9 +18,11 @@ func TestClassifyErrosDeFechamentoEPagamento(t *testing.T) {
 		{plantao.ErrorPlantaoJaFechado, http.StatusConflict, "CONFLICT"},
 		{plantao.ErrorConflitoConcorrencia, http.StatusConflict, "CONFLICT"},
 		{plantao.ErrorPagamentoNotFound, http.StatusNotFound, "NOT_FOUND"},
-		{financeiro.ErrorValorDiaForaVigencia, http.StatusUnprocessableEntity, "VALIDATION_ERROR"},
+		{financeiro.ErrorValorDiaAlreadyExists, http.StatusConflict, "CONFLICT"},
 		{financeiro.ErrorConflitoValorDia, http.StatusConflict, "CONFLICT"},
 		{financeiro.ErrorAtualizacaoVazia, http.StatusBadRequest, "BAD_REQUEST"},
+		{plantao.ErrorAtualizacaoPlantaoVazia, http.StatusBadRequest, "BAD_REQUEST"},
+		{plantao.ErrorPlantaoNaoEditavel, http.StatusConflict, "CONFLICT"},
 	}
 
 	for _, tt := range tests {

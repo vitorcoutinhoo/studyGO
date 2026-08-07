@@ -3,11 +3,13 @@ package postgres
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"testing"
 	"time"
 
 	"plantao/internal/domain/plantao"
+	"plantao/internal/domain/shared"
 
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -266,5 +268,446 @@ func TestPlantaoTransactionInicioAutomatico(t *testing.T) {
 	}
 	if status != "1" || historicos != 1 || !usuarioNulo {
 		t.Fatalf("commit deixou status/históricos/usuário nulo = %s/%d/%t", status, historicos, usuarioNulo)
+	}
+}
+
+func TestPlantaoRepositoryRelatorioIntegracao(t *testing.T) {
+	databaseURL := os.Getenv("TEST_DATABASE_URL")
+	if databaseURL == "" {
+		t.Skip("TEST_DATABASE_URL não configurada")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	pool, err := pgxpool.New(ctx, databaseURL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+
+	const (
+		colaboradorA = "10000000-0000-0000-0000-000000000020"
+		colaboradorB = "10000000-0000-0000-0000-000000000021"
+		plantaoA     = "20000000-0000-0000-0000-000000000020"
+		plantaoB     = "20000000-0000-0000-0000-000000000021"
+		semDetalhes  = "20000000-0000-0000-0000-000000000022"
+	)
+	cleanup := func(cleanupCtx context.Context) {
+		_, _ = pool.Exec(cleanupCtx, `DELETE FROM plantoes_detalhes WHERE id_plantao IN ($1, $2, $3)`, plantaoA, plantaoB, semDetalhes)
+		_, _ = pool.Exec(cleanupCtx, `DELETE FROM plantoes WHERE id IN ($1, $2, $3)`, plantaoA, plantaoB, semDetalhes)
+		_, _ = pool.Exec(cleanupCtx, `DELETE FROM colaboradores WHERE id IN ($1, $2)`, colaboradorA, colaboradorB)
+	}
+	cleanup(ctx)
+	t.Cleanup(func() {
+		cleanupCtx, cleanupCancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cleanupCancel()
+		cleanup(cleanupCtx)
+	})
+	var configuracoes int
+	if err := pool.QueryRow(ctx, `
+		SELECT COUNT(*)
+		FROM config_valores_dia
+		WHERE tipo_dia IN ('UTIL', 'SABADO', 'DOMINGO', 'FERIADO')
+	`).Scan(&configuracoes); err != nil {
+		t.Fatal(err)
+	}
+	if configuracoes != 4 {
+		t.Skip("configurações globais de todos os tipos de dia não disponíveis")
+	}
+
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO colaboradores (id, nome, email, telefone, cargo, departamento)
+		VALUES
+			($1, 'Ana Relatório', 'ana.relatorio@example.test', '+550000000020', 'Teste', 'Teste'),
+			($2, 'Bruno Relatório', 'bruno.relatorio@example.test', '+550000000021', 'Teste', 'Teste')
+	`, colaboradorA, colaboradorB); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO plantoes (id, id_colaborador, data_inicio, data_fim, status, valor_total, observacoes)
+		VALUES
+			($1, $4, '2026-08-01T03:00:00Z', '2026-08-03T03:00:00Z', '2', 0, 'plantão A'),
+			($2, $5, '2026-08-15T03:00:00Z', '2026-08-15T03:00:00Z', '4', 999.00, NULL),
+			($3, $4, '2026-08-10T03:00:00Z', '2026-08-10T03:00:00Z', '1', NULL, NULL)
+	`, plantaoA, plantaoB, semDetalhes, colaboradorA, colaboradorB); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO plantoes_detalhes (id_plantao, data, tipo_dia, valor)
+		VALUES
+			($1, '2026-07-31', 'UTIL', 50.00),
+			($1, '2026-08-01', 'UTIL', 100.00),
+			($2, '2026-08-15', 'SABADO', 175.50),
+			($1, '2026-08-03', 'UTIL', 200.00),
+			($1, '2026-09-01', 'UTIL', 50.00)
+	`, plantaoA, plantaoB); err != nil {
+		t.Fatal(err)
+	}
+
+	repository := NewPlantaoRepository(pool)
+	inicio := time.Date(2026, 8, 1, 0, 0, 0, 0, time.UTC)
+	fim := time.Date(2026, 8, 31, 0, 0, 0, 0, time.UTC)
+	statusPago := plantao.StatusPlantaoPago
+
+	tests := []struct {
+		nome         string
+		filtro       *plantao.RelatorioFiltro
+		esperados    int
+		plantaoID    string
+		primeiraData string
+		ultimaData   string
+	}{
+		{
+			nome:         "período inclusivo ordenado incluindo plantão sem detalhes",
+			filtro:       &plantao.RelatorioFiltro{DataInicio: inicio, DataFim: fim},
+			esperados:    5,
+			primeiraData: "2026-08-01",
+			ultimaData:   "2026-08-15",
+		},
+		{
+			nome: "período recorta os dias do plantão",
+			filtro: &plantao.RelatorioFiltro{
+				DataInicio: time.Date(2026, 8, 2, 0, 0, 0, 0, time.UTC),
+				DataFim:    time.Date(2026, 8, 2, 0, 0, 0, 0, time.UTC),
+			},
+			esperados:    1,
+			plantaoID:    plantaoA,
+			primeiraData: "2026-08-02",
+			ultimaData:   "2026-08-02",
+		},
+		{
+			nome:      "filtro por colaborador",
+			filtro:    &plantao.RelatorioFiltro{DataInicio: inicio, DataFim: fim, ColaboradorID: colaboradorA},
+			esperados: 4,
+		},
+		{
+			nome:      "filtro por status",
+			filtro:    &plantao.RelatorioFiltro{DataInicio: inicio, DataFim: fim, Status: &statusPago},
+			esperados: 1,
+			plantaoID: plantaoB,
+		},
+		{
+			nome:      "filtros combinados",
+			filtro:    &plantao.RelatorioFiltro{DataInicio: inicio, DataFim: fim, ColaboradorID: colaboradorB, Status: &statusPago},
+			esperados: 1,
+			plantaoID: plantaoB,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.nome, func(t *testing.T) {
+			items, err := repository.FindRelatorio(ctx, tt.filtro)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(items) != tt.esperados {
+				t.Fatalf("itens = %d, esperado %d: %+v", len(items), tt.esperados, items)
+			}
+			if tt.plantaoID != "" {
+				for _, item := range items {
+					if item.PlantaoID != tt.plantaoID {
+						t.Fatalf("plantão = %s, esperado %s", item.PlantaoID, tt.plantaoID)
+					}
+				}
+			}
+			if tt.primeiraData != "" && items[0].Data.Format("2006-01-02") != tt.primeiraData {
+				t.Fatalf("primeira data = %s", items[0].Data.Format("2006-01-02"))
+			}
+			if tt.ultimaData != "" && items[len(items)-1].Data.Format("2006-01-02") != tt.ultimaData {
+				t.Fatalf("última data = %s", items[len(items)-1].Data.Format("2006-01-02"))
+			}
+		})
+	}
+
+	items, err := repository.FindRelatorio(ctx, &plantao.RelatorioFiltro{DataInicio: inicio, DataFim: fim})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var valorConfiguradoDomingo float64
+	if err := pool.QueryRow(ctx, `
+		SELECT valor
+		FROM config_valores_dia
+		WHERE tipo_dia = CASE
+			WHEN EXISTS (SELECT 1 FROM feriados WHERE data = '2026-08-02') THEN 'FERIADO'
+			ELSE 'DOMINGO'
+		END
+	`).Scan(&valorConfiguradoDomingo); err != nil {
+		t.Fatal(err)
+	}
+	valores := make(map[string]float64)
+	totais := make(map[string]float64)
+	for _, item := range items {
+		valores[item.PlantaoID+"/"+item.Data.Format("2006-01-02")] = item.Valor
+		totais[item.PlantaoID] = item.ValorTotal
+	}
+	if valores[plantaoA+"/2026-08-01"] != 100 ||
+		valores[plantaoA+"/2026-08-02"] != valorConfiguradoDomingo ||
+		valores[semDetalhes+"/2026-08-10"] <= 0 {
+		t.Fatalf("valores históricos/calculados inesperados: %+v", valores)
+	}
+	if totais[plantaoA] != 300+valorConfiguradoDomingo ||
+		totais[plantaoB] != 999 ||
+		totais[semDetalhes] != valores[semDetalhes+"/2026-08-10"] {
+		t.Fatalf("totais persistidos/calculados inesperados: %+v", totais)
+	}
+
+	itensRecortados, err := repository.FindRelatorio(ctx, &plantao.RelatorioFiltro{
+		DataInicio: time.Date(2026, 8, 2, 0, 0, 0, 0, time.UTC),
+		DataFim:    time.Date(2026, 8, 2, 0, 0, 0, 0, time.UTC),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(itensRecortados) != 1 || itensRecortados[0].PlantaoID != plantaoA ||
+		itensRecortados[0].ValorTotal != 300+valorConfiguradoDomingo {
+		t.Fatalf("recorte não preservou total completo: %+v", itensRecortados)
+	}
+	var detalhesSemPersistencia int
+	if err := pool.QueryRow(ctx, `SELECT COUNT(*) FROM plantoes_detalhes WHERE id_plantao = $1`, semDetalhes).Scan(&detalhesSemPersistencia); err != nil {
+		t.Fatal(err)
+	}
+	if detalhesSemPersistencia != 0 {
+		t.Fatalf("consulta persistiu %d detalhes calculados", detalhesSemPersistencia)
+	}
+	var totalA, totalB float64
+	var totalSemDetalhes *float64
+	if err := pool.QueryRow(ctx, `
+		SELECT
+			MAX(valor_total) FILTER (WHERE id = $1),
+			MAX(valor_total) FILTER (WHERE id = $2),
+			MAX(valor_total) FILTER (WHERE id = $3)
+		FROM plantoes
+		WHERE id IN ($1, $2, $3)
+	`, plantaoA, plantaoB, semDetalhes).Scan(&totalA, &totalB, &totalSemDetalhes); err != nil {
+		t.Fatal(err)
+	}
+	if totalA != 0 || totalB != 999 || totalSemDetalhes != nil {
+		t.Fatalf("relatório alterou totais persistidos: %.2f/%.2f/%v", totalA, totalB, totalSemDetalhes)
+	}
+}
+
+func TestPlantaoRepositoryCriacaoComSobreposicaoPorColaborador(t *testing.T) {
+	databaseURL := os.Getenv("TEST_DATABASE_URL")
+	if databaseURL == "" {
+		t.Skip("TEST_DATABASE_URL não configurada")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+	pool, err := pgxpool.New(ctx, databaseURL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+
+	colaboradores := []string{
+		"10000000-0000-0000-0000-000000000030",
+		"10000000-0000-0000-0000-000000000031",
+		"10000000-0000-0000-0000-000000000032",
+		"10000000-0000-0000-0000-000000000033",
+	}
+	cleanup := func(cleanupCtx context.Context) {
+		_, _ = pool.Exec(cleanupCtx, `DELETE FROM plantoes WHERE id_colaborador IN ($1, $2, $3, $4)`, colaboradores[0], colaboradores[1], colaboradores[2], colaboradores[3])
+		_, _ = pool.Exec(cleanupCtx, `DELETE FROM colaboradores WHERE id IN ($1, $2, $3, $4)`, colaboradores[0], colaboradores[1], colaboradores[2], colaboradores[3])
+	}
+	cleanup(ctx)
+	t.Cleanup(func() {
+		cleanupCtx, cleanupCancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cleanupCancel()
+		cleanup(cleanupCtx)
+	})
+
+	for i, id := range colaboradores {
+		if _, err := pool.Exec(ctx, `
+			INSERT INTO colaboradores (id, nome, email, telefone, cargo, departamento)
+			VALUES ($1, $2, $3, $4, 'Teste', 'Teste')
+		`, id, fmt.Sprintf("Colaborador Sobreposição %d", i), fmt.Sprintf("sobreposicao.%d@example.test", i), fmt.Sprintf("+55000000003%d", i)); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	repository := NewPlantaoRepository(pool)
+	novoPlantao := func(id, colaboradorID string, inicio, fim time.Time, status plantao.StatusPlantao) *plantao.Plantao {
+		return &plantao.Plantao{
+			Id:            id,
+			ColaboradorId: colaboradorID,
+			Periodo:       &shared.Periodo{Inicio: inicio, Fim: fim},
+			Status:        status,
+			Auditoria: shared.Auditoria{
+				CreatedAt: time.Now(),
+				UpdatedAt: time.Now(),
+			},
+		}
+	}
+	data := time.Date(2026, 9, 1, 0, 0, 0, 0, time.UTC)
+	hora := func(h int) time.Time { return data.Add(time.Duration(h) * time.Hour) }
+
+	if err := repository.Store(ctx, novoPlantao("20000000-0000-0000-0000-000000000030", colaboradores[0], hora(8), hora(12), plantao.StatusPlantaoAgendado)); err != nil {
+		t.Fatal(err)
+	}
+	if err := repository.Store(ctx, novoPlantao("20000000-0000-0000-0000-000000000031", colaboradores[1], hora(9), hora(11), plantao.StatusPlantaoAgendado)); err != nil {
+		t.Fatalf("sobreposição entre colaboradores diferentes foi rejeitada: %v", err)
+	}
+
+	conflitos := []*plantao.Plantao{
+		novoPlantao("20000000-0000-0000-0000-000000000032", colaboradores[0], hora(9), hora(10), plantao.StatusPlantaoAgendado),
+		novoPlantao("20000000-0000-0000-0000-000000000033", colaboradores[0], hora(7), hora(13), plantao.StatusPlantaoAgendado),
+		novoPlantao("20000000-0000-0000-0000-000000000034", colaboradores[0], hora(11), hora(14), plantao.StatusPlantaoAgendado),
+	}
+	for _, p := range conflitos {
+		if err := repository.Store(ctx, p); !errors.Is(err, plantao.ErrorExistingPlantao) {
+			t.Fatalf("sobreposição do mesmo colaborador = %v, esperado conflito", err)
+		}
+	}
+
+	if err := repository.Store(ctx, novoPlantao("20000000-0000-0000-0000-000000000035", colaboradores[0], hora(12), hora(14), plantao.StatusPlantaoAgendado)); err != nil {
+		t.Fatalf("período adjacente foi rejeitado: %v", err)
+	}
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO plantoes (id, id_colaborador, data_inicio, data_fim, status)
+		VALUES ('20000000-0000-0000-0000-000000000036', $1, $2, $3, '3')
+	`, colaboradores[0], hora(15), hora(18)); err != nil {
+		t.Fatal(err)
+	}
+	if err := repository.Store(ctx, novoPlantao("20000000-0000-0000-0000-000000000037", colaboradores[0], hora(16), hora(17), plantao.StatusPlantaoAgendado)); err != nil {
+		t.Fatalf("plantão cancelado bloqueou o período: %v", err)
+	}
+
+	ponto := hora(20)
+	if err := repository.Store(ctx, novoPlantao("20000000-0000-0000-0000-000000000038", colaboradores[0], ponto, ponto, plantao.StatusPlantaoAgendado)); err != nil {
+		t.Fatal(err)
+	}
+	if err := repository.Store(ctx, novoPlantao("20000000-0000-0000-0000-000000000039", colaboradores[0], ponto, ponto, plantao.StatusPlantaoAgendado)); !errors.Is(err, plantao.ErrorExistingPlantao) {
+		t.Fatalf("período pontual idêntico = %v, esperado conflito", err)
+	}
+
+	inexistente := novoPlantao("20000000-0000-0000-0000-000000000040", "10000000-0000-0000-0000-000000000099", hora(8), hora(9), plantao.StatusPlantaoAgendado)
+	if err := repository.Store(ctx, inexistente); !errors.Is(err, plantao.ErrorColaboradorNotFound) {
+		t.Fatalf("colaborador ausente = %v, esperado não encontrado", err)
+	}
+
+	iniciarJuntos := make(chan struct{})
+	errosDiferentes := make(chan error, 2)
+	for i, colaboradorID := range colaboradores[2:] {
+		go func(i int, colaboradorID string) {
+			<-iniciarJuntos
+			errosDiferentes <- repository.Store(ctx, novoPlantao(
+				fmt.Sprintf("20000000-0000-0000-0000-00000000004%d", i+1),
+				colaboradorID, hora(8), hora(10), plantao.StatusPlantaoAgendado,
+			))
+		}(i, colaboradorID)
+	}
+	close(iniciarJuntos)
+	for range 2 {
+		if err := <-errosDiferentes; err != nil {
+			t.Fatalf("criação concorrente de colaboradores diferentes: %v", err)
+		}
+	}
+
+	iniciarMesmo := make(chan struct{})
+	errosMesmo := make(chan error, 2)
+	for i := 0; i < 2; i++ {
+		go func(i int) {
+			<-iniciarMesmo
+			errosMesmo <- repository.Store(ctx, novoPlantao(
+				fmt.Sprintf("20000000-0000-0000-0000-00000000005%d", i),
+				colaboradores[2], hora(12), hora(14), plantao.StatusPlantaoAgendado,
+			))
+		}(i)
+	}
+	close(iniciarMesmo)
+	sucessos, conflitosConcorrentes := 0, 0
+	for range 2 {
+		err := <-errosMesmo
+		switch {
+		case err == nil:
+			sucessos++
+		case errors.Is(err, plantao.ErrorExistingPlantao), errors.Is(err, plantao.ErrorConflitoConcorrencia):
+			conflitosConcorrentes++
+		default:
+			t.Fatalf("erro concorrente inesperado: %v", err)
+		}
+	}
+	if sucessos != 1 || conflitosConcorrentes != 1 {
+		t.Fatalf("concorrência do mesmo colaborador = sucessos %d/conflitos %d", sucessos, conflitosConcorrentes)
+	}
+	var inseridosConcorrentes int
+	if err := pool.QueryRow(ctx, `
+		SELECT COUNT(*)
+		FROM plantoes
+		WHERE id_colaborador = $1 AND data_inicio = $2 AND data_fim = $3
+	`, colaboradores[2], hora(12), hora(14)).Scan(&inseridosConcorrentes); err != nil {
+		t.Fatal(err)
+	}
+	if inseridosConcorrentes != 1 {
+		t.Fatalf("criação concorrente inseriu %d plantões, esperado 1", inseridosConcorrentes)
+	}
+
+	const plantaoEditadoID = "20000000-0000-0000-0000-000000000041"
+	err = repository.WithTransaction(ctx, func(tx plantao.PlantaoTransaction) error {
+		p, err := tx.LockPlantao(ctx, plantaoEditadoID)
+		if err != nil {
+			return err
+		}
+		if err := tx.LockColaborador(ctx, p.ColaboradorId); err != nil {
+			return err
+		}
+		if err := tx.LockColaborador(ctx, colaboradores[3]); err != nil {
+			return err
+		}
+		sobreposto, err := tx.HasOverlappingPlantao(ctx, colaboradores[3], hora(8), hora(10), p.Id)
+		if err != nil {
+			return err
+		}
+		if !sobreposto {
+			t.Fatal("edição não detectou plantão sobreposto do colaborador de destino")
+		}
+		sobreposto, err = tx.HasOverlappingPlantao(ctx, colaboradores[3], hora(14), hora(16), p.Id)
+		if err != nil {
+			return err
+		}
+		if sobreposto {
+			t.Fatal("edição detectou sobreposição inexistente")
+		}
+		atualizado, err := tx.UpdateSchedule(ctx, p.Id, colaboradores[3], hora(14), hora(16))
+		if err != nil {
+			return err
+		}
+		if atualizado.ColaboradorId != colaboradores[3] || !atualizado.Periodo.Inicio.Equal(hora(14)) ||
+			!atualizado.Periodo.Fim.Equal(hora(16)) || atualizado.Status != plantao.StatusPlantaoAgendado {
+			t.Fatalf("plantão recarregado incorretamente: %+v", atualizado)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	sentinel := errors.New("forçar rollback da edição")
+	err = repository.WithTransaction(ctx, func(tx plantao.PlantaoTransaction) error {
+		if _, err := tx.LockPlantao(ctx, plantaoEditadoID); err != nil {
+			return err
+		}
+		if _, err := tx.UpdateSchedule(ctx, plantaoEditadoID, colaboradores[3], hora(15), hora(17)); err != nil {
+			return err
+		}
+		return sentinel
+	})
+	if !errors.Is(err, sentinel) {
+		t.Fatalf("rollback da edição = %v, esperado sentinel", err)
+	}
+	var colaboradorPersistido string
+	var inicioPersistido, fimPersistido time.Time
+	var statusPersistido string
+	if err := pool.QueryRow(ctx, `
+		SELECT id_colaborador, data_inicio, data_fim, status
+		FROM plantoes
+		WHERE id = $1
+	`, plantaoEditadoID).Scan(&colaboradorPersistido, &inicioPersistido, &fimPersistido, &statusPersistido); err != nil {
+		t.Fatal(err)
+	}
+	if colaboradorPersistido != colaboradores[3] || !inicioPersistido.Equal(hora(14)) ||
+		!fimPersistido.Equal(hora(16)) || statusPersistido != "0" {
+		t.Fatalf("rollback/preservação incorretos: %s/%s/%s/%s", colaboradorPersistido, inicioPersistido, fimPersistido, statusPersistido)
 	}
 }

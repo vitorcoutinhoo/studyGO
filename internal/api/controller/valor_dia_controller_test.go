@@ -9,28 +9,29 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func TestUpdateValorVigenteRejeitaTipoAusente(t *testing.T) {
+func TestUpdateValorRejeitaTipoAusente(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	recorder := httptest.NewRecorder()
 	ctx, _ := gin.CreateTestContext(recorder)
-	ctx.Request = httptest.NewRequest(http.MethodPatch, "/api/v1/admin/config-valores", bytes.NewBufferString(`{"valor": 10}`))
+	ctx.Request = httptest.NewRequest(http.MethodPatch, "/api/v1/admin/config-valores", bytes.NewBufferString(`{"valor":10}`))
 	ctx.Request.Header.Set("Content-Type", "application/json")
 
-	(&ValorDiaController{}).UpdateValorVigente(ctx)
+	(&ValorDiaController{}).UpdateValor(ctx)
 	if recorder.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, esperado 400", recorder.Code)
 	}
 }
 
-func TestUpdateValorVigenteRejeitaPatchVazioEDataInvalida(t *testing.T) {
+func TestUpdateValorRejeitaPatchInvalidoOuVigencia(t *testing.T) {
 	tests := []struct {
 		nome string
 		body string
 	}{
 		{"patch vazio", `{}`},
-		{"data inválida", `{"vigencia_inicio":"30/07/2026"}`},
 		{"valor nulo", `{"valor":null}`},
-		{"início nulo", `{"vigencia_inicio":null}`},
+		{"início removido", `{"vigencia_inicio":"2026-01-01"}`},
+		{"fim removido", `{"vigencia_fim":null}`},
+		{"valor acompanhado de vigência", `{"valor":100,"vigencia_inicio":"2026-01-01"}`},
 	}
 
 	for _, tt := range tests {
@@ -42,7 +43,7 @@ func TestUpdateValorVigenteRejeitaPatchVazioEDataInvalida(t *testing.T) {
 			ctx.Request = httptest.NewRequest(http.MethodPatch, "/api/v1/admin/config-valores/UTIL", bytes.NewBufferString(tt.body))
 			ctx.Request.Header.Set("Content-Type", "application/json")
 
-			(&ValorDiaController{}).UpdateValorVigente(ctx)
+			(&ValorDiaController{}).UpdateValor(ctx)
 			if recorder.Code != http.StatusBadRequest {
 				t.Fatalf("status = %d, esperado 400", recorder.Code)
 			}
@@ -50,9 +51,20 @@ func TestUpdateValorVigenteRejeitaPatchVazioEDataInvalida(t *testing.T) {
 	}
 }
 
-func TestParseValorDiaDate(t *testing.T) {
-	data, err := parseValorDiaDate("2026-07-30")
-	if err != nil || data.Format("2006-01-02") != "2026-07-30" {
-		t.Fatalf("data/erro = %v/%v", data, err)
+func TestSetValorRejeitaCamposDeVigencia(t *testing.T) {
+	for _, body := range []string{
+		`{"tipo_dia":"UTIL","valor":100,"vigencia_inicio":"2026-01-01"}`,
+		`{"tipo_dia":"UTIL","valor":100,"vigencia_fim":null}`,
+	} {
+		gin.SetMode(gin.TestMode)
+		recorder := httptest.NewRecorder()
+		ctx, _ := gin.CreateTestContext(recorder)
+		ctx.Request = httptest.NewRequest(http.MethodPost, "/api/v1/admin/config-valores", bytes.NewBufferString(body))
+		ctx.Request.Header.Set("Content-Type", "application/json")
+
+		(&ValorDiaController{}).SetValor(ctx)
+		if recorder.Code != http.StatusBadRequest {
+			t.Fatalf("status = %d, esperado 400", recorder.Code)
+		}
 	}
 }

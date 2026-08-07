@@ -26,26 +26,50 @@ func NewPlantaoRepository(pool *pgxpool.Pool) *PlantaoRepository {
 	return &PlantaoRepository{pool: pool}
 }
 
-func (r *PlantaoRepository) Store(ctx context.Context, plantao *plantao.Plantao) error {
+func (r *PlantaoRepository) Store(ctx context.Context, p *plantao.Plantao) error {
+	tx, err := r.pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.Serializable})
+	if err != nil {
+		return fmt.Errorf("failed to begin plantao creation transaction: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	transaction := &plantaoTransaction{tx: tx}
+	if err := transaction.LockColaborador(ctx, p.ColaboradorId); err != nil {
+		return translateTransactionError(err)
+	}
+	sobreposto, err := transaction.HasOverlappingPlantao(ctx, p.ColaboradorId, p.Periodo.Inicio, p.Periodo.Fim, "")
+	if err != nil {
+		return translateTransactionError(err)
+	}
+	if sobreposto {
+		return plantao.ErrorExistingPlantao
+	}
+
 	query := `
 		INSERT INTO plantoes (id, id_colaborador, data_inicio, data_fim, status, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7)
 	`
 
-	_, err := r.pool.Exec(ctx, query,
-		plantao.Id,
-		plantao.ColaboradorId,
-		plantao.Periodo.Inicio,
-		plantao.Periodo.Fim,
-		strconv.Itoa(int(plantao.Status)),
-		plantao.CreatedAt,
-		plantao.UpdatedAt,
+	tag, err := tx.Exec(ctx, query,
+		p.Id,
+		p.ColaboradorId,
+		p.Periodo.Inicio,
+		p.Periodo.Fim,
+		strconv.Itoa(int(p.Status)),
+		p.CreatedAt,
+		p.UpdatedAt,
 	)
 
 	if err != nil {
-		return fmt.Errorf("failed to store plantao: %w", err)
+		return translateTransactionError(fmt.Errorf("failed to store plantao: %w", err))
+	}
+	if tag.RowsAffected() != 1 {
+		return fmt.Errorf("failed to store plantao: unexpected affected rows")
 	}
 
+	if err := tx.Commit(ctx); err != nil {
+		return translateTransactionError(fmt.Errorf("failed to commit plantao creation transaction: %w", err))
+	}
 	return nil
 }
 
@@ -252,6 +276,125 @@ func (r *PlantaoRepository) Find(
 	return plantoes, nil
 }
 
+func (r *PlantaoRepository) FindRelatorio(ctx context.Context, filtro *plantao.RelatorioFiltro) ([]plantao.RelatorioItem, error) {
+	query := `
+		WITH plantoes_filtrados AS (
+			SELECT c.id AS colaborador_id, p.id AS plantao_id, p.status,
+			       p.data_inicio, p.data_fim, c.nome AS nome_colaborador,
+			       p.valor_total AS valor_total_persistido, p.observacoes
+		FROM plantoes p
+		JOIN colaboradores c ON p.id_colaborador = c.id
+		WHERE (p.data_inicio AT TIME ZONE 'America/Sao_Paulo')::date <= $2::date
+		  AND (p.data_fim AT TIME ZONE 'America/Sao_Paulo')::date >= $1::date
+	`
+	args := []any{filtro.DataInicio, filtro.DataFim}
+	arg := 3
+
+	if filtro.ColaboradorID != "" {
+		query += fmt.Sprintf(" AND p.id_colaborador = $%d", arg)
+		args = append(args, filtro.ColaboradorID)
+		arg++
+	}
+	if filtro.Status != nil {
+		query += fmt.Sprintf(" AND p.status = $%d", arg)
+		args = append(args, strconv.Itoa(int(*filtro.Status)))
+	}
+
+	query += `
+		),
+		dias_plantao AS (
+			SELECT pf.*, dia.data::date AS data
+			FROM plantoes_filtrados pf
+		CROSS JOIN LATERAL generate_series(
+			(pf.data_inicio AT TIME ZONE 'America/Sao_Paulo')::date::timestamp,
+			(pf.data_fim AT TIME ZONE 'America/Sao_Paulo')::date::timestamp,
+			INTERVAL '1 day'
+		) AS dia(data)
+		),
+		valores_dia AS (
+			SELECT d.*, pd.id AS detalhe_id, COALESCE(pd.valor, cv.valor) AS valor_dia
+			FROM dias_plantao d
+		LEFT JOIN plantoes_detalhes pd
+			ON pd.id_plantao = d.plantao_id AND pd.data = d.data
+		LEFT JOIN feriados f ON f.data = d.data
+		CROSS JOIN LATERAL (
+			SELECT CASE
+				WHEN f.id IS NOT NULL THEN 'FERIADO'
+				WHEN EXTRACT(DOW FROM d.data) = 6 THEN 'SABADO'
+				WHEN EXTRACT(DOW FROM d.data) = 0 THEN 'DOMINGO'
+				ELSE 'UTIL'
+			END AS tipo_dia
+		) tipo
+		LEFT JOIN config_valores_dia cv
+			ON cv.tipo_dia = tipo.tipo_dia
+		),
+		relatorio AS (
+			SELECT v.*,
+			       CASE
+				   WHEN COALESCE(v.valor_total_persistido, 0) = 0 THEN
+				       CASE
+					   WHEN COUNT(v.valor_dia) OVER (PARTITION BY v.plantao_id) =
+					        COUNT(*) OVER (PARTITION BY v.plantao_id)
+					   THEN SUM(v.valor_dia) OVER (PARTITION BY v.plantao_id)
+					   ELSE NULL
+				       END
+				   ELSE v.valor_total_persistido
+			       END AS valor_total_relatorio
+			FROM valores_dia v
+		)
+		SELECT colaborador_id, plantao_id, status, data_inicio, data_fim, data,
+		       nome_colaborador, valor_total_relatorio, valor_dia, observacoes
+		FROM relatorio
+		WHERE data BETWEEN $1::date AND $2::date
+		ORDER BY data, nome_colaborador, plantao_id, detalhe_id
+	`
+
+	rows, err := r.pool.Query(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query plantao report: %w", err)
+	}
+	defer rows.Close()
+
+	items := make([]plantao.RelatorioItem, 0)
+	for rows.Next() {
+		var item plantao.RelatorioItem
+		var status string
+		var valorTotal *float64
+		var valor *float64
+		if err := rows.Scan(
+			&item.ColaboradorID,
+			&item.PlantaoID,
+			&status,
+			&item.DataInicio,
+			&item.DataFim,
+			&item.Data,
+			&item.NomeColaborador,
+			&valorTotal,
+			&valor,
+			&item.Observacoes,
+		); err != nil {
+			return nil, fmt.Errorf("failed to scan plantao report: %w", err)
+		}
+		if valorTotal == nil || valor == nil {
+			return nil, financeiro.ErrorValorDiaNotFound
+		}
+		item.ValorTotal = *valorTotal
+		item.Valor = *valor
+
+		statusInt, err := strconv.Atoi(status)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse plantao report status: %w", err)
+		}
+		item.Status = plantao.StatusPlantao(statusInt)
+		items = append(items, item)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("failed to read plantao report: %w", err)
+	}
+
+	return items, nil
+}
+
 func (r *PlantaoRepository) WithTransaction(ctx context.Context, fn func(plantao.PlantaoTransaction) error) error {
 	tx, err := r.pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.Serializable})
 	if err != nil {
@@ -299,6 +442,97 @@ func (t *plantaoTransaction) LockPlantao(ctx context.Context, plantaoID string) 
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, plantao.ErrorPlantaoNotFinded
+	}
+	if err != nil {
+		return nil, err
+	}
+	statusInt, err := strconv.Atoi(status)
+	if err != nil {
+		return nil, plantao.ErrorInvalidStatusPlantao
+	}
+	p.Status = plantao.StatusPlantao(statusInt)
+	return &p, nil
+}
+
+func (t *plantaoTransaction) LockColaborador(ctx context.Context, colaboradorID string) error {
+	var id string
+	err := t.tx.QueryRow(ctx, `
+		SELECT id
+		FROM colaboradores
+		WHERE id = $1
+		FOR UPDATE
+	`, colaboradorID).Scan(&id)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return plantao.ErrorColaboradorNotFound
+	}
+	if err != nil {
+		return fmt.Errorf("failed to lock plantao colaborador: %w", err)
+	}
+	return nil
+}
+
+func (t *plantaoTransaction) HasOverlappingPlantao(
+	ctx context.Context,
+	colaboradorID string,
+	inicio, fim time.Time,
+	excludePlantaoID string,
+) (bool, error) {
+	var excludedID any
+	if excludePlantaoID != "" {
+		excludedID = excludePlantaoID
+	}
+	var sobreposto bool
+	err := t.tx.QueryRow(ctx, `
+		SELECT EXISTS (
+			SELECT 1
+			FROM plantoes
+			WHERE id_colaborador = $1
+			  AND status <> $4
+			  AND ($5::uuid IS NULL OR id <> $5::uuid)
+			  AND (
+				(data_inicio < $3 AND data_fim > $2)
+				OR (data_inicio = data_fim AND $2 = $3 AND data_inicio = $2)
+			  )
+		)
+	`, colaboradorID, inicio, fim, strconv.Itoa(int(plantao.StatusPlantaoCancelado)), excludedID).Scan(&sobreposto)
+	if err != nil {
+		return false, fmt.Errorf("failed to check overlapping plantoes: %w", err)
+	}
+	return sobreposto, nil
+}
+
+func (t *plantaoTransaction) UpdateSchedule(
+	ctx context.Context,
+	plantaoID, colaboradorID string,
+	inicio, fim time.Time,
+) (*plantao.Plantao, error) {
+	tag, err := t.tx.Exec(ctx, `
+		UPDATE plantoes
+		SET id_colaborador = $2, data_inicio = $3, data_fim = $4, updated_at = NOW()
+		WHERE id = $1
+	`, plantaoID, colaboradorID, inicio, fim)
+	if err != nil {
+		return nil, err
+	}
+	if tag.RowsAffected() != 1 {
+		return nil, plantao.ErrorConflitoConcorrencia
+	}
+
+	const query = `
+		SELECT id, id_colaborador, data_inicio, data_fim, status, valor_total,
+		       observacoes, created_at, updated_at
+		FROM plantoes
+		WHERE id = $1
+	`
+	var p plantao.Plantao
+	var status string
+	p.Periodo = &shared.Periodo{}
+	err = t.tx.QueryRow(ctx, query, plantaoID).Scan(
+		&p.Id, &p.ColaboradorId, &p.Periodo.Inicio, &p.Periodo.Fim, &status,
+		&p.ValorTotal, &p.Observacoes, &p.CreatedAt, &p.UpdatedAt,
+	)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, plantao.ErrorConflitoConcorrencia
 	}
 	if err != nil {
 		return nil, err
@@ -365,23 +599,19 @@ func (t *plantaoTransaction) FindFeriados(ctx context.Context, inicio, fim time.
 	return result, rows.Err()
 }
 
-func (t *plantaoTransaction) FindValorDiaCentavos(ctx context.Context, tipoDia financeiro.TipoDia, data time.Time) (int64, error) {
+func (t *plantaoTransaction) FindValorDiaCentavos(ctx context.Context, tipoDia financeiro.TipoDia) (int64, error) {
 	const query = `
 		SELECT
 			CASE
 				WHEN valor > 0 AND valor = ROUND(valor, 2) THEN (valor * 100)::bigint
 				ELSE NULL
-			END,
-			vigencia_inicio,
-			vigencia_fim
+			END
 		FROM config_valores_dia
 		WHERE tipo_dia = $1
 		FOR SHARE
 	`
 	var centavos *int64
-	var inicio time.Time
-	var fim *time.Time
-	err := t.tx.QueryRow(ctx, query, tipoDia).Scan(&centavos, &inicio, &fim)
+	err := t.tx.QueryRow(ctx, query, tipoDia).Scan(&centavos)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return 0, financeiro.ErrorValorDiaNotFound
 	}
@@ -389,10 +619,6 @@ func (t *plantaoTransaction) FindValorDiaCentavos(ctx context.Context, tipoDia f
 		return 0, err
 	}
 
-	dataCivil := data.Format("2006-01-02")
-	if dataCivil < inicio.Format("2006-01-02") || (fim != nil && dataCivil > fim.Format("2006-01-02")) {
-		return 0, financeiro.ErrorValorDiaForaVigencia
-	}
 	if centavos == nil || *centavos <= 0 {
 		return 0, financeiro.ErrorValorDiaInvalido
 	}

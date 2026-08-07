@@ -11,23 +11,22 @@ import (
 
 type valorDiaRepositoryFake struct {
 	atual     *ValorDia
+	valores   []ValorDia
+	stored    *ValorDia
+	storeErr  error
 	updateErr error
 	committed bool
 }
 
-func (r *valorDiaRepositoryFake) FindVigentes(context.Context) ([]ValorDia, error) {
-	return nil, nil
+func (r *valorDiaRepositoryFake) FindAll(context.Context) ([]ValorDia, error) {
+	return r.valores, nil
 }
-func (r *valorDiaRepositoryFake) FindVigenteByTipoDia(context.Context, TipoDia) (*ValorDia, error) {
-	return nil, nil
-}
-func (r *valorDiaRepositoryFake) FindVigenteByData(context.Context, time.Time) (map[TipoDia]float64, error) {
-	return nil, nil
-}
-func (r *valorDiaRepositoryFake) Store(context.Context, *ValorDia) error {
-	return nil
-}
-func (r *valorDiaRepositoryFake) CloseVigencia(context.Context, uuid.UUID, time.Time) error {
+func (r *valorDiaRepositoryFake) Store(_ context.Context, valor *ValorDia) error {
+	if r.storeErr != nil {
+		return r.storeErr
+	}
+	copia := *valor
+	r.stored = &copia
 	return nil
 }
 func (r *valorDiaRepositoryFake) WithTransaction(_ context.Context, fn func(ValorDiaTransaction) error) error {
@@ -66,19 +65,21 @@ func (t *valorDiaTransactionFake) Update(_ context.Context, valor *ValorDia) (*V
 		return nil, t.repository.updateErr
 	}
 	copia := *valor
-	copia.UpdatedAt = time.Date(2026, 7, 30, 15, 0, 0, 0, time.UTC)
+	copia.UpdatedAt = time.Date(2026, 8, 5, 15, 0, 0, 0, time.UTC)
 	t.atualizado = &copia
 	return &copia, nil
 }
 
-func configVigenteTeste() *ValorDia {
+func configGlobalTeste() *ValorDia {
 	descricao := "descrição original"
+	fim := time.Date(2026, 6, 30, 0, 0, 0, 0, time.UTC)
 	return &ValorDia{
 		Id:             uuid.New(),
 		TipoDia:        TipoDiaUtil,
 		Valor:          150.75,
 		Descricao:      &descricao,
 		VigenciaInicio: time.Date(2026, 5, 1, 0, 0, 0, 0, time.UTC),
+		VigenciaFim:    &fim,
 	}
 }
 
@@ -86,127 +87,102 @@ func serviceValorDiaTeste(repo ValorDiaRepository) *ConfigValorDiaService {
 	return NewConfigValorDiaService(repo, noopLogger{})
 }
 
-func TestUpdateVigenteAtualizaParcialmente(t *testing.T) {
-	repo := &valorDiaRepositoryFake{atual: configVigenteTeste()}
-	service := serviceValorDiaTeste(repo)
-	novoValor := 175.50
-
-	resultado, err := service.UpdateVigente(context.Background(), TipoDiaUtil, &AtualizacaoValorDia{Valor: &novoValor})
+func TestSetValorCriaConfiguracaoGlobal(t *testing.T) {
+	repo := &valorDiaRepositoryFake{}
+	descricao := "valor de feriado"
+	resultado, err := serviceValorDiaTeste(repo).SetValor(context.Background(), TipoDiaFeriado, 300, &descricao)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if resultado.Valor != novoValor || resultado.Descricao == nil || *resultado.Descricao != "descrição original" {
-		t.Fatalf("atualização parcial incorreta: %+v", resultado)
-	}
-	if !repo.committed || resultado.UpdatedAt.IsZero() {
-		t.Fatal("transação não foi confirmada ou updated_at não foi atualizado")
-	}
-}
-
-func TestUpdateVigentePermiteLimparCamposAnulaveis(t *testing.T) {
-	fim := time.Date(2026, 8, 30, 0, 0, 0, 0, time.UTC)
-	config := configVigenteTeste()
-	config.VigenciaFim = &fim
-	repo := &valorDiaRepositoryFake{atual: config}
-	service := serviceValorDiaTeste(repo)
-
-	resultado, err := service.UpdateVigente(context.Background(), TipoDiaUtil, &AtualizacaoValorDia{
-		DescricaoInformada:   true,
-		Descricao:            nil,
-		VigenciaFimInformada: true,
-		VigenciaFim:          nil,
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if resultado.Descricao != nil || resultado.VigenciaFim != nil {
-		t.Fatalf("campos não foram limpos: %+v", resultado)
+	if repo.stored == nil || resultado.Id != repo.stored.Id ||
+		resultado.TipoDia != TipoDiaFeriado || resultado.Valor != 300 ||
+		resultado.Descricao == nil || *resultado.Descricao != descricao ||
+		!resultado.VigenciaInicio.Equal(configValorDiaInicioGlobal) || resultado.VigenciaFim != nil {
+		t.Fatalf("configuração global incorreta: %+v", resultado)
 	}
 }
 
-func TestUpdateVigenteAtualizaDescricaoEVigencias(t *testing.T) {
-	repo := &valorDiaRepositoryFake{atual: configVigenteTeste()}
-	service := serviceValorDiaTeste(repo)
-	valor := 300.00
-	descricao := "novo valor para dia útil"
-	inicio := time.Date(2026, 8, 30, 15, 0, 0, 0, time.FixedZone("offset", -3*60*60))
-	fim := time.Date(2026, 12, 31, 15, 0, 0, 0, time.FixedZone("offset", -3*60*60))
-
-	resultado, err := service.UpdateVigente(context.Background(), TipoDiaUtil, &AtualizacaoValorDia{
-		Valor:                &valor,
-		DescricaoInformada:   true,
-		Descricao:            &descricao,
-		VigenciaInicio:       &inicio,
-		VigenciaFimInformada: true,
-		VigenciaFim:          &fim,
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if resultado.Valor != valor || resultado.Descricao == nil || *resultado.Descricao != descricao ||
-		resultado.VigenciaInicio.Format("2006-01-02") != "2026-08-30" ||
-		resultado.VigenciaFim == nil || resultado.VigenciaFim.Format("2006-01-02") != "2026-12-31" {
-		t.Fatalf("campos atualizados incorretamente: %+v", resultado)
-	}
-}
-
-func TestUpdateVigentePermiteAlterarConfiguracaoFuturaOuEncerrada(t *testing.T) {
-	novoValor := 225.50
-	descricao := "configuração corrigida"
-	novoInicio := time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC)
-	novoFim := time.Date(2027, 1, 31, 0, 0, 0, 0, time.UTC)
-
+func TestSetValorValidaEntradaEPropagaDuplicidade(t *testing.T) {
+	zero := 0.0
+	negativo := -1.0
+	precisaoInvalida := 10.001
+	limiteExcedido := 100_000_000.0
 	tests := []struct {
-		nome   string
-		inicio time.Time
-		fim    *time.Time
+		nome     string
+		tipo     TipoDia
+		valor    float64
+		storeErr error
+		esperado error
 	}{
-		{
-			nome:   "configuração futura",
-			inicio: time.Date(2026, 9, 1, 0, 0, 0, 0, time.UTC),
-		},
-		{
-			nome:   "configuração encerrada",
-			inicio: time.Date(2026, 5, 1, 0, 0, 0, 0, time.UTC),
-			fim: func() *time.Time {
-				data := time.Date(2026, 6, 30, 0, 0, 0, 0, time.UTC)
-				return &data
-			}(),
-		},
+		{"tipo inválido", TipoDia("INVALIDO"), 10, nil, ErrorTipoDiaInvalido},
+		{"valor zero", TipoDiaUtil, zero, nil, ErrorValorDiaInvalido},
+		{"valor negativo", TipoDiaUtil, negativo, nil, ErrorValorDiaInvalido},
+		{"precisão inválida", TipoDiaUtil, precisaoInvalida, nil, ErrorPrecisaoValorDia},
+		{"limite excedido", TipoDiaUtil, limiteExcedido, nil, ErrorLimiteValorDia},
+		{"tipo duplicado", TipoDiaUtil, 10, ErrorValorDiaAlreadyExists, ErrorValorDiaAlreadyExists},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.nome, func(t *testing.T) {
-			configuracao := configVigenteTeste()
-			configuracao.VigenciaInicio = tt.inicio
-			configuracao.VigenciaFim = tt.fim
-			repo := &valorDiaRepositoryFake{atual: configuracao}
-
-			resultado, err := serviceValorDiaTeste(repo).UpdateVigente(context.Background(), TipoDiaUtil, &AtualizacaoValorDia{
-				Valor:                &novoValor,
-				DescricaoInformada:   true,
-				Descricao:            &descricao,
-				VigenciaInicio:       &novoInicio,
-				VigenciaFimInformada: true,
-				VigenciaFim:          &novoFim,
-			})
-			if err != nil {
-				t.Fatal(err)
-			}
-			if !repo.committed || resultado.Valor != novoValor || resultado.Descricao == nil || *resultado.Descricao != descricao ||
-				!resultado.VigenciaInicio.Equal(novoInicio) || resultado.VigenciaFim == nil || !resultado.VigenciaFim.Equal(novoFim) {
-				t.Fatalf("configuração não foi atualizada: %+v", resultado)
+			repo := &valorDiaRepositoryFake{storeErr: tt.storeErr}
+			_, err := serviceValorDiaTeste(repo).SetValor(context.Background(), tt.tipo, tt.valor, nil)
+			if !errors.Is(err, tt.esperado) {
+				t.Fatalf("erro = %v, esperado %v", err, tt.esperado)
 			}
 		})
 	}
 }
 
-func TestUpdateVigenteValidaEntradaEIntervalo(t *testing.T) {
-	zero := 0.0
-	negativo := -1.0
-	precisaoInvalida := 10.001
-	fimAnterior := time.Date(2026, 4, 1, 0, 0, 0, 0, time.UTC)
+func TestGetAllRetornaConfiguracoesIndependentementeDasDatasInternas(t *testing.T) {
+	config := *configGlobalTeste()
+	repo := &valorDiaRepositoryFake{valores: []ValorDia{config}}
+	resultado, err := serviceValorDiaTeste(repo).GetAll(context.Background())
+	if err != nil || len(resultado) != 1 || resultado[0].Id != config.Id {
+		t.Fatalf("resultado/erro = %+v/%v", resultado, err)
+	}
+}
 
+func TestUpdateAtualizaSomenteValorEDescricao(t *testing.T) {
+	original := configGlobalTeste()
+	inicioOriginal := original.VigenciaInicio
+	fimOriginal := *original.VigenciaFim
+	repo := &valorDiaRepositoryFake{atual: original}
+	novoValor := 225.50
+	novaDescricao := "configuração global"
+
+	resultado, err := serviceValorDiaTeste(repo).Update(context.Background(), TipoDiaUtil, &AtualizacaoValorDia{
+		Valor:              &novoValor,
+		DescricaoInformada: true,
+		Descricao:          &novaDescricao,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !repo.committed || resultado.Valor != novoValor || resultado.Descricao == nil || *resultado.Descricao != novaDescricao {
+		t.Fatalf("configuração não atualizada: %+v", resultado)
+	}
+	if !resultado.VigenciaInicio.Equal(inicioOriginal) || resultado.VigenciaFim == nil || !resultado.VigenciaFim.Equal(fimOriginal) {
+		t.Fatalf("datas internas foram modificadas: %+v", resultado)
+	}
+}
+
+func TestUpdatePermiteLimparDescricao(t *testing.T) {
+	repo := &valorDiaRepositoryFake{atual: configGlobalTeste()}
+	resultado, err := serviceValorDiaTeste(repo).Update(context.Background(), TipoDiaUtil, &AtualizacaoValorDia{
+		DescricaoInformada: true,
+		Descricao:          nil,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resultado.Descricao != nil {
+		t.Fatalf("descrição não foi removida: %+v", resultado)
+	}
+}
+
+func TestUpdateValidaEntrada(t *testing.T) {
+	zero := 0.0
+	precisaoInvalida := 10.001
 	tests := []struct {
 		nome        string
 		tipo        TipoDia
@@ -214,19 +190,17 @@ func TestUpdateVigenteValidaEntradaEIntervalo(t *testing.T) {
 		atualizacao *AtualizacaoValorDia
 		esperado    error
 	}{
-		{"tipo inválido", TipoDia("INVALIDO"), configVigenteTeste(), &AtualizacaoValorDia{Valor: &zero}, ErrorTipoDiaInvalido},
-		{"patch vazio", TipoDiaUtil, configVigenteTeste(), &AtualizacaoValorDia{}, ErrorAtualizacaoVazia},
-		{"valor zero", TipoDiaUtil, configVigenteTeste(), &AtualizacaoValorDia{Valor: &zero}, ErrorValorDiaInvalido},
-		{"valor negativo", TipoDiaUtil, configVigenteTeste(), &AtualizacaoValorDia{Valor: &negativo}, ErrorValorDiaInvalido},
-		{"precisão inválida", TipoDiaUtil, configVigenteTeste(), &AtualizacaoValorDia{Valor: &precisaoInvalida}, ErrorPrecisaoValorDia},
+		{"tipo inválido", TipoDia("INVALIDO"), configGlobalTeste(), &AtualizacaoValorDia{Valor: &zero}, ErrorTipoDiaInvalido},
+		{"patch vazio", TipoDiaUtil, configGlobalTeste(), &AtualizacaoValorDia{}, ErrorAtualizacaoVazia},
+		{"valor zero", TipoDiaUtil, configGlobalTeste(), &AtualizacaoValorDia{Valor: &zero}, ErrorValorDiaInvalido},
+		{"precisão inválida", TipoDiaUtil, configGlobalTeste(), &AtualizacaoValorDia{Valor: &precisaoInvalida}, ErrorPrecisaoValorDia},
 		{"configuração ausente", TipoDiaUtil, nil, &AtualizacaoValorDia{DescricaoInformada: true}, ErrorValorDiaNotFound},
-		{"fim anterior ao início", TipoDiaUtil, configVigenteTeste(), &AtualizacaoValorDia{VigenciaFimInformada: true, VigenciaFim: &fimAnterior}, ErrorVigenciaInvalida},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.nome, func(t *testing.T) {
 			repo := &valorDiaRepositoryFake{atual: tt.atual}
-			_, err := serviceValorDiaTeste(repo).UpdateVigente(context.Background(), tt.tipo, tt.atualizacao)
+			_, err := serviceValorDiaTeste(repo).Update(context.Background(), tt.tipo, tt.atualizacao)
 			if !errors.Is(err, tt.esperado) {
 				t.Fatalf("erro = %v, esperado %v", err, tt.esperado)
 			}
@@ -237,17 +211,13 @@ func TestUpdateVigenteValidaEntradaEIntervalo(t *testing.T) {
 	}
 }
 
-func TestUpdateVigenteFazRollbackQuandoPersistenciaFalha(t *testing.T) {
+func TestUpdateFazRollbackQuandoPersistenciaFalha(t *testing.T) {
 	sentinel := errors.New("falha simulada")
-	original := configVigenteTeste()
+	original := configGlobalTeste()
 	repo := &valorDiaRepositoryFake{atual: original, updateErr: sentinel}
 	novoValor := 200.0
 
-	_, err := serviceValorDiaTeste(repo).UpdateVigente(
-		context.Background(),
-		TipoDiaUtil,
-		&AtualizacaoValorDia{Valor: &novoValor},
-	)
+	_, err := serviceValorDiaTeste(repo).Update(context.Background(), TipoDiaUtil, &AtualizacaoValorDia{Valor: &novoValor})
 	if !errors.Is(err, sentinel) {
 		t.Fatalf("erro = %v, esperado sentinel", err)
 	}

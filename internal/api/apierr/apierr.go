@@ -28,7 +28,7 @@ func Respond(ctx *gin.Context, err error) {
 }
 
 func classify(err error) (int, ErrorResponse) {
-	if errors.Is(err, financeiro.ErrorAtualizacaoVazia) {
+	if isAny(err, financeiro.ErrorAtualizacaoVazia, plantao.ErrorAtualizacaoPlantaoVazia) {
 		return http.StatusBadRequest, ErrorResponse{Code: "BAD_REQUEST", Message: err.Error()}
 	}
 
@@ -66,6 +66,8 @@ func classify(err error) (int, ErrorResponse) {
 		plantao.ErrorPagamentoInconsistente,
 		plantao.ErrorDetalhesInconsistentes,
 		plantao.ErrorConflitoConcorrencia,
+		plantao.ErrorPlantaoNaoEditavel,
+		financeiro.ErrorValorDiaAlreadyExists,
 		financeiro.ErrorConflitoValorDia,
 	) {
 		return http.StatusConflict, ErrorResponse{Code: "CONFLICT", Message: err.Error()}
@@ -96,8 +98,6 @@ func classify(err error) (int, ErrorResponse) {
 		financeiro.ErrorFeriadoNotMunicipal,
 		financeiro.ErrorTipoDiaInvalido,
 		financeiro.ErrorValorDiaInvalido,
-		financeiro.ErrorValorDiaForaVigencia,
-		financeiro.ErrorVigenciaInvalida,
 		financeiro.ErrorPrecisaoValorDia,
 		financeiro.ErrorLimiteValorDia,
 		plantao.ErrorInvalidStatusPlantao,

@@ -20,7 +20,7 @@ func (f *calculoFonteFake) FindFeriados(context.Context, time.Time, time.Time) (
 	return f.feriados, nil
 }
 
-func (f *calculoFonteFake) FindValorDiaCentavos(_ context.Context, tipo TipoDia, _ time.Time) (int64, error) {
+func (f *calculoFonteFake) FindValorDiaCentavos(_ context.Context, tipo TipoDia) (int64, error) {
 	if f.err != nil {
 		return 0, f.err
 	}
@@ -119,5 +119,33 @@ func TestCalcularPropagaAusenciaDeConfiguracao(t *testing.T) {
 	)
 	if !errors.Is(err, ErrorValorDiaNotFound) {
 		t.Fatalf("erro = %v, esperado ErrorValorDiaNotFound", err)
+	}
+}
+
+func TestCalcularUsaMesmaConfiguracaoGlobalEmDatasAntigaEFutura(t *testing.T) {
+	fonte := &calculoFonteFake{
+		valores: map[TipoDia]int64{
+			TipoDiaUtil: 12345, TipoDiaSabado: 12345,
+			TipoDiaDomingo: 12345, TipoDiaFeriado: 12345,
+		},
+	}
+	service := NewCalculoService(noopLogger{})
+
+	for _, data := range []time.Time{
+		time.Date(1901, 1, 1, 0, 0, 0, 0, time.UTC),
+		time.Date(2099, 12, 31, 0, 0, 0, 0, time.UTC),
+	} {
+		resultado, err := service.Calcular(
+			context.Background(),
+			&shared.Periodo{Inicio: data, Fim: data},
+			fonte,
+			time.UTC,
+		)
+		if err != nil {
+			t.Fatalf("data %s: %v", data.Format("2006-01-02"), err)
+		}
+		if resultado.ValorTotalCentavos != 12345 {
+			t.Fatalf("data %s: total = %d, esperado 12345", data.Format("2006-01-02"), resultado.ValorTotalCentavos)
+		}
 	}
 }

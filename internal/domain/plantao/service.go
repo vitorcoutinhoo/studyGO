@@ -2,6 +2,7 @@ package plantao
 
 import (
 	"context"
+	"sort"
 	"time"
 
 	"plantao/internal/domain/financeiro"
@@ -92,14 +93,6 @@ func NewPlantaoService(repository PlantaoRepository, calculoService *financeiro.
 
 func (s *PlantaoService) CreatePlantao(ctx context.Context, colaboradorID string, periodo *shared.Periodo) (*Plantao, error) {
 	s.log.Info("iniciando criação de plantão", "id_colaborador", colaboradorID, "periodo", periodo)
-	existing, err := s.repository.Find(ctx, &Filtro{ColaboradorID: colaboradorID, Periodo: periodo})
-	if err != nil {
-		return nil, err
-	}
-	if len(existing) > 0 {
-		return nil, ErrorExistingPlantao
-	}
-
 	p, err := NewPlantao(colaboradorID, periodo)
 	if err != nil {
 		return nil, err
@@ -108,6 +101,72 @@ func (s *PlantaoService) CreatePlantao(ctx context.Context, colaboradorID string
 		return nil, err
 	}
 	return p, nil
+}
+
+func (s *PlantaoService) EditarPlantao(ctx context.Context, plantaoID, usuarioID string, atualizacao *AtualizacaoPlantao) (*Plantao, error) {
+	if atualizacao == nil || !atualizacao.TemCampos() {
+		return nil, ErrorAtualizacaoPlantaoVazia
+	}
+
+	var resultado *Plantao
+	err := s.repository.WithTransaction(ctx, func(tx PlantaoTransaction) error {
+		p, err := tx.LockPlantao(ctx, plantaoID)
+		if err != nil {
+			return err
+		}
+		actor, err := tx.FindActor(ctx, usuarioID)
+		if err != nil {
+			return err
+		}
+		if actor.Role != roleAdmin && actor.Role != roleGerente {
+			return ErrorUsuarioSemPermissao
+		}
+		if p.Status != StatusPlantaoAgendado {
+			return ErrorPlantaoNaoEditavel
+		}
+
+		colaboradorID := p.ColaboradorId
+		inicio := p.Periodo.Inicio
+		fim := p.Periodo.Fim
+		if atualizacao.ColaboradorID != nil {
+			colaboradorID = *atualizacao.ColaboradorID
+		}
+		if atualizacao.DataInicio != nil {
+			inicio = *atualizacao.DataInicio
+		}
+		if atualizacao.DataFim != nil {
+			fim = *atualizacao.DataFim
+		}
+		if _, err := shared.NewPeriodo(inicio, fim); err != nil {
+			return err
+		}
+
+		colaboradores := []string{p.ColaboradorId}
+		if colaboradorID != p.ColaboradorId {
+			colaboradores = append(colaboradores, colaboradorID)
+		}
+		sort.Strings(colaboradores)
+		for _, id := range colaboradores {
+			if err := tx.LockColaborador(ctx, id); err != nil {
+				return err
+			}
+		}
+
+		sobreposto, err := tx.HasOverlappingPlantao(ctx, colaboradorID, inicio, fim, p.Id)
+		if err != nil {
+			return err
+		}
+		if sobreposto {
+			return ErrorExistingPlantao
+		}
+
+		resultado, err = tx.UpdateSchedule(ctx, p.Id, colaboradorID, inicio, fim)
+		return err
+	})
+	if err != nil {
+		return nil, err
+	}
+	return resultado, nil
 }
 
 func (s *PlantaoService) UpdatePlantaoStatus(ctx context.Context, plantaoID, usuarioID string, newStatus StatusPlantao, observacoes *string) (*Plantao, error) {
@@ -364,6 +423,20 @@ func (s *PlantaoService) GetPlantaoById(ctx context.Context, plantaoID string) (
 
 func (s *PlantaoService) GetPlantoes(ctx context.Context, filter *Filtro) ([]Plantao, error) {
 	return s.repository.Find(ctx, filter)
+}
+
+func (s *PlantaoService) GetRelatorio(ctx context.Context, filter *RelatorioFiltro) ([]RelatorioItem, error) {
+	if filter == nil || filter.DataInicio.IsZero() || filter.DataFim.IsZero() {
+		return nil, shared.ErrorPeriodoInvalido
+	}
+	if filter.DataFim.Before(filter.DataInicio) {
+		return nil, shared.ErrorEndBeforeStart
+	}
+	if filter.Status != nil && (*filter.Status < StatusPlantaoAgendado || *filter.Status > StatusPlantaoPago) {
+		return nil, ErrorInvalidStatusPlantao
+	}
+
+	return s.repository.FindRelatorio(ctx, filter)
 }
 
 func (s *PlantaoService) GetPlantoesByColaboradorId(ctx context.Context, colaboradorID string) ([]Plantao, error) {

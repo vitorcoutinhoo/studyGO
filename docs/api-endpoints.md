@@ -309,6 +309,26 @@ Cria um novo plantão.
 
 ---
 
+### PATCH `/api/v1/plantoes/:id`
+
+Atualiza parcialmente colaborador e/ou período de um plantão agendado.
+
+**Auth:** `ADMIN`, `GERENTE`
+
+```json
+{
+  "colaborador_id": "uuid",
+  "data_inicio": "2026-09-01T08:00:00Z",
+  "data_fim": "2026-09-01T18:00:00Z"
+}
+```
+
+Todos os campos são opcionais; corpo vazio retorna `400`. Sobreposição, plantão
+não agendado ou conflito concorrente retorna `409`. A resposta `200` contém o
+plantão atualizado.
+
+---
+
 ### GET `/api/v1/plantoes`
 Lista todos os plantões.
 
@@ -490,7 +510,7 @@ Atualiza a data de um feriado.
 Configuração dos valores pagos por tipo de dia de plantão.
 
 ### GET `/api/v1/admin/config-valores`
-Lista as configurações de valor vigentes.
+Lista todas as configurações globais de valor.
 
 **Auth:** `ADMIN`
 
@@ -500,9 +520,7 @@ Lista as configurações de valor vigentes.
   {
     "id": "uuid",
     "tipo_dia": "UTIL",
-    "valor": 250.00,
-    "vigencia_inicio": "2025-01-01T00:00:00Z",
-    "vigencia_fim": null
+    "valor": 250.00
   }
 ]
 ```
@@ -519,7 +537,7 @@ Define um novo valor para um tipo de dia.
 {
   "tipo_dia": "FERIADO",
   "valor": 500.00,
-  "vigencia_inicio": "2025-06-01"
+  "descricao": "Valor global para feriados"
 }
 ```
 
@@ -531,8 +549,26 @@ Define um novo valor para um tipo de dia.
   "id": "uuid",
   "tipo_dia": "FERIADO",
   "valor": 500.00,
-  "vigencia_inicio": "2025-06-01T00:00:00Z",
-  "vigencia_fim": null
+  "descricao": "Valor global para feriados"
+}
+```
+
+`descricao` é opcional. Se o tipo já existir, retorna `409 Conflict`. Os campos `vigencia_inicio` e
+`vigencia_fim` não são aceitos.
+
+---
+
+### PATCH `/api/v1/admin/config-valores/:tipo_dia`
+
+Atualiza `valor` e/ou `descricao` da configuração global. Campos de vigência
+retornam `400 Bad Request`.
+
+**Auth:** `ADMIN`
+
+```json
+{
+  "valor": 550.00,
+  "descricao": "Valor global de feriado"
 }
 ```
 

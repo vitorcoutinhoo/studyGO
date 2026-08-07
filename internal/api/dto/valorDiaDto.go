@@ -7,17 +7,18 @@ import (
 )
 
 type SetValorDiaRequest struct {
-	TipoDia        string  `json:"tipo_dia" binding:"required"`
-	Valor          float64 `json:"valor" binding:"required"`
-	VigenciaInicio string  `json:"vigencia_inicio" binding:"required"`
+	TipoDia        string          `json:"tipo_dia" binding:"required"`
+	Valor          float64         `json:"valor" binding:"required"`
+	Descricao      *string         `json:"descricao"`
+	VigenciaInicio json.RawMessage `json:"vigencia_inicio"`
+	VigenciaFim    json.RawMessage `json:"vigencia_fim"`
 }
 
 type ValorDiaResponse struct {
-	Id             string     `json:"id"`
-	TipoDia        string     `json:"tipo_dia"`
-	Valor          float64    `json:"valor"`
-	VigenciaInicio time.Time  `json:"vigencia_inicio"`
-	VigenciaFim    *time.Time `json:"vigencia_fim"`
+	Id        string  `json:"id"`
+	TipoDia   string  `json:"tipo_dia"`
+	Valor     float64 `json:"valor"`
+	Descricao *string `json:"descricao"`
 }
 
 type OptionalString struct {
@@ -63,23 +64,27 @@ func (o *OptionalFloat64) UnmarshalJSON(data []byte) error {
 type UpdateValorDiaRequest struct {
 	Valor          OptionalFloat64 `json:"valor"`
 	Descricao      OptionalString  `json:"descricao"`
-	VigenciaInicio OptionalString  `json:"vigencia_inicio"`
-	VigenciaFim    OptionalString  `json:"vigencia_fim"`
+	VigenciaInicio json.RawMessage `json:"vigencia_inicio"`
+	VigenciaFim    json.RawMessage `json:"vigencia_fim"`
 }
 
 func (r UpdateValorDiaRequest) HasFields() bool {
 	return r.Valor.Set ||
-		r.Descricao.Set ||
-		r.VigenciaInicio.Set ||
-		r.VigenciaFim.Set
+		r.Descricao.Set
+}
+
+func (r SetValorDiaRequest) HasDeprecatedVigenciaFields() bool {
+	return len(r.VigenciaInicio) != 0 || len(r.VigenciaFim) != 0
+}
+
+func (r UpdateValorDiaRequest) HasDeprecatedVigenciaFields() bool {
+	return len(r.VigenciaInicio) != 0 || len(r.VigenciaFim) != 0
 }
 
 type UpdateValorDiaResponse struct {
-	Id             string     `json:"id"`
-	TipoDia        string     `json:"tipo_dia"`
-	Valor          float64    `json:"valor"`
-	Descricao      *string    `json:"descricao"`
-	VigenciaInicio time.Time  `json:"vigencia_inicio"`
-	VigenciaFim    *time.Time `json:"vigencia_fim"`
-	UpdatedAt      time.Time  `json:"updated_at"`
+	Id        string    `json:"id"`
+	TipoDia   string    `json:"tipo_dia"`
+	Valor     float64   `json:"valor"`
+	Descricao *string   `json:"descricao"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
