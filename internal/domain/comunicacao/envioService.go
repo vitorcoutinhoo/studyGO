@@ -5,41 +5,52 @@ import (
 	"context"
 	"fmt"
 	"html/template"
+	"plantao/internal/domain/log"
+
+	"github.com/google/uuid"
 )
 
 type EnvioService struct {
 	envioRepository  EnvioComunicacaoRepository
 	emailRepository  Mailer
 	modeloRepository ModeloComunicaRepository
+	log              log.Logger
 }
 
-func NewEnvioService(envioRepository EnvioComunicacaoRepository, emailRepository Mailer, modeloRepository ModeloComunicaRepository) *EnvioService {
+func NewEnvioService(envioRepository EnvioComunicacaoRepository, emailRepository Mailer, modeloRepository ModeloComunicaRepository, log log.Logger) *EnvioService {
 	return &EnvioService{
 		envioRepository:  envioRepository,
 		emailRepository:  emailRepository,
 		modeloRepository: modeloRepository,
+		log:              log,
 	}
 }
 
 func (s *EnvioService) SendEmailComunicacao(
 	ctx context.Context,
 	tipoComunicacao TipoComunicacao,
-	idColaborador string,
 	destinatario string,
+	idColaborador uuid.UUID,
 	data map[string]any,
 ) error {
+	s.log.Info("iniciando envio de comunicação por email", "tipo_comunicacao", tipoComunicacao, "destinatario", destinatario, "id_colaborador", idColaborador)
+
 	modelo, err := s.modeloRepository.FindByTipo(ctx, string(tipoComunicacao))
 
 	if err != nil {
+		s.log.Error("erro ao buscar modelo de comunicação para envio", "tipo_comunicacao", tipoComunicacao, "destinatario", destinatario, "error", err)
 		return err
 	}
 
+	s.log.Info("renderizando template de comunicação", "id_modelo", modelo.Id, "tipo_comunicacao", tipoComunicacao)
 	body, err := renderTemplate(modelo.Corpo, data)
 
 	if err != nil {
+		s.log.Error("erro ao renderizar template de comunicação", "id_modelo", modelo.Id, "tipo_comunicacao", tipoComunicacao, "error", err)
 		return err
 	}
 
+	s.log.Info("enviando email de comunicação", "tipo_comunicacao", tipoComunicacao, "destinatario", destinatario)
 	err = s.emailRepository.SendEmail(
 		destinatario,
 		modelo.Assunto,
@@ -50,12 +61,16 @@ func (s *EnvioService) SendEmailComunicacao(
 	statusEnvio := Enviado
 
 	if err != nil {
+		s.log.Warn("erro ao enviar email de comunicação", "tipo_comunicacao", tipoComunicacao, "destinatario", destinatario, "error", err)
 		emailLog = err.Error()
 		statusEnvio = Erro
+	} else {
+		s.log.Info("email de comunicação enviado com sucesso", "tipo_comunicacao", tipoComunicacao, "destinatario", destinatario)
 	}
 
 	newEnvio, err := NewEnvio(
 		modelo.Id,
+		idColaborador,
 		tipoComunicacao,
 		destinatario,
 		emailLog,
@@ -63,10 +78,17 @@ func (s *EnvioService) SendEmailComunicacao(
 	)
 
 	if err != nil {
+		s.log.Error("erro ao criar registro de envio de comunicação", "tipo_comunicacao", tipoComunicacao, "destinatario", destinatario, "status_envio", statusEnvio, "error", err)
 		return err
 	}
 
-	return s.envioRepository.Store(ctx, newEnvio)
+	if err := s.envioRepository.Store(ctx, newEnvio); err != nil {
+		s.log.Error("erro ao registrar envio de comunicação", "tipo_comunicacao", tipoComunicacao, "destinatario", destinatario, "status_envio", statusEnvio, "error", err)
+		return err
+	}
+
+	s.log.Info("envio de comunicação registrado com sucesso", "tipo_comunicacao", tipoComunicacao, "destinatario", destinatario, "status_envio", statusEnvio)
+	return nil
 }
 
 func renderTemplate(htmlBody string, data map[string]any) (string, error) {

@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Colaboradores</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f0f2f5;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 16px;
+    }
+
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: #1a1a2e;
+      margin-bottom: 32px;
+      letter-spacing: -0.3px;
+    }
+
+    #lista {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      width: 100%;
+      max-width: 600px;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 14px;
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      box-shadow: 0 1px 4px rgba(0,0,0,.07), 0 4px 16px rgba(0,0,0,.05);
+      transition: box-shadow .15s;
+    }
+
+    .card:hover {
+      box-shadow: 0 2px 8px rgba(0,0,0,.1), 0 8px 24px rgba(0,0,0,.08);
+    }
+
+    .avatar {
+      width: 70px;
+      height: 70px;
+      border-radius: 50%;
+      object-fit: cover;
+      flex-shrink: 0;
+      background: #e2e8f0;
+    }
+
+    .avatar-placeholder {
+      width: 70px;
+      height: 70px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: #fff;
+      user-select: none;
+    }
+
+    .info { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+
+    .nome {
+      font-size: 1rem;
+      font-weight: 600;
+      color: #1a1a2e;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .detalhe {
+      font-size: 0.82rem;
+      color: #64748b;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .status-badge {
+      margin-left: auto;
+      flex-shrink: 0;
+      font-size: 0.72rem;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 99px;
+      text-transform: uppercase;
+      letter-spacing: .4px;
+    }
+
+    .status-ativo   { background: #dcfce7; color: #16a34a; }
+    .status-inativo { background: #fee2e2; color: #dc2626; }
+
+    #erro, #vazio {
+      color: #64748b;
+      font-size: .9rem;
+      margin-top: 24px;
+    }
+
+    #erro { color: #dc2626; }
+
+    .skeleton {
+      background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.2s infinite;
+      border-radius: 14px;
+      height: 88px;
+    }
+
+    @keyframes shimmer {
+      0%   { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+  </style>
+</head>
+<body>
+
+<h1>Colaboradores</h1>
+<div id="lista">
+  <div class="skeleton"></div>
+  <div class="skeleton"></div>
+  <div class="skeleton"></div>
+</div>
+<p id="erro" hidden></p>
+<p id="vazio" hidden>Nenhum colaborador encontrado.</p>
+
+<script>
+  const API = 'http://localhost:8090/api/v1'
+
+  async function login() {
+    const res = await fetch(`${API}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ email: 'admin@admin.com', senha: 'admin123' })
+    })
+    if (!res.ok) throw new Error('Falha no login')
+  }
+
+  async function fetchColaboradores() {
+    const res = await fetch(`${API}/colaboradores`, { credentials: 'include' })
+    if (res.status === 401) {
+      await login()
+      return fetchColaboradores()
+    }
+    if (!res.ok) throw new Error(`Erro ${res.status}`)
+    return res.json()
+  }
+
+  function inicial(nome) {
+    return nome?.trim().charAt(0).toUpperCase() || '?'
+  }
+
+  function renderCard(c) {
+    const card = document.createElement('div')
+    card.className = 'card'
+
+    let fotoEl
+    if (c.foto_url) {
+      fotoEl = document.createElement('img')
+      fotoEl.className = 'avatar'
+      fotoEl.src = c.foto_url
+      fotoEl.alt = c.nome
+      fotoEl.onerror = () => fotoEl.replaceWith(placeholder(c.nome))
+    } else {
+      fotoEl = placeholder(c.nome)
+    }
+
+    const info = document.createElement('div')
+    info.className = 'info'
+    info.innerHTML = `
+      <span class="nome">${c.nome}</span>
+      <span class="detalhe">${c.email}</span>
+      <span class="detalhe">${c.telefone}</span>
+    `
+
+    const badge = document.createElement('span')
+    badge.className = `status-badge status-${c.status}`
+    badge.textContent = c.status
+
+    card.append(fotoEl, info, badge)
+    return card
+  }
+
+  function placeholder(nome) {
+    const el = document.createElement('div')
+    el.className = 'avatar-placeholder'
+    el.textContent = inicial(nome)
+    return el
+  }
+
+  async function init() {
+    const lista = document.getElementById('lista')
+    const erroEl = document.getElementById('erro')
+    const vazioEl = document.getElementById('vazio')
+
+    try {
+      const colaboradores = await fetchColaboradores()
+      lista.innerHTML = ''
+
+      if (!colaboradores?.length) {
+        vazioEl.hidden = false
+        return
+      }
+
+      colaboradores.forEach(c => lista.appendChild(renderCard(c)))
+    } catch (e) {
+      lista.innerHTML = ''
+      erroEl.textContent = `Erro ao carregar colaboradores: ${e.message}`
+      erroEl.hidden = false
+    }
+  }
+
+  init()
+</script>
+</body>
+</html>

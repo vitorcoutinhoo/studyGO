@@ -1,17 +1,17 @@
 package dto
 
 type ModeloComunicacaoRequestDTO struct {
-	Nome            string `json:"nome"`
-	TipoComunicacao string `json:"tipo_comunicacao"`
-	Assunto         string `json:"assunto"`
-	Corpo           string `json:"corpo"`
+	Nome            string `json:"nome"             binding:"required,min=1,max=255"`
+	TipoComunicacao string `json:"tipo_comunicacao" binding:"required"`
+	Assunto         string `json:"assunto"          binding:"required,min=1,max=255"`
+	Corpo           string `json:"corpo"            binding:"required,min=1"`
 }
 
 type ModeloComunicacaoUpdateRequestDTO struct {
-	Nome            string `json:"nome"`
+	Nome            string `json:"nome"             binding:"omitempty,min=1,max=255"`
 	TipoComunicacao string `json:"tipo_comunicacao"`
-	Assunto         string `json:"assunto"`
-	Corpo           string `json:"corpo"`
+	Assunto         string `json:"assunto"          binding:"omitempty,min=1,max=255"`
+	Corpo           string `json:"corpo"            binding:"omitempty,min=1"`
 	Ativo           string `json:"ativo"`
 }
 

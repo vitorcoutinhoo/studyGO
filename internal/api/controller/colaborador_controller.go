@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"plantao/internal/api/apierr"
 	"plantao/internal/api/dto"
 	"plantao/internal/domain/colaborador"
 	"plantao/internal/infra/config"
@@ -13,26 +14,29 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// ColaboradorController é responsável por lidar com as requisições relacionadas aos colaboradores.
+const maxFotoSize = 5 << 20 // 5 MB
+
 type ColaboradorController struct {
 	service   *colaborador.ColaboradorService
 	urlServer string
 }
 
-// NewColaboradorController cria uma nova instância de ColaboradorController.
 func NewColaboradorController(service *colaborador.ColaboradorService, cfg *config.Config) *ColaboradorController {
+	publicURL := cfg.Public.URL
+	if publicURL == "" {
+		publicURL = "http://" + cfg.Server.Host + ":" + cfg.Server.Port
+	}
 	return &ColaboradorController{
 		service:   service,
-		urlServer: "http://" + cfg.Server.Host + ":" + cfg.Server.Port,
+		urlServer: publicURL,
 	}
-} // Fim NewColaboradorController
+}
 
-// CreateColaborador lida com a criação de um novo colaborador.
 func (c *ColaboradorController) CreateColaborador(ctx *gin.Context) {
 	var req dto.CreateColaboradorRequest
 
-	if err := ctx.ShouldBind(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, apierr.ErrorResponse{Code: "BAD_REQUEST", Message: err.Error()})
 		return
 	}
 
@@ -40,9 +44,11 @@ func (c *ColaboradorController) CreateColaborador(ctx *gin.Context) {
 	filename := ""
 
 	uploadedFile, header, err := ctx.Request.FormFile("foto")
-
-	// Se a foto foi enviada
 	if err == nil {
+		if header.Size > maxFotoSize {
+			ctx.JSON(http.StatusRequestEntityTooLarge, apierr.ErrorResponse{Code: "FILE_TOO_LARGE", Message: "foto não pode exceder 5 MB"})
+			return
+		}
 		defer uploadedFile.Close()
 		file = uploadedFile
 		filename = header.Filename
@@ -50,32 +56,31 @@ func (c *ColaboradorController) CreateColaborador(ctx *gin.Context) {
 
 	col, err := createColaboradorDtoToDomain(&req)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		apierr.Respond(ctx, err)
 		return
 	}
 
 	col.Foto = filename
 	result, err := c.service.CreateColaborador(ctx, col, file)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		apierr.Respond(ctx, err)
 		return
 	}
 
 	resp, err := colaboradorToResponse(result)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		apierr.Respond(ctx, err)
 		return
 	}
 
 	ctx.JSON(http.StatusCreated, resp)
-} // Fim CreateColaborador
+}
 
-// UpdateColaborador lida com a atualização de um colaborador existente.
 func (c *ColaboradorController) UpdateColaborador(ctx *gin.Context) {
 	var req dto.UpdateColaboradorRequest
 
-	if err := ctx.ShouldBind(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, apierr.ErrorResponse{Code: "BAD_REQUEST", Message: err.Error()})
 		return
 	}
 
@@ -83,9 +88,11 @@ func (c *ColaboradorController) UpdateColaborador(ctx *gin.Context) {
 	filename := ""
 
 	uploadedFile, header, err := ctx.Request.FormFile("foto")
-
-	// Se a foto foi enviada
 	if err == nil {
+		if header.Size > maxFotoSize {
+			ctx.JSON(http.StatusRequestEntityTooLarge, apierr.ErrorResponse{Code: "FILE_TOO_LARGE", Message: "foto não pode exceder 5 MB"})
+			return
+		}
 		defer uploadedFile.Close()
 		file = uploadedFile
 		filename = header.Filename
@@ -93,7 +100,7 @@ func (c *ColaboradorController) UpdateColaborador(ctx *gin.Context) {
 
 	col, err := updateColaboradorDtoToDomain(&req)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		apierr.Respond(ctx, err)
 		return
 	}
 
@@ -101,26 +108,25 @@ func (c *ColaboradorController) UpdateColaborador(ctx *gin.Context) {
 
 	col.Foto = filename
 	if err := c.service.UpdateColaborador(ctx, col, id, file); err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		apierr.Respond(ctx, err)
 		return
 	}
 
 	ctx.Status(http.StatusOK)
-} // Fim UpdateColaborador
+}
 
-// GetColaboradorById lida com a obtenção de um colaborador por ID.
 func (c *ColaboradorController) GetColaboradorById(ctx *gin.Context) {
 	id := ctx.Param("id")
 
 	result, err := c.service.GetColaboradorById(ctx, id)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		apierr.Respond(ctx, err)
 		return
 	}
 
 	resp, err := colaboradorToResponse(result)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		apierr.Respond(ctx, err)
 		return
 	}
 
@@ -129,27 +135,25 @@ func (c *ColaboradorController) GetColaboradorById(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusOK, resp)
-} // Fim GetColaboradorById
+}
 
-// GetColaboradoresByFilter lida com a obtenção de colaboradores com base em filtros opcionais.
 func (c *ColaboradorController) GetColaboradoresByFilter(ctx *gin.Context) {
 	var filter dto.GetColaboradoresByFilterRequest
 
 	if err := ctx.ShouldBindQuery(&filter); err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		ctx.JSON(http.StatusBadRequest, apierr.ErrorResponse{Code: "BAD_REQUEST", Message: err.Error()})
 		return
 	}
 
 	f, err := filterDtoToFilterDomain(filter)
-
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		apierr.Respond(ctx, err)
 		return
 	}
 
 	results, err := c.service.GetColaboradorByFilter(ctx, f)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		apierr.Respond(ctx, err)
 		return
 	}
 
@@ -157,7 +161,7 @@ func (c *ColaboradorController) GetColaboradoresByFilter(ctx *gin.Context) {
 	for i := range results {
 		resp, err := colaboradorToResponse(&results[i])
 		if err != nil {
-			ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			apierr.Respond(ctx, err)
 			return
 		}
 
@@ -169,38 +173,41 @@ func (c *ColaboradorController) GetColaboradoresByFilter(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusOK, responses)
-} // Fim GetColaboradoresByFilter
+}
 
-// UploadFotoColaborador lida com o upload da foto de um colaborador.
 func (c *ColaboradorController) UploadFotoColaborador(ctx *gin.Context) {
 	id := ctx.Param("id")
 
 	uploadedFile, header, err := ctx.Request.FormFile("foto")
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "foto não enviada"})
+		ctx.JSON(http.StatusBadRequest, apierr.ErrorResponse{Code: "BAD_REQUEST", Message: "foto não enviada"})
 		return
 	}
 	defer uploadedFile.Close()
 
+	if header.Size > maxFotoSize {
+		ctx.JSON(http.StatusRequestEntityTooLarge, apierr.ErrorResponse{Code: "FILE_TOO_LARGE", Message: "foto não pode exceder 5 MB"})
+		return
+	}
+
 	if err := c.service.UpdateColaborador(ctx, &colaborador.Colaborador{Foto: header.Filename}, id, uploadedFile); err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		apierr.Respond(ctx, err)
 		return
 	}
 
 	ctx.Status(http.StatusOK)
-} // Fim UploadFotoColaborador
+}
 
-// DisableColaborador lida com a desativação de um colaborador por ID.
 func (c *ColaboradorController) DisableColaborador(ctx *gin.Context) {
 	id := ctx.Param("id")
 
 	if err := c.service.DisableColaborador(ctx, id); err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		apierr.Respond(ctx, err)
 		return
 	}
 
 	ctx.Status(http.StatusNoContent)
-} // Fim DisableColaborador
+}
 
 func createColaboradorDtoToDomain(r *dto.CreateColaboradorRequest) (*colaborador.Colaborador, error) {
 	if r.Status == "" {
@@ -211,14 +218,14 @@ func createColaboradorDtoToDomain(r *dto.CreateColaboradorRequest) (*colaborador
 		r.AtivoPlantao = "ativo"
 	}
 
-	dataAdmissao, err := utils.ParseBrToUsDate(&r.DataAdmissao)
+	dataAdmissao, err := utils.ParseBrToUsDate(&r.DataAdmissao, nil)
 	if err != nil {
 		return nil, err
 	}
 
 	var dataDesligamento *time.Time
 	if r.DataDesligamento != nil {
-		dataTemp, err := utils.ParseBrToUsDate(r.DataDesligamento)
+		dataTemp, err := utils.ParseBrToUsDate(r.DataDesligamento, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -245,18 +252,18 @@ func createColaboradorDtoToDomain(r *dto.CreateColaboradorRequest) (*colaborador
 		return nil, err
 	}
 
-	return &colaborador.Colaborador{
-		Nome:             r.Nome,
-		Email:            r.Email,
-		Telefone:         r.Telefone,
-		Setor:            setor,
-		Foto:             "",
-		Status:           ativo,
-		AtivoPlantao:     ativoPlantao,
-		DataAdmissao:     dataAdmissao,
-		DataDesligamento: dataDesligamento,
-		Cargo:            cargo,
-	}, nil
+	return colaborador.NewColaborador(
+		r.Nome,
+		r.Email,
+		r.Telefone,
+		"",
+		dataAdmissao,
+		dataDesligamento,
+		ativo,
+		ativoPlantao,
+		cargo,
+		setor,
+	)
 }
 
 func updateColaboradorDtoToDomain(r *dto.UpdateColaboradorRequest) (*colaborador.Colaborador, error) {
@@ -264,7 +271,7 @@ func updateColaboradorDtoToDomain(r *dto.UpdateColaboradorRequest) (*colaborador
 	var err error
 
 	if r.DataAdmissao != nil {
-		dataAdmissao, err = utils.ParseBrToUsDate(r.DataAdmissao)
+		dataAdmissao, err = utils.ParseBrToUsDate(r.DataAdmissao, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -274,7 +281,7 @@ func updateColaboradorDtoToDomain(r *dto.UpdateColaboradorRequest) (*colaborador
 
 	var dataDesligamento *time.Time
 	if r.DataDesligamento != nil {
-		dataTemp, err := utils.ParseBrToUsDate(r.DataDesligamento)
+		dataTemp, err := utils.ParseBrToUsDate(r.DataDesligamento, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -306,65 +313,61 @@ func updateColaboradorDtoToDomain(r *dto.UpdateColaboradorRequest) (*colaborador
 	}
 
 	var cargo *colaborador.CargoColaborador
-	if r.Cargo != nil {
+	if r.Cargo != nil && *r.Cargo != "" {
 		c, err := colaborador.ParseCargoColaborador(*r.Cargo)
 		if err != nil {
 			return nil, err
 		}
 		cargo = &c
-	} else {
-		zero := colaborador.CargoColaborador("")
-		cargo = &zero
 	}
 
 	var setor *colaborador.SetorColaborador
-	if r.Setor != nil {
+	if r.Setor != nil && *r.Setor != "" {
 		s, err := colaborador.ParseSetorColaborador(*r.Setor)
 		if err != nil {
 			return nil, err
 		}
 		setor = &s
-	} else {
-		zero := colaborador.SetorColaborador("")
-		setor = &zero
 	}
 
 	var n string
-
 	if r.Nome != nil {
 		n = *r.Nome
-	} else {
-		n = ""
 	}
 
 	var e string
-
 	if r.Email != nil {
 		e = *r.Email
-	} else {
-		e = ""
 	}
 
 	var t string
-
 	if r.Telefone != nil {
 		t = *r.Telefone
-	} else {
-		t = ""
 	}
 
-	return &colaborador.Colaborador{
+	c := &colaborador.Colaborador{
 		Nome:             n,
 		Email:            e,
 		Telefone:         t,
-		Cargo:            *cargo,
-		Setor:            *setor,
 		Foto:             "",
-		Status:           *ativo,
-		AtivoPlantao:     *ativoPlantao,
 		DataAdmissao:     dataAdmissao,
 		DataDesligamento: dataDesligamento,
-	}, nil
+	}
+
+	if ativo != nil {
+		c.Status = *ativo
+	}
+	if ativoPlantao != nil {
+		c.AtivoPlantao = *ativoPlantao
+	}
+	if cargo != nil {
+		c.Cargo = *cargo
+	}
+	if setor != nil {
+		c.Setor = *setor
+	}
+
+	return c, nil
 }
 
 func colaboradorToResponse(c *colaborador.Colaborador) (*dto.ColaboradorResponse, error) {
@@ -382,14 +385,14 @@ func colaboradorToResponse(c *colaborador.Colaborador) (*dto.ColaboradorResponse
 		return nil, err
 	}
 
-	dataAdmissao, err := utils.ParseUsToBrDate(c.DataAdmissao)
+	dataAdmissao, err := utils.ParseUsToBrDate(c.DataAdmissao, nil)
 	if err != nil {
 		return nil, err
 	}
 
 	var dataDesligamento string
 	if c.DataDesligamento != nil {
-		dataTemp, err := utils.ParseUsToBrDate(c.DataDesligamento)
+		dataTemp, err := utils.ParseUsToBrDate(c.DataDesligamento, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -416,8 +419,7 @@ func filterDtoToFilterDomain(filterReq dto.GetColaboradoresByFilterRequest) (col
 	var err error
 
 	if filterReq.DataAdmissao != nil {
-		data, err = utils.ParseBrToUsDate(filterReq.DataAdmissao)
-
+		data, err = utils.ParseBrToUsDate(filterReq.DataAdmissao, nil)
 		if err != nil {
 			return colaborador.ColaboradorFilter{}, err
 		}

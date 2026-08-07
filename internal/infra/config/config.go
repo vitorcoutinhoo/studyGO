@@ -15,6 +15,9 @@ type Config struct {
 	JWT      JWTConfig
 	SMTP     SMTPConfig
 	FalePath FileSavePath
+	Frontend FrontendConfig
+	Public   PublicConfig
+	Feriados FeriadosConfig
 }
 
 // Configurações do servidor, como porta e host
@@ -44,6 +47,20 @@ type SMTPConfig struct {
 
 type FileSavePath struct {
 	Path string
+}
+
+type FrontendConfig struct {
+	URL string
+}
+
+type PublicConfig struct {
+	URL string
+}
+
+type FeriadosConfig struct {
+	APIKey string
+	Estado string
+	Cidade string
 }
 
 // Pra teste, seria mais apropriado carregar de um arquivo ou variáveis de ambiente
@@ -79,6 +96,17 @@ func LoadConfig() (*Config, error) {
 		},
 		FalePath: FileSavePath{
 			Path: os.Getenv("FILE_PATH"),
+		},
+		Frontend: FrontendConfig{
+			URL: os.Getenv("FRONTEND_URL"),
+		},
+		Public: PublicConfig{
+			URL: os.Getenv("PUBLIC_URL"),
+		},
+		Feriados: FeriadosConfig{
+			APIKey: os.Getenv("FERIADOS_TOKEN_API"),
+			Estado: os.Getenv("ESTADO"),
+			Cidade: os.Getenv("CIDADE"),
 		},
 	}, nil
 } // Fim LoadConfig

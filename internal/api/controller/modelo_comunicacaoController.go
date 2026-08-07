@@ -2,6 +2,7 @@ package controller
 
 import (
 	"net/http"
+	"plantao/internal/api/apierr"
 	"plantao/internal/api/dto"
 	"plantao/internal/domain/comunicacao"
 
@@ -22,14 +23,13 @@ func (c *ModeloComunicacaoController) CreateModeloComunicacao(ctx *gin.Context) 
 	var req dto.ModeloComunicacaoRequestDTO
 
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		ctx.JSON(http.StatusBadRequest, apierr.ErrorResponse{Code: "BAD_REQUEST", Message: err.Error()})
 		return
 	}
 
 	modelo, err := c.service.CreateModeloComunicacao(ctx, req.Nome, req.TipoComunicacao, req.Assunto, req.Corpo)
-
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		apierr.Respond(ctx, err)
 		return
 	}
 
@@ -40,14 +40,13 @@ func (c *ModeloComunicacaoController) UpdateModeloComunicacao(ctx *gin.Context) 
 	idModelo := ctx.Param("id_modelo")
 
 	var req dto.ModeloComunicacaoUpdateRequestDTO
-
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		ctx.JSON(http.StatusBadRequest, apierr.ErrorResponse{Code: "BAD_REQUEST", Message: err.Error()})
 		return
 	}
 
 	if err := c.service.UpdateModeloComunicacao(ctx, idModelo, req.Nome, req.TipoComunicacao, req.Assunto, req.Corpo, req.Ativo); err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		apierr.Respond(ctx, err)
 		return
 	}
 
@@ -58,7 +57,7 @@ func (c *ModeloComunicacaoController) DisableModeloComunicacao(ctx *gin.Context)
 	idModelo := ctx.Param("id_modelo")
 
 	if err := c.service.DisableModeloComunicacao(ctx, idModelo); err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		apierr.Respond(ctx, err)
 		return
 	}
 
@@ -69,9 +68,8 @@ func (c *ModeloComunicacaoController) GetModeloComunicacaoById(ctx *gin.Context)
 	idModelo := ctx.Param("id_modelo")
 
 	modelo, err := c.service.GetModeloComunicacaoById(ctx, idModelo)
-
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		apierr.Respond(ctx, err)
 		return
 	}
 
@@ -80,14 +78,12 @@ func (c *ModeloComunicacaoController) GetModeloComunicacaoById(ctx *gin.Context)
 
 func (c *ModeloComunicacaoController) GetAllModelosComunicacao(ctx *gin.Context) {
 	modelos, err := c.service.GetAllModelosComunicacao(ctx)
-
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		apierr.Respond(ctx, err)
 		return
 	}
 
 	responses := make([]dto.ModeloComunicacaoResponseDTO, 0, len(modelos))
-
 	for _, m := range modelos {
 		responses = append(responses, modeloComunicacaoToResponse(m))
 	}

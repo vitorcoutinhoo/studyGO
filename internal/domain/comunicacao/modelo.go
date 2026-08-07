@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
-	"time"
 
 	"github.com/google/uuid"
 	"golang.org/x/net/html"
+	"plantao/internal/domain/shared"
 )
 
 type StatusModeloComunicacao int
@@ -43,6 +43,7 @@ const (
 	ValorPago  TagBody = "valorPago"
 	Email      TagBody = "email"
 	DataAtual  TagBody = "dataAtual"
+	Link       TagBody = "link"
 )
 
 var requiredTags = map[TipoComunicacao][]TagBody{
@@ -50,7 +51,7 @@ var requiredTags = map[TipoComunicacao][]TagBody{
 	PlantaoConluido:       {Nome, DataInicio, DataFim},
 	PlantaoAindaAberto:    {Nome, DataInicio, DataFim},
 	PlantaoPago:           {Nome, DataInicio, DataFim, ValorPago},
-	ColaboradorCadastrado: {Nome, Email},
+	ColaboradorCadastrado: {Nome, Email, Link},
 	ColaboradorAtualizado: {Nome, Email},
 	ColaboradorDeletado:   {Nome, DataAtual},
 	UsuarioCadastrado:     {Nome, Email},
@@ -66,8 +67,7 @@ type Comunicacao struct {
 	Assunto         string
 	Corpo           string
 	Ativo           StatusModeloComunicacao
-	CreatedAt       *time.Time
-	UpdatedAt       *time.Time
+	shared.Auditoria
 }
 
 var (
@@ -206,9 +206,10 @@ func validateEmailBodyTag(tipoComunicacao TipoComunicacao, body string) error {
 
 	if len(missingTags) > 0 {
 		return fmt.Errorf(
-			"tags obrigatórias ausentes para o tipo '%s': %s",
+			"tags obrigatórias ausentes para o tipo '%s': %s: %w",
 			tipoComunicacao,
 			strings.Join(missingTags, ", "),
+			ErrorInvalidCorpo,
 		)
 	}
 
@@ -235,9 +236,10 @@ func validateEmailBodyTag(tipoComunicacao TipoComunicacao, body string) error {
 
 	if len(extraTags) > 0 {
 		return fmt.Errorf(
-			"tags não permitidas para o tipo '%s': %s",
+			"tags não permitidas para o tipo '%s': %s: %w",
 			tipoComunicacao,
 			strings.Join(extraTags, ", "),
+			ErrorInvalidCorpo,
 		)
 	}
 
@@ -251,11 +253,11 @@ func isValidHTML(htmlBody string) error {
 
 	_, err := html.Parse(strings.NewReader(htmlBody))
 	if err != nil {
-		return errors.New("HTML inválido no corpo do email")
+		return fmt.Errorf("HTML inválido no corpo do email: %w", ErrorInvalidCorpo)
 	}
 
 	if strings.Contains(strings.ToLower(htmlBody), "<script") {
-		return errors.New("scripts não são permitidos no email")
+		return fmt.Errorf("scripts não são permitidos no email: %w", ErrorInvalidCorpo)
 	}
 
 	return nil

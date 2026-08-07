@@ -3,7 +3,6 @@ package middleware
 import (
 	"context"
 	"net/http"
-	"strings"
 	"sync"
 	"time"
 
@@ -17,60 +16,83 @@ type Client struct {
 	ResetAt  time.Time
 }
 
-var (
-	clients = make(map[string]*Client)
+type RateLimiter struct {
+	clients map[string]*Client
 	mu      sync.Mutex
-	limit   = 100
-	window  = 1 * time.Minute
-)
+	limit   int
+	window  time.Duration
+}
 
-func RateLimitMiddleware() gin.HandlerFunc {
+type CleanupParams struct {
+	fx.In
+
+	LC            fx.Lifecycle
+	GlobalLimiter *RateLimiter `name:"globalLimiter"`
+	LoginLimiter  *RateLimiter `name:"loginLimiter"`
+}
+
+func NewRateLimiter(limit int, window time.Duration) *RateLimiter {
+	return &RateLimiter{
+		clients: make(map[string]*Client),
+		limit:   limit,
+		window:  window,
+	}
+}
+
+func NewGlobalRateLimiter() *RateLimiter {
+	return NewRateLimiter(100, 1*time.Minute)
+}
+
+func NewLoginRateLimiter() *RateLimiter {
+	return NewRateLimiter(20, 1*time.Minute)
+}
+
+func (rl *RateLimiter) Middleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		key := getClientKey(c)
 		now := time.Now()
 
-		mu.Lock()
-		client, exists := clients[key]
-
+		rl.mu.Lock()
+		client, exists := rl.clients[key]
 		if !exists || now.After(client.ResetAt) {
-			clients[key] = &Client{
+			rl.clients[key] = &Client{
 				Requests: 1,
-				ResetAt:  now.Add(window),
+				ResetAt:  now.Add(rl.window),
 			}
-			mu.Unlock()
+			rl.mu.Unlock()
 			c.Next()
 			return
 		}
 
 		client.Requests++
-
-		if client.Requests > limit {
-			mu.Unlock()
+		if client.Requests > rl.limit {
+			rl.mu.Unlock()
 			c.AbortWithStatusJSON(http.StatusTooManyRequests, gin.H{
 				"error": "Too many requests",
 			})
 			return
 		}
-
-		mu.Unlock()
+		rl.mu.Unlock()
 		c.Next()
 	}
 }
 
 func getClientKey(c *gin.Context) string {
-	authHeader := c.GetHeader("Authorization")
+	authCookie, err := c.Cookie("access_token")
 
-	if after, ok := strings.CutPrefix(authHeader, "Bearer "); ok {
-		tokenStr := after
-		token, _, err := new(jwt.Parser).ParseUnverified(tokenStr, jwt.MapClaims{})
+	if err != nil || authCookie == "" {
+		return c.ClientIP()
+	}
 
-		if err == nil {
-			if claims, ok := token.Claims.(jwt.MapClaims); ok {
-				if sub, exists := claims["sub"]; exists {
-					if subStr, ok := sub.(string); ok {
-						return subStr
-					}
-				}
+	token, _, err := new(jwt.Parser).ParseUnverified(authCookie, jwt.MapClaims{})
+	if err != nil {
+		return c.ClientIP()
+	}
+
+	if claims, ok := token.Claims.(jwt.MapClaims); ok {
+		if userId, exists := claims["user_id"]; exists {
+			if idStr, ok := userId.(string); ok {
+				return idStr
 			}
 		}
 	}
@@ -78,17 +100,18 @@ func getClientKey(c *gin.Context) string {
 	return c.ClientIP()
 }
 
-func StartRateLimitCleanup(lc fx.Lifecycle) {
+func StartRateLimitCleanup(p CleanupParams) {
 	ticker := time.NewTicker(5 * time.Minute)
 	stop := make(chan struct{})
 
-	lc.Append(fx.Hook{
+	p.LC.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
 			go func() {
 				for {
 					select {
 					case <-ticker.C:
-						cleanupClients()
+						p.GlobalLimiter.Cleanup()
+						p.LoginLimiter.Cleanup()
 					case <-stop:
 						ticker.Stop()
 						return
@@ -104,15 +127,13 @@ func StartRateLimitCleanup(lc fx.Lifecycle) {
 	})
 }
 
-func cleanupClients() {
+func (rl *RateLimiter) Cleanup() {
 	now := time.Now()
-
-	mu.Lock()
-	defer mu.Unlock()
-
-	for key, client := range clients {
-		if now.After(client.ResetAt.Add(window)) {
-			delete(clients, key)
+	rl.mu.Lock()
+	defer rl.mu.Unlock()
+	for key, client := range rl.clients {
+		if now.After(client.ResetAt.Add(rl.window)) {
+			delete(rl.clients, key)
 		}
 	}
 }

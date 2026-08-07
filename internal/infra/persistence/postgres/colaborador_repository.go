@@ -118,7 +118,7 @@ func (r *ColaboradorRepository) Update(ctx context.Context, colaborador *colabor
 			data_admissao = $9,
 			data_desligamento = $10,
 			updated_at = NOW()
-		WHERE id = $11
+		WHERE id = $11 AND ativo = 'Y'
 	`
 	ativo := statusColaboradorToDB(colaborador.Status)
 	ativoPlantao := statusColaboradorToDB(colaborador.AtivoPlantao)
@@ -148,11 +148,15 @@ func (r *ColaboradorRepository) Update(ctx context.Context, colaborador *colabor
 
 // Desativa um colaborador no banco de dados, marcando-o como inativo.
 // Um colaboorador desabilitado é um colaborador demitido
-func (r *ColaboradorRepository) Disable(ctx context.Context, colaboradorId uuid.UUID) error {
+func (r *ColaboradorRepository) Disable(
+	ctx context.Context,
+	colaboradorID uuid.UUID,
+) error {
 	query := `
 		UPDATE colaboradores
 		SET
-			email = 'INATIVO_' || id || '_' || email,
+			email = 'INATIVO_' || id::text || '_' || email,
+			telefone = 'INATIVO_' || id::text || '_' || telefone,
 			ativo = 'N',
 			ativo_plantao = 'N',
 			data_desligamento = CURRENT_DATE,
@@ -161,8 +165,7 @@ func (r *ColaboradorRepository) Disable(ctx context.Context, colaboradorId uuid.
 		  AND ativo = 'Y'
 	`
 
-	result, err := r.pool.Exec(ctx, query, colaboradorId)
-
+	result, err := r.pool.Exec(ctx, query, colaboradorID)
 	if err != nil {
 		return fmt.Errorf("erro ao desabilitar colaborador: %w", err)
 	}
@@ -266,75 +269,104 @@ func (r *ColaboradorRepository) FindByEmail(ctx context.Context, email string) (
 
 // Busca colaboradores no banco de dados com base em filtros opcionais.
 // Permite filtrar por nome, email, telefone, cargo, departamento e data de admissão.
-// Vai trazer apenas cloaboradores ativos
-func (r *ColaboradorRepository) FindByFilter(ctx context.Context, filter colaborador.ColaboradorFilter) ([]colaborador.Colaborador, error) {
+func (r *ColaboradorRepository) FindByFilter(
+	ctx context.Context,
+	filter colaborador.ColaboradorFilter,
+) ([]colaborador.Colaborador, error) {
 	query := `
-		SELECT id, nome, email, telefone, cargo, departamento, foto_url, ativo, ativo_plantao, data_admissao, data_desligamento, created_at, updated_at
+		SELECT
+			id,
+			nome,
+			email,
+			telefone,
+			cargo,
+			departamento,
+			foto_url,
+			ativo,
+			ativo_plantao,
+			data_admissao,
+			data_desligamento,
+			created_at,
+			updated_at
 		FROM colaboradores
 	`
 
-	var conditions []string
+	// Esta condição será aplicada em todas as consultas.
+	conditions := []string{"ativo = 'Y'"}
+
 	var args []any
 	argPos := 1
 
-	conditions = append(conditions, "ativo = 'Y'")
-
 	if filter.Nome != nil {
-		conditions = append(conditions, fmt.Sprintf("nome ILIKE $%d", argPos))
+		conditions = append(
+			conditions,
+			fmt.Sprintf("nome ILIKE $%d", argPos),
+		)
 		args = append(args, "%"+*filter.Nome+"%")
 		argPos++
 	}
 
 	if filter.Email != nil {
-		conditions = append(conditions, fmt.Sprintf("email ILIKE $%d", argPos))
+		conditions = append(
+			conditions,
+			fmt.Sprintf("email ILIKE $%d", argPos),
+		)
 		args = append(args, "%"+*filter.Email+"%")
 		argPos++
 	}
 
 	if filter.Telefone != nil {
-		conditions = append(conditions, fmt.Sprintf("telefone ILIKE $%d", argPos))
+		conditions = append(
+			conditions,
+			fmt.Sprintf("telefone ILIKE $%d", argPos),
+		)
 		args = append(args, "%"+*filter.Telefone+"%")
 		argPos++
 	}
 
 	if filter.Cargo != nil {
-		conditions = append(conditions, fmt.Sprintf("cargo ILIKE $%d", argPos))
+		conditions = append(
+			conditions,
+			fmt.Sprintf("cargo ILIKE $%d", argPos),
+		)
 		args = append(args, "%"+*filter.Cargo+"%")
 		argPos++
 	}
 
 	if filter.Departamento != nil {
-		conditions = append(conditions, fmt.Sprintf("departamento ILIKE $%d", argPos))
+		conditions = append(
+			conditions,
+			fmt.Sprintf("departamento ILIKE $%d", argPos),
+		)
 		args = append(args, "%"+*filter.Departamento+"%")
 		argPos++
 	}
 
 	if filter.DataAdmissao != nil {
-		conditions = append(conditions, fmt.Sprintf("data_admissao = $%d", argPos))
+		conditions = append(
+			conditions,
+			fmt.Sprintf("data_admissao = $%d", argPos),
+		)
 		args = append(args, *filter.DataAdmissao)
 		argPos++
 	}
 
-	if len(conditions) > 0 {
-		query += " WHERE " + strings.Join(conditions, " AND ")
-	}
+	query += " WHERE " + strings.Join(conditions, " AND ")
 
 	rows, err := r.pool.Query(ctx, query, args...)
-
 	if err != nil {
 		return nil, fmt.Errorf("erro ao buscar colaboradores: %w", err)
 	}
-
 	defer rows.Close()
 
-	var colaboradores []colaborador.Colaborador
+	colaboradores := make([]colaborador.Colaborador, 0)
 
 	for rows.Next() {
 		var c colaborador.Colaborador
 		var ativo string
 		var ativoPlantao string
 
-		err := rows.Scan(
+		err = rows.Scan(
 			&c.Id,
 			&c.Nome,
 			&c.Email,
@@ -349,14 +381,24 @@ func (r *ColaboradorRepository) FindByFilter(ctx context.Context, filter colabor
 			&c.CreatedAt,
 			&c.UpdatedAt,
 		)
-
 		if err != nil {
-			return nil, fmt.Errorf("erro ao escanear colaborador: %w", err)
+			return nil, fmt.Errorf(
+				"erro ao escanear colaborador: %w",
+				err,
+			)
 		}
 
 		c.Status = statusColaboradorFromDB(ativo)
 		c.AtivoPlantao = statusColaboradorFromDB(ativoPlantao)
+
 		colaboradores = append(colaboradores, c)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf(
+			"erro durante a leitura dos colaboradores: %w",
+			err,
+		)
 	}
 
 	return colaboradores, nil

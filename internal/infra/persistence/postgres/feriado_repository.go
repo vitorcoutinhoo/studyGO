@@ -91,6 +91,37 @@ func (r *FeriadoRepository) FindByPeriodo(ctx context.Context, inicio, fim time.
 	return feriados, nil
 }
 
+func (r *FeriadoRepository) Upsert(ctx context.Context, feriados []financeiro.Feriado) error {
+	if len(feriados) == 0 {
+		return nil
+	}
+
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	query := `
+		INSERT INTO feriados (data, nome, descricao)
+		VALUES ($1, $2, $3)
+		ON CONFLICT (data) DO UPDATE
+		SET nome = EXCLUDED.nome, descricao = EXCLUDED.descricao
+	`
+
+	for _, f := range feriados {
+		if _, err := tx.Exec(ctx, query, normalizeDate(f.Data), f.Nome, f.Descricao); err != nil {
+			return fmt.Errorf("failed to upsert feriado: %w", err)
+		}
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	return nil
+}
+
 func normalizeDate(t time.Time) time.Time {
 	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, time.UTC)
 }

@@ -52,8 +52,8 @@ func (r *ModeloRepository) Store(ctx context.Context, com *comunicacao.Comunicac
 	}
 
 	com.Id = id
-	com.CreatedAt = &createdAt
-	com.UpdatedAt = &updatedAt
+	com.CreatedAt = createdAt
+	com.UpdatedAt = updatedAt
 
 	return com, nil
 }
@@ -157,8 +157,8 @@ func (r *ModeloRepository) FindById(ctx context.Context, modeloId uuid.UUID) (*c
 
 	com.TipoComunicacao = comunicacao.TipoComunicacao(tipo)
 	com.Ativo = dbToStatusModelo(ativo)
-	com.CreatedAt = &createdAt
-	com.UpdatedAt = &updatedAt
+	com.CreatedAt = createdAt
+	com.UpdatedAt = updatedAt
 
 	return &com, nil
 }
@@ -204,8 +204,8 @@ func (r *ModeloRepository) FindByTipo(ctx context.Context, tipoComunicacao strin
 
 	com.TipoComunicacao = comunicacao.TipoComunicacao(tipo)
 	com.Ativo = dbToStatusModelo(ativo)
-	com.CreatedAt = &createdAt
-	com.UpdatedAt = &updatedAt
+	com.CreatedAt = createdAt
+	com.UpdatedAt = updatedAt
 
 	return &com, nil
 }
@@ -239,8 +239,6 @@ func (r *ModeloRepository) FindAll(ctx context.Context) ([]*comunicacao.Comunica
 		var com comunicacao.Comunicacao
 		var tipo string
 		var ativo string
-		var createdAt time.Time
-		var updatedAt time.Time
 
 		err := rows.Scan(
 			&com.Id,
@@ -249,8 +247,8 @@ func (r *ModeloRepository) FindAll(ctx context.Context) ([]*comunicacao.Comunica
 			&com.Assunto,
 			&com.Corpo,
 			&ativo,
-			&createdAt,
-			&updatedAt,
+			&com.CreatedAt,
+			&com.UpdatedAt,
 		)
 
 		if err != nil {
@@ -259,8 +257,6 @@ func (r *ModeloRepository) FindAll(ctx context.Context) ([]*comunicacao.Comunica
 
 		com.TipoComunicacao = comunicacao.TipoComunicacao(tipo)
 		com.Ativo = dbToStatusModelo(ativo)
-		com.CreatedAt = &createdAt
-		com.UpdatedAt = &updatedAt
 
 		modelos = append(modelos, &com)
 	}

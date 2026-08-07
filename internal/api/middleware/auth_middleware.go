@@ -2,36 +2,41 @@ package middleware
 
 import (
 	"net/http"
+	"plantao/internal/domain/usuario"
 	"plantao/internal/infra/security"
-	"strings"
 
 	"github.com/gin-gonic/gin"
 )
 
 type AuthMidware struct {
-	jwtService *security.JWTService
+	jwtService     *security.JWTService
+	usuarioService *usuario.UsuarioService
 }
 
-func NewAuthMidware(jwtService *security.JWTService) *AuthMidware {
+func NewAuthMidware(jwtService *security.JWTService, usuarioService *usuario.UsuarioService) *AuthMidware {
 	return &AuthMidware{
-		jwtService: jwtService,
+		jwtService:     jwtService,
+		usuarioService: usuarioService,
 	}
 }
 
-func (a *AuthMidware) AuthenticationMidware() gin.HandlerFunc {
+func (a *AuthMidware) AuthenticationMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		authHeader := c.GetHeader("Authorization")
-
-		if authHeader == "" {
+		authCookie, err := c.Cookie("access_token")
+		if err != nil {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "token não fornecido"})
 			return
 		}
 
-		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
-		claims, err := a.jwtService.ValidateToken(tokenString)
-
+		claims, err := a.jwtService.ValidateToken(authCookie)
 		if err != nil {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "token inválido"})
+			return
+		}
+
+		err = a.usuarioService.ExistsUsuarioById(c.Request.Context(), claims.UserId)
+		if err != nil {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "usuário não existe"})
 			return
 		}
 
@@ -47,7 +52,7 @@ func RoleMidware(allowedRoles ...string) gin.HandlerFunc {
 		role, exists := c.Get("role")
 
 		if !exists {
-			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "role não encontrado"})
+			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "role não encontrada"})
 			return
 		}
 

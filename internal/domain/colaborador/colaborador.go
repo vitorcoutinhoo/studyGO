@@ -3,10 +3,10 @@ package colaborador
 import (
 	"errors"
 	"regexp"
-	"strings"
 	"time"
 
 	"github.com/google/uuid"
+	"plantao/internal/domain/shared"
 )
 
 // Constante para o status do colaborador
@@ -54,8 +54,7 @@ type Colaborador struct {
 	AtivoPlantao     StatusColaborador
 	DataAdmissao     *time.Time
 	DataDesligamento *time.Time
-	CreatedAt        *time.Time
-	UpdatedAt        *time.Time
+	shared.Auditoria
 }
 
 // Erros específicos do domínio Colaborador
@@ -181,9 +180,10 @@ func (c *Colaborador) PodeAgendarPlatao() (bool, error) {
 	return true, nil
 } // Fim PodeAgendarPlatao
 
-// Valida o email do colaborador
+var emailRegex = regexp.MustCompile(`^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$`)
+
 func isEmailValid(email string) bool {
-	return len(email) <= 30 && strings.Contains(email, "@")
+	return len(email) <= 100 && emailRegex.MatchString(email)
 } // Fim isEmailValid
 
 // Valida o status do colaborador
