@@ -16,6 +16,7 @@ import (
 	"plantao/internal/domain/plantao"
 	"plantao/internal/domain/role"
 	"plantao/internal/domain/setor"
+	"plantao/internal/domain/smtp"
 	"plantao/internal/domain/usuario"
 	"plantao/internal/infra/config"
 	"plantao/internal/infra/feriadoapi"
@@ -46,6 +47,7 @@ var PostgresModule = fx.Module("postgres",
 		fx.Annotate(pgstore.NewCargoRepository, fx.As(new(cargo.CargoRepository))),
 		fx.Annotate(pgstore.NewSetorRepository, fx.As(new(setor.SetorRepository))),
 		fx.Annotate(pgstore.NewRoleRepository, fx.As(new(role.RoleRepository))),
+		fx.Annotate(pgstore.NewSMTPRepository, fx.As(new(smtp.Repository))),
 	),
 )
 
@@ -77,6 +79,7 @@ var DomainModule = fx.Module("domain",
 		cargo.NewCargoService,
 		setor.NewSetorService,
 		role.NewRoleService,
+		smtp.NewService,
 	),
 )
 
@@ -93,27 +96,15 @@ var APIModule = fx.Module("api",
 		controller.NewCargoController,
 		controller.NewSetorController,
 		controller.NewRoleController,
+		controller.NewSMTPController,
 		midware.NewAuthMidware,
 		fx.Annotate(
 			apihttp.NewRouter,
 			fx.As(new(http.Handler)),
 			fx.ParamTags(
-				``,
-				``,
-				``,
-				``,
-				``,
-				``,
-				``,
-				``,
-				``,
-				``,
-				`name:"globalLimiter"`,
-				`name:"loginLimiter"`,
-				``,
-				``,
-				``,
-				``,
+				``, ``, ``, ``, ``, ``, ``, ``, ``, ``,
+				`name:"globalLimiter"`, `name:"loginLimiter"`,
+				``, ``, ``, ``, ``,
 			),
 		),
 		apihttp.NewServer,

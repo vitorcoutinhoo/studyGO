@@ -1,32 +1,33 @@
 package mail
 
 import (
-	"net/smtp"
-	"plantao/internal/infra/config"
+	"context"
+	"errors"
+	"fmt"
+	gosmtp "net/smtp"
+
+	configsmtp "plantao/internal/domain/smtp"
 )
 
+var ErrorEnvioEmail = errors.New("não foi possível enviar email")
+
 type SMTPMailer struct {
-	Host     string
-	Port     string
-	Username string
-	Password string
-	From     string
+	repository configsmtp.Repository
 }
 
-func NewSMTPMailer(conf *config.Config) *SMTPMailer {
-	return &SMTPMailer{
-		Host:     conf.SMTP.Host,
-		Port:     conf.SMTP.Port,
-		Username: conf.SMTP.Username,
-		Password: conf.SMTP.Password,
-		From:     conf.SMTP.From,
+func NewSMTPMailer(repository configsmtp.Repository) *SMTPMailer {
+	return &SMTPMailer{repository: repository}
+}
+
+func (m *SMTPMailer) SendEmail(ctx context.Context, to string, subject string, body string) error {
+	configuracao, err := m.repository.Get(ctx)
+	if err != nil {
+		return err
 	}
-}
 
-func (m *SMTPMailer) SendEmail(to string, subject string, body string) error {
-	auth := smtp.PlainAuth("", m.Username, m.Password, m.Host)
+	auth := gosmtp.PlainAuth("", configuracao.Usuario, configuracao.Senha, configuracao.Host)
 
-	msg := []byte("From: " + m.From + "\r\n" +
+	msg := []byte("From: " + configuracao.Remetente + "\r\n" +
 		"To: " + to + "\r\n" +
 		"Subject: " + subject + "\r\n" +
 		"MIME-Version: 1.0\r\n" +
@@ -34,11 +35,15 @@ func (m *SMTPMailer) SendEmail(to string, subject string, body string) error {
 		"\r\n" +
 		body + "\r\n")
 
-	return smtp.SendMail(
-		m.Host+":"+m.Port,
+	err = gosmtp.SendMail(
+		configuracao.Host+":"+fmt.Sprint(configuracao.Porta),
 		auth,
-		m.From,
+		configuracao.Remetente,
 		[]string{to},
 		msg,
 	)
+	if err != nil {
+		return ErrorEnvioEmail
+	}
+	return nil
 }

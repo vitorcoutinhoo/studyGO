@@ -52,6 +52,7 @@ func (s *EnvioService) SendEmailComunicacao(
 
 	s.log.Info("enviando email de comunicação", "tipo_comunicacao", tipoComunicacao, "destinatario", destinatario)
 	err = s.emailRepository.SendEmail(
+		ctx,
 		destinatario,
 		modelo.Assunto,
 		body,

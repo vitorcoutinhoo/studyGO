@@ -14,6 +14,7 @@ import (
 	"plantao/internal/domain/plantao"
 	"plantao/internal/domain/setor"
 	"plantao/internal/domain/shared"
+	"plantao/internal/domain/smtp"
 	"plantao/internal/domain/usuario"
 )
 
@@ -28,7 +29,7 @@ func Respond(ctx *gin.Context, err error) {
 }
 
 func classify(err error) (int, ErrorResponse) {
-	if isAny(err, financeiro.ErrorAtualizacaoVazia, plantao.ErrorAtualizacaoPlantaoVazia) {
+	if isAny(err, financeiro.ErrorAtualizacaoVazia, plantao.ErrorAtualizacaoPlantaoVazia, smtp.ErrorAtualizacaoSMTPVazia) {
 		return http.StatusBadRequest, ErrorResponse{Code: "BAD_REQUEST", Message: err.Error()}
 	}
 
@@ -44,6 +45,7 @@ func classify(err error) (int, ErrorResponse) {
 		plantao.ErrorColaboradorNotFound,
 		plantao.ErrorPagamentoNotFound,
 		setor.ErrorSetorNotFound,
+		smtp.ErrorConfiguracaoSMTPNotFound,
 		usuario.ErrorUserNotFound,
 	) {
 		return http.StatusNotFound, ErrorResponse{Code: "NOT_FOUND", Message: err.Error()}
@@ -69,6 +71,7 @@ func classify(err error) (int, ErrorResponse) {
 		plantao.ErrorPlantaoNaoEditavel,
 		financeiro.ErrorValorDiaAlreadyExists,
 		financeiro.ErrorConflitoValorDia,
+		smtp.ErrorConfiguracaoSMTPAlreadyExists,
 	) {
 		return http.StatusConflict, ErrorResponse{Code: "CONFLICT", Message: err.Error()}
 	}
@@ -110,6 +113,11 @@ func classify(err error) (int, ErrorResponse) {
 		usuario.ErrorPasswordShort,
 		usuario.ErrorInvalidRole,
 		setor.ErrorSetorNomeInvalido,
+		smtp.ErrorSMTPHostInvalido,
+		smtp.ErrorSMTPPortaInvalida,
+		smtp.ErrorSMTPUsuarioInvalido,
+		smtp.ErrorSMTPPasswordInvalido,
+		smtp.ErrorSMTPFromInvalido,
 		usuario.ErrorInvalidStatus,
 	) {
 		return http.StatusUnprocessableEntity, ErrorResponse{Code: "VALIDATION_ERROR", Message: err.Error()}

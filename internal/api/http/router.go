@@ -35,6 +35,7 @@ func NewRouter(
 	cargoController *controller.CargoController,
 	setorController *controller.SetorController,
 	roleController *controller.RoleController,
+	smtpController *controller.SMTPController,
 ) *gin.Engine {
 	router := gin.Default()
 
@@ -62,8 +63,20 @@ func NewRouter(
 	setupCargoRoutes(router, cargoController, authMidware)
 	setupSetorRoutes(router, setorController, authMidware)
 	setupRoleRoutes(router, roleController)
+	setupSMTPRoutes(router, smtpController, authMidware)
 
 	return router
+}
+
+func setupSMTPRoutes(router *gin.Engine, smtpController *controller.SMTPController, authMidware *midware.AuthMidware) {
+	v1 := router.Group("/api/v1")
+	smtpRoutes := v1.Group("/admin/config-smtp")
+	smtpRoutes.Use(authMidware.AuthenticationMiddleware(), midware.RoleMidware(ADMIN_ROLE))
+	{
+		smtpRoutes.GET("", smtpController.Get)
+		smtpRoutes.POST("", smtpController.Create)
+		smtpRoutes.PATCH("", smtpController.Update)
+	}
 }
 
 func setupPlantaoRoutes(
