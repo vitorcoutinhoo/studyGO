@@ -16,7 +16,7 @@
 | `Plantão Concluido` | `{{.nome}}`, `{{.dataInicio}}`, `{{.dataFim}}` |
 | `Plantão Ainda Está Aberto` | `{{.nome}}`, `{{.dataInicio}}`, `{{.dataFim}}` |
 | `Plantão Pago` | `{{.nome}}`, `{{.dataInicio}}`, `{{.dataFim}}`, `{{.valorPago}}` |
-| `Colaborador Cadastrado` | `{{.nome}}`, `{{.email}}` |
+| `Colaborador Cadastrado` | `{{.nome}}`, `{{.email}}`, `{{.link}}` |
 | `Colaborador Atualizado` | `{{.nome}}`, `{{.email}}` |
 | `Colaborador Deletado` | `{{.nome}}`, `{{.dataAtual}}` |
 | `Usuário Cadastrado` | `{{.nome}}`, `{{.email}}` |
