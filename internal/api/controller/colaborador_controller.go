@@ -36,7 +36,7 @@ func (c *ColaboradorController) CreateColaborador(ctx *gin.Context) {
 	var req dto.CreateColaboradorRequest
 
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, apierr.ErrorResponse{Code: "BAD_REQUEST", Message: err.Error()})
+		apierr.RespondBinding(ctx, err)
 		return
 	}
 
@@ -80,7 +80,7 @@ func (c *ColaboradorController) UpdateColaborador(ctx *gin.Context) {
 	var req dto.UpdateColaboradorRequest
 
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, apierr.ErrorResponse{Code: "BAD_REQUEST", Message: err.Error()})
+		apierr.RespondBinding(ctx, err)
 		return
 	}
 
@@ -141,7 +141,7 @@ func (c *ColaboradorController) GetColaboradoresByFilter(ctx *gin.Context) {
 	var filter dto.GetColaboradoresByFilterRequest
 
 	if err := ctx.ShouldBindQuery(&filter); err != nil {
-		ctx.JSON(http.StatusBadRequest, apierr.ErrorResponse{Code: "BAD_REQUEST", Message: err.Error()})
+		apierr.RespondBinding(ctx, err)
 		return
 	}
 

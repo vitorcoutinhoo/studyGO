@@ -35,7 +35,7 @@ func (c *ValorDiaController) GetAll(ctx *gin.Context) {
 func (c *ValorDiaController) SetValor(ctx *gin.Context) {
 	var req dto.SetValorDiaRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, apierr.ErrorResponse{Code: "BAD_REQUEST", Message: err.Error()})
+		apierr.RespondBinding(ctx, err)
 		return
 	}
 	if req.HasDeprecatedVigenciaFields() {
@@ -61,7 +61,7 @@ func (c *ValorDiaController) UpdateValor(ctx *gin.Context) {
 
 	var req dto.UpdateValorDiaRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, apierr.ErrorResponse{Code: "BAD_REQUEST", Message: err.Error()})
+		apierr.RespondBinding(ctx, err)
 		return
 	}
 	if req.HasDeprecatedVigenciaFields() {

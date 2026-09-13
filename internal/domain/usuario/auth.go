@@ -6,7 +6,8 @@ import (
 	"plantao/internal/domain/log"
 )
 
-var ErrInvalidCredentials = errors.New("Senha ou email inválidos")
+// A mensagem é propositalmente genérica para não revelar se o e-mail existe.
+var ErrInvalidCredentials = errors.New("Credenciais inválidas.")
 
 type AuthService struct {
 	repository     UsuarioRepository

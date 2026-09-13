@@ -26,7 +26,7 @@ func (a *AuthController) Login(ctx *gin.Context) {
 	var req dto.LoginRequestDTO
 
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, apierr.ErrorResponse{Code: "BAD_REQUEST", Message: err.Error()})
+		apierr.RespondBinding(ctx, err)
 		return
 	}
 

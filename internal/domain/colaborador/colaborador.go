@@ -59,14 +59,15 @@ type Colaborador struct {
 
 // Erros específicos do domínio Colaborador
 var (
-	ErrorColaboradorNotFound = errors.New("Colaborador não encontrado!")
-	ErrorInvalidEmail        = errors.New("Email Inválido!")
-	ErrorEmailAlreadyExists  = errors.New("Email já existe!")
-	ErrorInvalidTelefone     = errors.New("Telefone Inválido!")
-	ErrorInvalidStatus       = errors.New("Status Inválido!")
-	ErrorInactiveColaborador = errors.New("Colaborador inativo!")
-	ErrorInvalidCargo        = errors.New("Cargo inválido!")
-	ErrorInvalidSetor        = errors.New("Setor inválido!")
+	ErrorColaboradorNotFound   = errors.New("Colaborador não encontrado!")
+	ErrorInvalidEmail          = errors.New("Email Inválido!")
+	ErrorEmailAlreadyExists    = errors.New("Email já existe!")
+	ErrorTelefoneAlreadyExists = errors.New("Telefone já está cadastrado para outro colaborador!")
+	ErrorInvalidTelefone       = errors.New("Telefone Inválido!")
+	ErrorInvalidStatus         = errors.New("Status Inválido!")
+	ErrorInactiveColaborador   = errors.New("Colaborador inativo!")
+	ErrorInvalidCargo          = errors.New("Cargo inválido!")
+	ErrorInvalidSetor          = errors.New("Setor inválido!")
 )
 
 // Cria um novo colaborador com validações básicas

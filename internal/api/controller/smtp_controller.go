@@ -28,7 +28,7 @@ func (c *SMTPController) Get(ctx *gin.Context) {
 func (c *SMTPController) Create(ctx *gin.Context) {
 	var req dto.CreateSMTPRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, apierr.ErrorResponse{Code: "BAD_REQUEST", Message: err.Error()})
+		apierr.RespondBinding(ctx, err)
 		return
 	}
 	configuracao, err := c.service.Create(ctx.Request.Context(), req.Host, req.Porta, req.Usuario, req.Senha, req.Remetente)
@@ -42,7 +42,7 @@ func (c *SMTPController) Create(ctx *gin.Context) {
 func (c *SMTPController) Update(ctx *gin.Context) {
 	var req dto.UpdateSMTPRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, apierr.ErrorResponse{Code: "BAD_REQUEST", Message: err.Error()})
+		apierr.RespondBinding(ctx, err)
 		return
 	}
 	if !req.HasFields() || req.HasNullField() {

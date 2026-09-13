@@ -253,6 +253,6 @@ func ParseTipoComunicacao(s string) (TipoComunicacao, error) {
 	case "Usuário Deletado":
 		return UsuarioDeletado, nil
 	default:
-		return "", fmt.Errorf("tipo de comunicação inválido: %s", s)
+		return "", fmt.Errorf("tipo de comunicação inválido: “%s”", s)
 	}
 }

@@ -190,7 +190,7 @@ func validateEmailBodyTag(tipoComunicacao TipoComunicacao, body string) error {
 	tags, ok := requiredTags[tipoComunicacao]
 
 	if !ok {
-		return fmt.Errorf("tipo de comunicação inválido: %s", tipoComunicacao)
+		return fmt.Errorf("tipo de comunicação inválido: “%s”", tipoComunicacao)
 	}
 
 	var missingTags []string
@@ -200,13 +200,13 @@ func validateEmailBodyTag(tipoComunicacao TipoComunicacao, body string) error {
 		matched, _ := regexp.MatchString(pattern, body)
 
 		if !matched {
-			missingTags = append(missingTags, fmt.Sprintf("{{%s}}", tag))
+			missingTags = append(missingTags, fmt.Sprintf("{{.%s}}", tag))
 		}
 	}
 
 	if len(missingTags) > 0 {
 		return fmt.Errorf(
-			"tags obrigatórias ausentes para o tipo '%s': %s: %w",
+			"para o tipo de comunicação “%s”, inclua as tags obrigatórias: %s: %w",
 			tipoComunicacao,
 			strings.Join(missingTags, ", "),
 			ErrorInvalidCorpo,
@@ -236,7 +236,7 @@ func validateEmailBodyTag(tipoComunicacao TipoComunicacao, body string) error {
 
 	if len(extraTags) > 0 {
 		return fmt.Errorf(
-			"tags não permitidas para o tipo '%s': %s: %w",
+			"tags não permitidas para o tipo “%s”: %s: %w",
 			tipoComunicacao,
 			strings.Join(extraTags, ", "),
 			ErrorInvalidCorpo,

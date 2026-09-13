@@ -23,7 +23,7 @@ func (c *ModeloComunicacaoController) CreateModeloComunicacao(ctx *gin.Context) 
 	var req dto.ModeloComunicacaoRequestDTO
 
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, apierr.ErrorResponse{Code: "BAD_REQUEST", Message: err.Error()})
+		apierr.RespondBinding(ctx, err)
 		return
 	}
 
@@ -41,7 +41,7 @@ func (c *ModeloComunicacaoController) UpdateModeloComunicacao(ctx *gin.Context) 
 
 	var req dto.ModeloComunicacaoUpdateRequestDTO
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, apierr.ErrorResponse{Code: "BAD_REQUEST", Message: err.Error()})
+		apierr.RespondBinding(ctx, err)
 		return
 	}
 

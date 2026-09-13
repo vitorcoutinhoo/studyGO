@@ -9,6 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	"go.uber.org/fx"
+	"plantao/internal/api/apierr"
 )
 
 type Client struct {
@@ -67,9 +68,7 @@ func (rl *RateLimiter) Middleware() gin.HandlerFunc {
 		client.Requests++
 		if client.Requests > rl.limit {
 			rl.mu.Unlock()
-			c.AbortWithStatusJSON(http.StatusTooManyRequests, gin.H{
-				"error": "Too many requests",
-			})
+			c.AbortWithStatusJSON(http.StatusTooManyRequests, apierr.ErrorResponse{Code: "RATE_LIMITED", Message: "Muitas solicitações em pouco tempo. Aguarde alguns instantes e tente novamente."})
 			return
 		}
 		rl.mu.Unlock()

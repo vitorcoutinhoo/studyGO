@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"net/http"
+	"plantao/internal/api/apierr"
 	"plantao/internal/domain/usuario"
 	"plantao/internal/infra/security"
 
@@ -24,19 +25,19 @@ func (a *AuthMidware) AuthenticationMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authCookie, err := c.Cookie("access_token")
 		if err != nil {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "token não fornecido"})
+			c.AbortWithStatusJSON(http.StatusUnauthorized, apierr.ErrorResponse{Code: "UNAUTHORIZED", Message: "É necessário autenticar-se para acessar este recurso."})
 			return
 		}
 
 		claims, err := a.jwtService.ValidateToken(authCookie)
 		if err != nil {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "token inválido"})
+			c.AbortWithStatusJSON(http.StatusUnauthorized, apierr.ErrorResponse{Code: "UNAUTHORIZED", Message: "A sessão é inválida ou expirou. Faça login novamente."})
 			return
 		}
 
 		err = a.usuarioService.ExistsUsuarioById(c.Request.Context(), claims.UserId)
 		if err != nil {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "usuário não existe"})
+			c.AbortWithStatusJSON(http.StatusUnauthorized, apierr.ErrorResponse{Code: "UNAUTHORIZED", Message: "A conta associada à sessão não está mais disponível."})
 			return
 		}
 
@@ -52,7 +53,7 @@ func RoleMidware(allowedRoles ...string) gin.HandlerFunc {
 		role, exists := c.Get("role")
 
 		if !exists {
-			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "role não encontrada"})
+			c.AbortWithStatusJSON(http.StatusForbidden, apierr.ErrorResponse{Code: "FORBIDDEN", Message: "Não foi possível identificar a permissão da sua conta."})
 			return
 		}
 
@@ -65,6 +66,6 @@ func RoleMidware(allowedRoles ...string) gin.HandlerFunc {
 			}
 		}
 
-		c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "acesso negado"})
+		c.AbortWithStatusJSON(http.StatusForbidden, apierr.ErrorResponse{Code: "FORBIDDEN", Message: "Sua conta não possui permissão para realizar esta ação."})
 	}
 }

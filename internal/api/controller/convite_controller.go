@@ -26,7 +26,7 @@ func NewConviteController(service *convite.ConviteService, colaboradorService *c
 func (c *ConviteController) CreateConvite(ctx *gin.Context) {
 	var req dto.ConviteRequestDTO
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, apierr.ErrorResponse{Code: "BAD_REQUEST", Message: err.Error()})
+		apierr.RespondBinding(ctx, err)
 		return
 	}
 

@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -96,7 +97,7 @@ func (r *ColaboradorRepository) Store(ctx context.Context, c *colaborador.Colabo
 	saved.AtivoPlantao = statusColaboradorFromDB(statusPlantao)
 
 	if err != nil {
-		return nil, fmt.Errorf("erro ao salvar colaborador: %w", err)
+		return nil, translateColaboradorWriteError(err)
 	}
 
 	return &saved, nil
@@ -140,11 +141,23 @@ func (r *ColaboradorRepository) Update(ctx context.Context, colaborador *colabor
 	)
 
 	if err != nil {
-		return fmt.Errorf("erro ao atualizar colaborador: %w", err)
+		return translateColaboradorWriteError(err)
 	}
-
 	return nil
 } // Fim Update
+
+func translateColaboradorWriteError(err error) error {
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+		switch pgErr.ConstraintName {
+		case "colaboradores_telefone_key":
+			return colaborador.ErrorTelefoneAlreadyExists
+		case "colaboradores_email_key":
+			return colaborador.ErrorEmailAlreadyExists
+		}
+	}
+	return fmt.Errorf("erro ao salvar colaborador: %w", err)
+}
 
 // Desativa um colaborador no banco de dados, marcando-o como inativo.
 // Um colaboorador desabilitado é um colaborador demitido

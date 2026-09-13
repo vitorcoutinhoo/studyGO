@@ -28,7 +28,7 @@ func (p *PlantaoController) CreatePlantao(ctx *gin.Context) {
 	var req dto.CreatePlantaoRequest
 
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, apierr.ErrorResponse{Code: "BAD_REQUEST", Message: err.Error()})
+		apierr.RespondBinding(ctx, err)
 		return
 	}
 
@@ -71,7 +71,7 @@ func (p *PlantaoController) UpdatePlantao(ctx *gin.Context) {
 
 	var req dto.UpdatePlantaoRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, apierr.ErrorResponse{Code: "BAD_REQUEST", Message: err.Error()})
+		apierr.RespondBinding(ctx, err)
 		return
 	}
 	if !req.HasFields() {
@@ -129,7 +129,7 @@ func (p *PlantaoController) UpdatePlantao(ctx *gin.Context) {
 func (p *PlantaoController) UpdateStatusPlantao(ctx *gin.Context) {
 	var req dto.UpdateStatusPlantaoRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, apierr.ErrorResponse{Code: "BAD_REQUEST", Message: err.Error()})
+		apierr.RespondBinding(ctx, err)
 		return
 	}
 
@@ -157,7 +157,7 @@ func (p *PlantaoController) PagarPlantao(ctx *gin.Context) {
 	var req dto.PagamentoPlantaoRequest
 	if ctx.Request.ContentLength != 0 {
 		if err := ctx.ShouldBindJSON(&req); err != nil {
-			ctx.JSON(http.StatusBadRequest, apierr.ErrorResponse{Code: "BAD_REQUEST", Message: err.Error()})
+			apierr.RespondBinding(ctx, err)
 			return
 		}
 	}
