@@ -27,3 +27,23 @@ func TestSetupValorDiaRoutesRegistraPatchComESemTipo(t *testing.T) {
 		}
 	}
 }
+
+func TestSetupSMTPRoutesRegistraEndpointsAdministrativos(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	setupSMTPRoutes(router, &controller.SMTPController{}, &middleware.AuthMidware{})
+
+	rotas := make(map[string]bool)
+	for _, rota := range router.Routes() {
+		rotas[rota.Method+" "+rota.Path] = true
+	}
+	for _, esperada := range []string{
+		"GET /api/v1/admin/config-smtp",
+		"POST /api/v1/admin/config-smtp",
+		"PATCH /api/v1/admin/config-smtp",
+	} {
+		if !rotas[esperada] {
+			t.Fatalf("rota não registrada: %s", esperada)
+		}
+	}
+}
