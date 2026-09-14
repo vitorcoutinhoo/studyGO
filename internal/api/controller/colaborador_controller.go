@@ -24,7 +24,7 @@ type ColaboradorController struct {
 func NewColaboradorController(service *colaborador.ColaboradorService, cfg *config.Config) *ColaboradorController {
 	publicURL := cfg.Public.URL
 	if publicURL == "" {
-		publicURL = "http://" + cfg.Server.Host + ":" + cfg.Server.Port
+		publicURL = cfg.Frontend.URL
 	}
 	return &ColaboradorController{
 		service:   service,
