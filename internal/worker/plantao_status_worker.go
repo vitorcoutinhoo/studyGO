@@ -11,7 +11,7 @@ import (
 	"go.uber.org/fx"
 )
 
-const plantaoStatusInterval = 5 * time.Minute
+const plantaoStatusInterval = 1 * time.Minute
 
 type plantaoStarter interface {
 	IniciarPlantoesAgendados(ctx context.Context) (int, error)
