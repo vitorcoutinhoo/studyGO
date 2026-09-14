@@ -5,9 +5,13 @@ import (
 	"sort"
 	"time"
 
+	"plantao/internal/domain/colaborador"
+	"plantao/internal/domain/comunicacao"
 	"plantao/internal/domain/financeiro"
 	"plantao/internal/domain/log"
 	"plantao/internal/domain/shared"
+
+	"github.com/google/uuid"
 )
 
 const (
@@ -23,6 +27,8 @@ const (
 
 type PlantaoService struct {
 	repository     PlantaoRepository
+	colaboradores  colaborador.ColaboradorRepository
+	envioService   *comunicacao.EnvioService
 	calculoService *financeiro.CalculoService
 	log            log.Logger
 	location       *time.Location
@@ -77,13 +83,15 @@ func (s *PlantaoService) IniciarPlantoesAgendados(ctx context.Context) (int, err
 	}
 }
 
-func NewPlantaoService(repository PlantaoRepository, calculoService *financeiro.CalculoService, log log.Logger) *PlantaoService {
+func NewPlantaoService(repository PlantaoRepository, colaboradores colaborador.ColaboradorRepository, envioService *comunicacao.EnvioService, calculoService *financeiro.CalculoService, log log.Logger) *PlantaoService {
 	location, err := time.LoadLocation("America/Sao_Paulo")
 	if err != nil {
 		location = time.UTC
 	}
 	return &PlantaoService{
 		repository:     repository,
+		colaboradores:  colaboradores,
+		envioService:   envioService,
 		calculoService: calculoService,
 		log:            log,
 		location:       location,
@@ -100,6 +108,7 @@ func (s *PlantaoService) CreatePlantao(ctx context.Context, colaboradorID string
 	if err := s.repository.Store(ctx, p); err != nil {
 		return nil, err
 	}
+	s.notificarPlantao(p, comunicacao.PlantaoAgendado)
 	return p, nil
 }
 
@@ -293,13 +302,15 @@ func (s *PlantaoService) FecharPlantao(ctx context.Context, plantaoID, usuarioID
 	if err != nil {
 		return nil, err
 	}
+	s.notificarPlantao(result, comunicacao.PlantaoConluido)
 	return result, nil
 }
 
 func (s *PlantaoService) PagarPlantao(ctx context.Context, plantaoID, usuarioID string, observacoes *string) error {
 	s.log.Info("iniciando pagamento de plantão", "id_plantao", plantaoID, "id_usuario", usuarioID)
 
-	return s.repository.WithTransaction(ctx, func(tx PlantaoTransaction) error {
+	var pago *Plantao
+	err := s.repository.WithTransaction(ctx, func(tx PlantaoTransaction) error {
 		p, err := tx.LockPlantao(ctx, plantaoID)
 		if err != nil {
 			return err
@@ -362,8 +373,33 @@ func (s *PlantaoService) PagarPlantao(ctx context.Context, plantaoID, usuarioID 
 		if err := tx.UpdateStatus(ctx, plantaoID, StatusPlantaoPago); err != nil {
 			return err
 		}
-		return tx.InsertHistorico(ctx, plantaoID, StatusPlantaoConcluido, StatusPlantaoPago, usuarioID, observacoes)
+		if err := tx.InsertHistorico(ctx, plantaoID, StatusPlantaoConcluido, StatusPlantaoPago, usuarioID, observacoes); err != nil {
+			return err
+		}
+		p.Status = StatusPlantaoPago
+		pago = p
+		return nil
 	})
+	if err == nil {
+		s.notificarPlantao(pago, comunicacao.PlantaoPago)
+	}
+	return err
+}
+
+func (s *PlantaoService) notificarPlantao(p *Plantao, tipo comunicacao.TipoComunicacao) {
+	if p == nil || s.colaboradores == nil || s.envioService == nil {
+		return
+	}
+	go func() {
+		col, err := s.colaboradores.FindById(context.Background(), uuid.MustParse(p.ColaboradorId))
+		if err != nil || col == nil {
+			return
+		}
+		data := map[string]any{string(comunicacao.Nome): col.Nome, string(comunicacao.DataInicio): p.Periodo.Inicio, string(comunicacao.DataFim): p.Periodo.Fim, string(comunicacao.ValorPago): p.ValorTotal}
+		if err := s.envioService.SendEmailComunicacao(context.Background(), tipo, col.Email, col.Id, data); err != nil {
+			s.log.Warn("erro ao enviar comunicação de plantão", "tipo_comunicacao", tipo, "id_plantao", p.Id, "error", err)
+		}
+	}()
 }
 
 func (s *PlantaoService) validateActorAndColaborador(ctx context.Context, tx PlantaoTransaction, actor *Actor, p *Plantao) error {

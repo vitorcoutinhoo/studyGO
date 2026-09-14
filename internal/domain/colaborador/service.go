@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"time"
 
 	"plantao/internal/domain/comunicacao"
 	"plantao/internal/domain/convite"
@@ -208,6 +209,7 @@ func (s *ColaboradorService) UpdateColaborador(ctx context.Context, col *Colabor
 		s.log.Error("erro ao atualizar colaborador no banco de dados", "id_colaborador", colaborador.Id, "error", err)
 		return err
 	}
+	s.notificarColaborador(colaborador, comunicacao.ColaboradorAtualizado)
 
 	s.log.Info("colaborador atualizado com sucesso", "id_colaborador", colaborador.Id)
 	return nil
@@ -259,6 +261,7 @@ func (s *ColaboradorService) DisableColaborador(ctx context.Context, colaborador
 		s.log.Error("erro ao desativar colaborador", "id_colaborador", id, "error", err)
 		return err
 	}
+	s.notificarColaborador(col, comunicacao.ColaboradorDeletado)
 
 	s.log.Info("colaborador desativado com sucesso", "id_colaborador", id)
 	return nil
@@ -350,6 +353,18 @@ func ParseCargoColaborador(s string) (CargoColaborador, error) {
 	default:
 		return "", fmt.Errorf("cargo inválido: %s", s)
 	}
+}
+
+func (s *ColaboradorService) notificarColaborador(col *Colaborador, tipo comunicacao.TipoComunicacao) {
+	if col == nil || s.envioService == nil {
+		return
+	}
+	go func() {
+		data := map[string]any{string(comunicacao.Nome): col.Nome, string(comunicacao.Email): col.Email, string(comunicacao.DataAtual): time.Now()}
+		if err := s.envioService.SendEmailComunicacao(context.Background(), tipo, col.Email, col.Id, data); err != nil {
+			s.log.Warn("erro ao enviar comunicação de colaborador", "tipo_comunicacao", tipo, "id_colaborador", col.Id, "error", err)
+		}
+	}()
 }
 
 func ParseSetorColaborador(s string) (SetorColaborador, error) {

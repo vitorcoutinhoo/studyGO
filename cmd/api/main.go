@@ -26,6 +26,8 @@ func main() {
 		fx.Invoke(middleware.StartRateLimitCleanup),
 		fx.Provide(worker.NewPlantaoStatusWorker),
 		fx.Invoke(worker.RegisterPlantaoStatusWorker),
+		fx.Provide(worker.NewPlantaoReminderWorker),
+		fx.Invoke(worker.RegisterPlantaoReminderWorker),
 
 		fx.Provide(worker.NewFeriadoSyncWorker),
 		fx.Invoke(worker.RegisterFeriadoSyncWorker),

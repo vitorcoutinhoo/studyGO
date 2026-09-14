@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 	"plantao/internal/domain/colaborador"
+	"plantao/internal/domain/comunicacao"
 	"plantao/internal/domain/convite"
 	"plantao/internal/domain/log"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -16,16 +18,18 @@ type UsuarioService struct {
 	colaboradorRepository colaborador.ColaboradorRepository
 	passwordHasher        PasswordHasher
 	conviteRepository     convite.ConviteRepository
+	envioService          *comunicacao.EnvioService
 	log                   log.Logger
 }
 
 // Cria uma nova instância do serviço de usuário
-func NewUsuarioService(repository UsuarioRepository, colaboradorRepository colaborador.ColaboradorRepository, passwordHasher PasswordHasher, conviteRepository convite.ConviteRepository, log log.Logger) *UsuarioService {
+func NewUsuarioService(repository UsuarioRepository, colaboradorRepository colaborador.ColaboradorRepository, passwordHasher PasswordHasher, conviteRepository convite.ConviteRepository, envioService *comunicacao.EnvioService, log log.Logger) *UsuarioService {
 	return &UsuarioService{
 		repository:            repository,
 		colaboradorRepository: colaboradorRepository,
 		passwordHasher:        passwordHasher,
 		conviteRepository:     conviteRepository,
+		envioService:          envioService,
 		log:                   log,
 	}
 } // Fim NewUsuarioService
@@ -102,6 +106,7 @@ func (s *UsuarioService) CreateUsuarioByToken(ctx context.Context, tokenStr, sen
 	} else {
 		s.log.Info("usuário criado com sucesso")
 	}
+	s.notificarUsuario(result, col.Nome, comunicacao.UsuarioCadastrado)
 	return result, nil
 } // Fim CreateUsuarioByToken
 
@@ -133,6 +138,8 @@ func (s *UsuarioService) UpdateUsuario(ctx context.Context, email, senha, usuari
 		s.log.Warn("tentativa de atualizar usuário inativo", "id_usuario", usuarioUUID)
 		return colaborador.ErrorInactiveColaborador
 	}
+	emailAnterior := existingUsuario.Email
+	senhaAlterada := senha != ""
 
 	err = existingUsuario.UpdateUsuario(email, senha, nil)
 
@@ -170,6 +177,17 @@ func (s *UsuarioService) UpdateUsuario(ctx context.Context, email, senha, usuari
 		s.log.Error("erro ao atualizar usuário no banco de dados", "id_usuario", usuarioUUID, "error", err)
 		return err
 	}
+	col, _ := s.colaboradorRepository.FindById(ctx, existingUsuario.IdColaborador)
+	nome := ""
+	if col != nil {
+		nome = col.Nome
+	}
+	if existingUsuario.Email != emailAnterior {
+		s.notificarUsuario(existingUsuario, nome, comunicacao.EmailAtualizado)
+	}
+	if senhaAlterada {
+		s.notificarUsuario(existingUsuario, nome, comunicacao.SenhaAtualizada)
+	}
 
 	s.log.Info("usuário atualizado com sucesso", "id_usuario", usuarioUUID)
 	return nil
@@ -203,6 +221,12 @@ func (s *UsuarioService) DeleteUsuario(ctx context.Context, usuarioId string) er
 		s.log.Error("erro ao desativar usuário", "id_usuario", existingUsuario.Id, "error", err)
 		return err
 	}
+	col, _ := s.colaboradorRepository.FindById(ctx, existingUsuario.IdColaborador)
+	nome := ""
+	if col != nil {
+		nome = col.Nome
+	}
+	s.notificarUsuario(existingUsuario, nome, comunicacao.UsuarioDeletado)
 
 	s.log.Info("usuário desativado com sucesso", "id_usuario", existingUsuario.Id)
 	return nil
@@ -333,3 +357,15 @@ func StatusUsuarioString(status StatusUsuario) (string, error) {
 		return "desconecido", ErrorInvalidStatus
 	}
 } // Fim StatusUsuarioString
+
+func (s *UsuarioService) notificarUsuario(usuario *Usuario, nome string, tipo comunicacao.TipoComunicacao) {
+	if usuario == nil || s.envioService == nil {
+		return
+	}
+	go func() {
+		data := map[string]any{string(comunicacao.Nome): nome, string(comunicacao.Email): usuario.Email, string(comunicacao.DataAtual): time.Now()}
+		if err := s.envioService.SendEmailComunicacao(context.Background(), tipo, usuario.Email, usuario.IdColaborador, data); err != nil {
+			s.log.Warn("erro ao enviar comunicação de usuário", "tipo_comunicacao", tipo, "id_usuario", usuario.Id, "error", err)
+		}
+	}()
+}
