@@ -213,12 +213,12 @@ func novoServicoFake(status StatusPlantao, role, actorColaborador string) (*Plan
 		},
 	}
 	repo := &repositoryFake{tx: tx}
-	return NewPlantaoService(repo, financeiro.NewCalculoService(testLogger{}), testLogger{}), repo
+	return NewPlantaoService(repo, nil, nil, financeiro.NewCalculoService(testLogger{}), testLogger{}), repo
 }
 
 func TestCreatePlantaoDelegaCriacaoAtomicaAoRepositorio(t *testing.T) {
 	repo := &repositoryFake{}
-	service := NewPlantaoService(repo, nil, testLogger{})
+	service := NewPlantaoService(repo, nil, nil, nil, testLogger{})
 	periodo := &shared.Periodo{
 		Inicio: time.Date(2026, 9, 1, 8, 0, 0, 0, time.UTC),
 		Fim:    time.Date(2026, 9, 1, 18, 0, 0, 0, time.UTC),
@@ -235,7 +235,7 @@ func TestCreatePlantaoDelegaCriacaoAtomicaAoRepositorio(t *testing.T) {
 
 func TestCreatePlantaoPropagaConflitoSemCriacao(t *testing.T) {
 	repo := &repositoryFake{storeErr: ErrorExistingPlantao}
-	service := NewPlantaoService(repo, nil, testLogger{})
+	service := NewPlantaoService(repo, nil, nil, nil, testLogger{})
 	periodo := &shared.Periodo{
 		Inicio: time.Date(2026, 9, 1, 8, 0, 0, 0, time.UTC),
 		Fim:    time.Date(2026, 9, 1, 18, 0, 0, 0, time.UTC),

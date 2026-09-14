@@ -41,7 +41,7 @@ func (*relatorioRepositoryStub) WithTransaction(context.Context, func(plantao.Pl
 }
 
 func novoControllerRelatorio(repo *relatorioRepositoryStub) *PlantaoController {
-	return NewPlantaoController(plantao.NewPlantaoService(repo, nil, nil))
+	return NewPlantaoController(plantao.NewPlantaoService(repo, nil, nil, nil, nil))
 }
 
 func executarRelatorio(t *testing.T, controller *PlantaoController, target string) *httptest.ResponseRecorder {
