@@ -131,7 +131,7 @@ func (c *UsuarioController) UpdateRole(ctx *gin.Context) {
 	id := ctx.Param("id")
 
 	var req struct {
-		Role string `json:"role" binding:"required,oneof=admin gerente colaborador"`
+		Role string `json:"role" binding:"required,oneof=admin gerente colaborador financeiro"`
 	}
 
 	if err := ctx.ShouldBindJSON(&req); err != nil {

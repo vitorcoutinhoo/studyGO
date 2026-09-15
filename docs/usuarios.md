@@ -33,7 +33,7 @@
 
 ## `GET /authenticated/usuarios`
 
-> Retorna os dados do usuário autenticado (roles: `colaborador`, `gerente`, `admin`)
+> Retorna os dados do usuário autenticado (roles: `colaborador`, `gerente`, `admin`, `financeiro`)
 
 **Response `200`:**
 ```json
@@ -50,7 +50,7 @@
 
 ## `PUT /authenticated/usuarios`
 
-> Atualiza email e/ou senha do usuário autenticado (roles: `colaborador`, `gerente`, `admin`)
+> Atualiza email e/ou senha do usuário autenticado (roles: `colaborador`, `gerente`, `admin`, `financeiro`)
 
 **Request:**
 ```json
@@ -66,7 +66,7 @@
 
 ## `DELETE /authenticated/usuarios`
 
-> Remove o usuário autenticado (roles: `colaborador`, `gerente`, `admin`)
+> Remove o usuário autenticado (roles: `colaborador`, `gerente`, `admin`, `financeiro`)
 
 **Response `204`** (sem body)
 

@@ -34,13 +34,14 @@ func TestSetupPlantaoRoutesRegistraRelatorioProtegido(t *testing.T) {
 	}
 }
 
-func TestRelatorioPermiteAdminEGerenteERejeitaColaborador(t *testing.T) {
+func TestRelatorioPermiteAdminGerenteEFinanceiroERejeitaColaborador(t *testing.T) {
 	tests := []struct {
 		role   string
 		status int
 	}{
 		{ADMIN_ROLE, http.StatusOK},
 		{GERENTE_ROLE, http.StatusOK},
+		{FINANCEIRO_ROLE, http.StatusOK},
 		{COLABORADOR_ROLE, http.StatusForbidden},
 	}
 
@@ -50,12 +51,40 @@ func TestRelatorioPermiteAdminEGerenteERejeitaColaborador(t *testing.T) {
 			router.Use(func(ctx *gin.Context) {
 				ctx.Set("role", tt.role)
 			})
-			router.GET("/relatorio", middleware.RoleMidware(ADMIN_ROLE, GERENTE_ROLE), func(ctx *gin.Context) {
+			router.GET("/relatorio", middleware.RoleMidware(ADMIN_ROLE, GERENTE_ROLE, FINANCEIRO_ROLE), func(ctx *gin.Context) {
 				ctx.Status(http.StatusOK)
 			})
 
 			recorder := httptest.NewRecorder()
 			router.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/relatorio", nil))
+			if recorder.Code != tt.status {
+				t.Fatalf("status = %d, esperado %d", recorder.Code, tt.status)
+			}
+		})
+	}
+}
+
+func TestPagamentoPermiteAdminGerenteEFinanceiroERejeitaColaborador(t *testing.T) {
+	tests := []struct {
+		role   string
+		status int
+	}{
+		{ADMIN_ROLE, http.StatusNoContent},
+		{GERENTE_ROLE, http.StatusNoContent},
+		{FINANCEIRO_ROLE, http.StatusNoContent},
+		{COLABORADOR_ROLE, http.StatusForbidden},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.role, func(t *testing.T) {
+			router := gin.New()
+			router.Use(func(ctx *gin.Context) { ctx.Set("role", tt.role) })
+			router.POST("/plantoes/:id/pagamento", middleware.RoleMidware(ADMIN_ROLE, GERENTE_ROLE, FINANCEIRO_ROLE), func(ctx *gin.Context) {
+				ctx.Status(http.StatusNoContent)
+			})
+
+			recorder := httptest.NewRecorder()
+			router.ServeHTTP(recorder, httptest.NewRequest(http.MethodPost, "/plantoes/id/pagamento", nil))
 			if recorder.Code != tt.status {
 				t.Fatalf("status = %d, esperado %d", recorder.Code, tt.status)
 			}
@@ -94,6 +123,7 @@ func TestEdicaoPlantaoPermiteAdminEGerenteERejeitaColaborador(t *testing.T) {
 		{ADMIN_ROLE, http.StatusOK},
 		{GERENTE_ROLE, http.StatusOK},
 		{COLABORADOR_ROLE, http.StatusForbidden},
+		{FINANCEIRO_ROLE, http.StatusForbidden},
 	} {
 		t.Run(tt.role, func(t *testing.T) {
 			router := gin.New()

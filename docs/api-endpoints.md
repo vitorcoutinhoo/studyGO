@@ -4,7 +4,7 @@
 
 **Autenticação:** Bearer Token (JWT) via header `Authorization: Bearer <token>`
 
-**Roles disponíveis:** `ADMIN`, `GERENTE`, `COLABORADOR`
+**Roles disponíveis:** `ADMIN`, `GERENTE`, `COLABORADOR`, `FINANCEIRO`
 
 ---
 
@@ -80,7 +80,7 @@ Cria um usuário a partir de um token de convite. Público.
 ### GET `/api/v1/authenticated/usuarios`
 Retorna os dados do usuário autenticado.
 
-**Auth:** `COLABORADOR`, `GERENTE`, `ADMIN`
+**Auth:** `COLABORADOR`, `GERENTE`, `ADMIN`, `FINANCEIRO`
 
 **Response `200`:**
 ```json
@@ -98,7 +98,7 @@ Retorna os dados do usuário autenticado.
 ### PUT `/api/v1/authenticated/usuarios`
 Atualiza email e/ou senha do usuário autenticado.
 
-**Auth:** `COLABORADOR`, `GERENTE`, `ADMIN`
+**Auth:** `COLABORADOR`, `GERENTE`, `ADMIN`, `FINANCEIRO`
 
 **Request:**
 ```json
@@ -115,7 +115,7 @@ Atualiza email e/ou senha do usuário autenticado.
 ### DELETE `/api/v1/authenticated/usuarios`
 Desativa a conta do usuário autenticado.
 
-**Auth:** `COLABORADOR`, `GERENTE`, `ADMIN`
+**Auth:** `COLABORADOR`, `GERENTE`, `ADMIN`, `FINANCEIRO`
 
 **Response `204`:** sem body
 
@@ -406,6 +406,22 @@ Remove um plantão.
 
 ---
 
+### GET `/api/v1/plantoes/relatorio`
+Consulta o relatório financeiro dos plantões por período.
+
+**Auth:** `ADMIN`, `GERENTE`, `FINANCEIRO`
+
+---
+
+### POST `/api/v1/plantoes/:id/pagamento`
+Confirma o pagamento pendente de um plantão concluído.
+
+**Auth:** `ADMIN`, `GERENTE`, `FINANCEIRO`
+
+**Response `204`:** sem body
+
+---
+
 ## Convites
 
 ### POST `/api/v1/convites`
@@ -460,7 +476,7 @@ Desativa um convite pelo token.
 ### GET `/api/v1/admin/feriados`
 Lista os feriados de um ano.
 
-**Auth:** `ADMIN`
+**Auth:** `ADMIN`, `FINANCEIRO`
 
 **Query params:**
 | Param | Tipo | Descrição |
@@ -484,7 +500,7 @@ Lista os feriados de um ano.
 ### PATCH `/api/v1/admin/feriados/:id/data`
 Atualiza a data de um feriado.
 
-**Auth:** `ADMIN`
+**Auth:** `ADMIN`, `FINANCEIRO`
 
 **Request:**
 ```json
@@ -512,7 +528,7 @@ Configuração dos valores pagos por tipo de dia de plantão.
 ### GET `/api/v1/admin/config-valores`
 Lista todas as configurações globais de valor.
 
-**Auth:** `ADMIN`
+**Auth:** `ADMIN`, `FINANCEIRO`
 
 **Response `200`:**
 ```json
@@ -530,7 +546,7 @@ Lista todas as configurações globais de valor.
 ### POST `/api/v1/admin/config-valores`
 Define um novo valor para um tipo de dia.
 
-**Auth:** `ADMIN`
+**Auth:** `ADMIN`, `FINANCEIRO`
 
 **Request:**
 ```json
@@ -563,7 +579,7 @@ Define um novo valor para um tipo de dia.
 Atualiza `valor` e/ou `descricao` da configuração global. Campos de vigência
 retornam `400 Bad Request`.
 
-**Auth:** `ADMIN`
+**Auth:** `ADMIN`, `FINANCEIRO`
 
 ```json
 {
@@ -659,7 +675,7 @@ Desativa um modelo.
 ### GET `/api/v1/cargos`
 Lista todos os cargos ativos.
 
-**Auth:** `ADMIN`, `GERENTE`, `COLABORADOR`
+**Auth:** `ADMIN`, `GERENTE`, `COLABORADOR`, `FINANCEIRO`
 
 **Response `200`:**
 ```json
@@ -701,7 +717,7 @@ Desativa um cargo.
 ### GET `/api/v1/setores`
 Lista todos os setores ativos.
 
-**Auth:** `ADMIN`, `GERENTE`, `COLABORADOR`
+**Auth:** `ADMIN`, `GERENTE`, `COLABORADOR`, `FINANCEIRO`
 
 **Response `200`:**
 ```json
@@ -748,7 +764,8 @@ Lista todas as roles disponíveis. Público.
 [
   { "id": "uuid", "nome": "admin" },
   { "id": "uuid", "nome": "gerente" },
-  { "id": "uuid", "nome": "colaborador" }
+  { "id": "uuid", "nome": "colaborador" },
+  { "id": "uuid", "nome": "financeiro" }
 ]
 ```
 

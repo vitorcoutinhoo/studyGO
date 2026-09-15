@@ -18,6 +18,7 @@ const (
 	roleAdmin       = "admin"
 	roleGerente     = "gerente"
 	roleColaborador = "colaborador"
+	roleFinanceiro  = "financeiro"
 
 	statusPagamentoPendente    = "pendente"
 	maxPagamentoCentavos       = int64(9_999_999_999)
@@ -322,7 +323,7 @@ func (s *PlantaoService) PagarPlantao(ctx context.Context, plantaoID, usuarioID 
 		if err := s.validateActorAndColaborador(ctx, tx, actor, p); err != nil {
 			return err
 		}
-		if actor.Role != roleGerente && actor.Role != roleAdmin {
+		if actor.Role != roleGerente && actor.Role != roleAdmin && actor.Role != roleFinanceiro {
 			return ErrorUsuarioSemPermissao
 		}
 

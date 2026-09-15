@@ -4,7 +4,7 @@
 
 **Autenticação:** Bearer Token via header `Authorization: Bearer <token>`
 
-> Todos os endpoints exigem autenticação (role: `admin`)
+> Todos os endpoints exigem autenticação (roles: `admin`, `financeiro`)
 
 **Tipos de feriado (campo `descricao`):** `NACIONAL`, `ESTADUAL`, `MUNICIPAL`, `COMEMORATIVO`, `FACULTATIVO`
 

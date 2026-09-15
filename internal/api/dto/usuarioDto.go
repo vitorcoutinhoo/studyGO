@@ -21,7 +21,7 @@ type UsuarioAdminRequestDTO struct {
 	ColaboradorEmail string `json:"colaborador_email" binding:"required,email,max=100"`
 	Email            string `json:"email"             binding:"required,email,max=100"`
 	Senha            string `json:"senha"             binding:"required,min=6,max=72"`
-	Role             string `json:"role"              binding:"required,oneof=admin gerente colaborador"`
+	Role             string `json:"role"              binding:"required,oneof=admin gerente colaborador financeiro"`
 	Ativo            string `json:"ativo"`
 }
 

@@ -31,6 +31,7 @@ func TestRoleMidwarePermiteSomenteAdmin(t *testing.T) {
 		{"admin", http.StatusNoContent, true},
 		{"gerente", http.StatusForbidden, false},
 		{"colaborador", http.StatusForbidden, false},
+		{"financeiro", http.StatusForbidden, false},
 	}
 
 	for _, tt := range tests {

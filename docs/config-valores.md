@@ -4,7 +4,7 @@
 
 **Autenticação:** cookie `access_token`
 
-> Todos os endpoints exigem autenticação e role `admin`.
+> Todos os endpoints exigem autenticação e uma das roles: `admin`, `financeiro`.
 
 **Tipos de dia:** `UTIL`, `SABADO`, `DOMINGO`, `FERIADO`
 

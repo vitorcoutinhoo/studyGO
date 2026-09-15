@@ -21,6 +21,7 @@ const (
 	RoleAdmin       = "admin"
 	RoleColaborador = "colaborador"
 	RoleGerente     = "gerente"
+	RoleFinanceiro  = "financeiro"
 )
 
 type Usuario struct {
@@ -106,7 +107,7 @@ func isEmailValid(email string) bool {
 
 func isRoleValid(role Role) bool {
 	switch role {
-	case RoleAdmin, RoleColaborador, RoleGerente:
+	case RoleAdmin, RoleColaborador, RoleGerente, RoleFinanceiro:
 		return true
 	}
 

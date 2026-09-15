@@ -310,6 +310,7 @@ func TestEditarPlantaoAutorizaAdminEGerente(t *testing.T) {
 		{roleAdmin, nil},
 		{roleGerente, nil},
 		{roleColaborador, ErrorUsuarioSemPermissao},
+		{roleFinanceiro, ErrorUsuarioSemPermissao},
 	} {
 		t.Run(tt.role, func(t *testing.T) {
 			service, repo := novoServicoFake(StatusPlantaoAgendado, tt.role, "colaborador-1")
@@ -398,6 +399,7 @@ func TestFecharPlantaoAutorizacaoEAtomicidade(t *testing.T) {
 		{"outro colaborador", roleColaborador, "colaborador-2", ErrorUsuarioSemPermissao},
 		{"gerente", roleGerente, "colaborador-2", nil},
 		{"admin", roleAdmin, "colaborador-2", nil},
+		{"financeiro", roleFinanceiro, "colaborador-2", ErrorUsuarioSemPermissao},
 	}
 
 	for _, tt := range tests {
@@ -436,21 +438,25 @@ func TestFecharPlantaoRejeitaRepeticaoEDadosExistentes(t *testing.T) {
 	}
 }
 
-func TestPagarPlantao(t *testing.T) {
-	service, repo := novoServicoFake(StatusPlantaoConcluido, roleGerente, "colaborador-2")
-	repo.tx.plantao.ValorTotal = 100
-	repo.tx.pagamento = &Pagamento{
-		ID: "pagamento-1", PlantaoID: "plantao-1", ColaboradorID: "colaborador-1",
-		ValorTotalCentavos: 10000, Status: statusPagamentoPendente,
-	}
-	repo.tx.resumo = &DetalhesResumo{Quantidade: 1, DatasDistintas: 1, ValorTotalCentavos: 10000}
+func TestPagarPlantaoAutorizaAdminGerenteEFinanceiro(t *testing.T) {
+	for _, actorRole := range []string{roleAdmin, roleGerente, roleFinanceiro} {
+		t.Run(actorRole, func(t *testing.T) {
+			service, repo := novoServicoFake(StatusPlantaoConcluido, actorRole, "colaborador-2")
+			repo.tx.plantao.ValorTotal = 100
+			repo.tx.pagamento = &Pagamento{
+				ID: "pagamento-1", PlantaoID: "plantao-1", ColaboradorID: "colaborador-1",
+				ValorTotalCentavos: 10000, Status: statusPagamentoPendente,
+			}
+			repo.tx.resumo = &DetalhesResumo{Quantidade: 1, DatasDistintas: 1, ValorTotalCentavos: 10000}
 
-	if err := service.PagarPlantao(context.Background(), "plantao-1", "usuario-1", nil); err != nil {
-		t.Fatal(err)
-	}
-	if !repo.committed || !repo.tx.pagamentoPago || repo.tx.statusAtualizado == nil ||
-		*repo.tx.statusAtualizado != StatusPlantaoPago || repo.tx.historicos != 1 {
-		t.Fatal("pagamento não executou todas as etapas")
+			if err := service.PagarPlantao(context.Background(), "plantao-1", "usuario-1", nil); err != nil {
+				t.Fatal(err)
+			}
+			if !repo.committed || !repo.tx.pagamentoPago || repo.tx.statusAtualizado == nil ||
+				*repo.tx.statusAtualizado != StatusPlantaoPago || repo.tx.historicos != 1 {
+				t.Fatal("pagamento não executou todas as etapas")
+			}
+		})
 	}
 }
 

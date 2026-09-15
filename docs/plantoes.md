@@ -4,7 +4,9 @@
 
 **Autenticação:** cookie `access_token`
 
-> Todos os endpoints exigem autenticação (roles: `admin`, `gerente`, `colaborador`)
+> Todos os endpoints exigem autenticação. Por padrão, as roles aceitas são
+> `admin`, `gerente` e `colaborador`; relatório e pagamento também possuem acesso
+> específico para `financeiro`.
 
 **Status do plantão:**
 | Valor | Descrição |
@@ -166,7 +168,7 @@ Regras:
 
 Confirma o pagamento pendente criado no fechamento.
 
-**Roles:** `admin`, `gerente`
+**Roles:** `admin`, `gerente`, `financeiro`
 
 **Request opcional:**
 
@@ -202,7 +204,7 @@ Repetições e chamadas concorrentes retornam `409 Conflict`.
 ## `GET /plantoes/relatorio`
 
 Retorna uma linha para cada dia civil de plantão. A consulta exige autenticação
-e aceita somente as roles `admin` e `gerente`.
+e aceita somente as roles `admin`, `gerente` e `financeiro`.
 
 **Query parameters:**
 
